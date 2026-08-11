@@ -1,0 +1,15 @@
+{
+  "version": 1,
+  "packs": [
+    { "id": "clicky-switch", "name": "Clicky Switch", "family": "keyboard-focused" },
+    { "id": "tactile-switch", "name": "Tactile Switch", "family": "keyboard-focused" },
+    { "id": "linear-switch", "name": "Linear Switch", "family": "keyboard-focused" },
+    { "id": "buckling-spring", "name": "Buckling Spring", "family": "keyboard-focused" },
+    { "id": "silent-switch", "name": "Silent Switch", "family": "keyboard-focused" },
+    { "id": "crisp-mechanical", "name": "Crisp Mechanical", "family": "balanced" },
+    { "id": "soft-thock", "name": "Soft Thock", "family": "balanced" },
+    { "id": "classic-typewriter", "name": "Classic Typewriter", "family": "balanced" },
+    { "id": "minimal-tap", "name": "Minimal Tap", "family": "balanced" },
+    { "id": "digital-pulse", "name": "Digital Pulse", "family": "balanced" }
+  ]
+}

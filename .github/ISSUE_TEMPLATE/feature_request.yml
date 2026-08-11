@@ -1,0 +1,25 @@
+name: Feature request
+description: Suggest a focused improvement to KeyClick.
+title: "[Feature]: "
+labels: [enhancement]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem or opportunity
+      description: What user need would this solve?
+    validations:
+      required: true
+  - type: textarea
+    id: behavior
+    attributes:
+      label: Proposed behavior
+    validations:
+      required: true
+  - type: textarea
+    id: impact
+    attributes:
+      label: Privacy and performance impact
+      description: Note any background work, input access, persistence, or network use.
+    validations:
+      required: true

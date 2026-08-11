@@ -1,0 +1,32 @@
+# .NET build output
+**/bin/
+**/obj/
+artifacts/
+TestResults/
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+
+# IDEs
+.vs/
+.vscode/
+.idea/
+
+# Local packages and signing material
+*.nupkg
+*.snupkg
+*.pfx
+*.p12
+*.cer
+*.key
+
+# OS and temporary files
+.DS_Store
+Thumbs.db
+*.tmp
+*.log
+*.bak
+
+# Generated portable payloads
+apps/windows/src/KeyClick.Bootstrap/payload.zip

@@ -1,0 +1,47 @@
+name: Bug report
+description: Report reproducible KeyClick behavior.
+title: "[Bug]: "
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: Do not include typed text, keystroke histories, or private file paths.
+  - type: input
+    id: version
+    attributes:
+      label: KeyClick version
+      placeholder: 1.0.0 x64
+    validations:
+      required: true
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      options: [Keyboard input, Pointer input, Audio, Sound packs and mappings, Shortcuts, Tray and startup, Integrations, Updates and packaging, Other]
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual behavior
+    validations:
+      required: true
+  - type: checkboxes
+    id: privacy
+    attributes:
+      label: Privacy check
+      options:
+        - label: I removed typed text, credentials, personal paths, and other sensitive data.
+          required: true

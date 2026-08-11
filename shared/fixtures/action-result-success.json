@@ -1,0 +1,8 @@
+{
+  "version": 1,
+  "type": "action-result",
+  "outcome": "success",
+  "inputId": "KeyboardKey:Keyboard:28:0",
+  "actionId": "save-document",
+  "playResultSound": true
+}
