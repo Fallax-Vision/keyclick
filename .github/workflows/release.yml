@@ -33,7 +33,7 @@ jobs:
         run: |
           dotnet tool install --global CycloneDX
           dotnet-CycloneDX KeyClick.sln -o artifacts/portable -fn sbom.cdx.json
-      - uses: actions/attest-build-provenance@v2
+      - uses: actions/attest-build-provenance@v4
         with:
           subject-path: artifacts/portable/KeyClick-Windows-*.exe
       - uses: actions/upload-artifact@v4
