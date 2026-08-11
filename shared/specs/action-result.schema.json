@@ -1,0 +1,16 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/Fallax-Vision/keyclick/shared/specs/action-result.schema.json",
+  "title": "KeyClick Action Result v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["version", "type", "outcome", "playResultSound"],
+  "properties": {
+    "version": { "const": 1 },
+    "type": { "const": "action-result" },
+    "outcome": { "enum": ["success", "failure", "authorized", "blocked"] },
+    "inputId": { "type": "string", "maxLength": 128 },
+    "actionId": { "type": "string", "maxLength": 128 },
+    "playResultSound": { "type": "boolean" }
+  }
+}

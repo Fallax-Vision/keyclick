@@ -1,0 +1,13 @@
+<Project>
+  <PropertyGroup>
+    <VersionPrefix>1.0.0</VersionPrefix>
+    <Company>Fallax Vision</Company>
+    <Authors>Fallax Vision</Authors>
+    <Product>KeyClick</Product>
+    <Copyright>Copyright © 2026 Fallax Vision</Copyright>
+    <RepositoryUrl>https://github.com/Fallax-Vision/keyclick</RepositoryUrl>
+    <RepositoryType>git</RepositoryType>
+    <Deterministic>true</Deterministic>
+    <ContinuousIntegrationBuild Condition="'$(CI)' == 'true'">true</ContinuousIntegrationBuild>
+  </PropertyGroup>
+</Project>

@@ -1,0 +1,370 @@
+<Window x:Class="KeyClick.App.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        mc:Ignorable="d"
+        Title="{Binding AppTitle}" Width="1160" Height="780" MinWidth="940" MinHeight="650"
+        WindowStartupLocation="CenterScreen" Closing="Window_Closing" StateChanged="Window_StateChanged" SourceInitialized="Window_SourceInitialized">
+  <Grid Margin="16">
+    <Grid.ColumnDefinitions>
+      <ColumnDefinition Width="224" />
+      <ColumnDefinition Width="16" />
+      <ColumnDefinition Width="*" />
+    </Grid.ColumnDefinitions>
+
+    <Border Grid.Column="0" Style="{StaticResource Card}" Margin="0">
+      <Grid>
+        <Grid.RowDefinitions>
+          <RowDefinition Height="Auto" />
+          <RowDefinition Height="Auto" />
+          <RowDefinition Height="*" />
+          <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
+        <StackPanel Orientation="Horizontal" Margin="2,0,0,24">
+          <Border Width="34" Height="34" CornerRadius="9" Background="{DynamicResource AccentBrush}">
+            <TextBlock Text="K" FontSize="19" FontWeight="Bold" Foreground="{DynamicResource AccentTextBrush}" HorizontalAlignment="Center" VerticalAlignment="Center" />
+          </Border>
+          <StackPanel Margin="11,0,0,0" VerticalAlignment="Center">
+            <TextBlock Text="{Binding AppTitle}" FontWeight="SemiBold" FontSize="16" TextTrimming="CharacterEllipsis" MaxWidth="135" />
+            <TextBlock Text="{DynamicResource AppTagline}" Style="{StaticResource MutedText}" />
+          </StackPanel>
+        </StackPanel>
+
+        <Border Grid.Row="1" Background="{DynamicResource SurfaceBrush}" CornerRadius="9" Padding="11,9" Margin="0,0,0,14">
+          <StackPanel>
+            <TextBlock Text="{Binding SoundStateText}" FontWeight="SemiBold" />
+            <TextBlock Text="{Binding ActivePackName}" Style="{StaticResource MutedText}" TextTrimming="CharacterEllipsis" />
+          </StackPanel>
+        </Border>
+
+        <StackPanel Grid.Row="2">
+          <Button Style="{StaticResource NavButton}" Tag="0" Click="Navigation_Click" Content="{DynamicResource NavHome}" />
+          <Button Style="{StaticResource NavButton}" Tag="1" Click="Navigation_Click" Content="{DynamicResource NavSoundPacks}" />
+          <Button Style="{StaticResource NavButton}" Tag="2" Click="Navigation_Click" Content="{DynamicResource NavMappings}" />
+          <Button Style="{StaticResource NavButton}" Tag="3" Click="Navigation_Click" Content="{DynamicResource NavShortcuts}" />
+          <Button Style="{StaticResource NavButton}" Tag="4" Click="Navigation_Click" Content="{DynamicResource NavSettings}" />
+          <Button Style="{StaticResource NavButton}" Tag="5" Click="Navigation_Click" Content="{DynamicResource NavIntegrations}" />
+          <Button Style="{StaticResource NavButton}" Tag="6" Click="Navigation_Click" Content="{DynamicResource NavAbout}" />
+        </StackPanel>
+
+        <StackPanel Grid.Row="3">
+          <Button Content="{DynamicResource ToggleAllSounds}" Command="{Binding ToggleSoundsCommand}" />
+          <TextBlock Text="{Binding StatusMessage}" Style="{StaticResource MutedText}" Margin="2,10,2,0" MaxHeight="54" TextTrimming="CharacterEllipsis" />
+        </StackPanel>
+      </Grid>
+    </Border>
+
+    <TabControl x:Name="PageTabs" Grid.Column="2" Background="Transparent" BorderThickness="0" Padding="0">
+      <TabControl.Resources>
+        <Style TargetType="TabItem"><Setter Property="Visibility" Value="Collapsed" /></Style>
+      </TabControl.Resources>
+
+      <TabItem>
+        <ScrollViewer VerticalScrollBarVisibility="Auto">
+          <StackPanel Margin="4,2,10,8">
+            <TextBlock Text="{DynamicResource NavHome}" Style="{StaticResource PageTitle}" />
+            <TextBlock Text="{DynamicResource HomeIntro}" Style="{StaticResource MutedText}" Margin="0,0,0,22" />
+
+            <Border Style="{StaticResource Card}">
+              <Grid>
+                <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
+                <StackPanel>
+                  <TextBlock Text="{Binding SoundStateText}" FontSize="22" FontWeight="SemiBold" />
+                  <TextBlock Text="{Binding SoundStateDescription}" Style="{StaticResource MutedText}" Margin="0,4,0,0" />
+                </StackPanel>
+                <Button Grid.Column="1" Content="{DynamicResource ToggleSounds}" Command="{Binding ToggleSoundsCommand}" Style="{StaticResource AccentButton}" MinWidth="130" />
+              </Grid>
+            </Border>
+
+            <Grid>
+              <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="14" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
+              <Border Style="{StaticResource Card}" Grid.Column="0">
+                <StackPanel>
+                  <TextBlock Text="{DynamicResource ActiveSoundPack}" Style="{StaticResource SectionTitle}" />
+                  <ComboBox ItemsSource="{Binding Packs}" SelectedItem="{Binding SelectedPack}" DisplayMemberPath="Name" />
+                  <TextBlock Text="{Binding ActivePackDescription}" Style="{StaticResource MutedText}" Margin="0,10,0,12" />
+                  <StackPanel Orientation="Horizontal">
+                    <Button Content="{DynamicResource Previous}" Command="{Binding PreviousPackCommand}" Margin="0,0,8,0" />
+                    <Button Content="{DynamicResource Next}" Command="{Binding NextPackCommand}" />
+                  </StackPanel>
+                </StackPanel>
+              </Border>
+              <Border Style="{StaticResource Card}" Grid.Column="2">
+                <StackPanel>
+                  <Grid><TextBlock Text="{DynamicResource MasterVolume}" Style="{StaticResource SectionTitle}" /><TextBlock Text="{Binding MasterVolumeLabel}" HorizontalAlignment="Right" FontWeight="SemiBold" /></Grid>
+                  <Slider Minimum="0" Maximum="100" Value="{Binding MasterVolume, UpdateSourceTrigger=PropertyChanged}" TickFrequency="5" />
+                  <CheckBox Content="{DynamicResource KeyboardSounds}" IsChecked="{Binding KeyboardEnabled}" />
+                  <CheckBox Content="{DynamicResource PointerButtonSounds}" IsChecked="{Binding PointerEnabled}" />
+                  <CheckBox Content="{DynamicResource WheelSounds}" IsChecked="{Binding WheelEnabled}" />
+                </StackPanel>
+              </Border>
+            </Grid>
+
+            <Border Style="{StaticResource Card}">
+              <StackPanel>
+                <TextBlock Text="{DynamicResource AudioOutput}" Style="{StaticResource SectionTitle}" />
+                <ComboBox ItemsSource="{Binding OutputDevices}" DisplayMemberPath="Name" SelectedValuePath="Id" SelectedValue="{Binding OutputDeviceId}" />
+                <TextBlock Text="{DynamicResource AudioOutputHelp}" Style="{StaticResource MutedText}" Margin="0,9,0,0" />
+              </StackPanel>
+            </Border>
+          </StackPanel>
+        </ScrollViewer>
+      </TabItem>
+
+      <TabItem>
+        <ScrollViewer VerticalScrollBarVisibility="Auto">
+          <StackPanel Margin="4,2,10,8">
+            <TextBlock Text="{DynamicResource NavSoundPacks}" Style="{StaticResource PageTitle}" />
+            <TextBlock Text="{DynamicResource SoundPacksIntro}" Style="{StaticResource MutedText}" Margin="0,0,0,22" />
+            <ListBox ItemsSource="{Binding Packs}" SelectedItem="{Binding SelectedPack}" Background="Transparent" BorderThickness="0" ScrollViewer.VerticalScrollBarVisibility="Disabled">
+              <ListBox.ItemTemplate>
+                <DataTemplate>
+                  <Border Style="{StaticResource Card}" Margin="0,0,0,10" MinHeight="94">
+                    <Grid>
+                      <Grid.ColumnDefinitions><ColumnDefinition Width="8" /><ColumnDefinition Width="18" /><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
+                      <Border Grid.Column="0" CornerRadius="4" Background="{DynamicResource AccentBrush}" />
+                      <StackPanel Grid.Column="2">
+                        <TextBlock Text="{Binding Name}" FontSize="17" FontWeight="SemiBold" />
+                        <TextBlock Text="{Binding Family}" Foreground="{DynamicResource AccentBrush}" FontSize="12" Margin="0,3,0,3" />
+                        <TextBlock Text="{Binding Description}" Style="{StaticResource MutedText}" />
+                      </StackPanel>
+                      <TextBlock Grid.Column="3" Text="{DynamicResource SelectToActivate}" Style="{StaticResource MutedText}" VerticalAlignment="Center" Margin="20,0,0,0" />
+                    </Grid>
+                  </Border>
+                </DataTemplate>
+              </ListBox.ItemTemplate>
+            </ListBox>
+          </StackPanel>
+        </ScrollViewer>
+      </TabItem>
+
+      <TabItem>
+        <ScrollViewer VerticalScrollBarVisibility="Auto">
+          <StackPanel Margin="4,2,10,8">
+            <TextBlock Text="{DynamicResource MappingsTitle}" Style="{StaticResource PageTitle}" />
+            <TextBlock Text="{DynamicResource MappingsIntro}" Style="{StaticResource MutedText}" Margin="0,0,0,22" />
+            <Border Style="{StaticResource Card}">
+              <Grid>
+                <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
+                <StackPanel>
+                  <TextBlock Text="{DynamicResource SelectedInput}" Style="{StaticResource SectionTitle}" />
+                  <TextBlock Text="{Binding CapturedInputLabel}" FontSize="20" FontWeight="SemiBold" />
+                  <TextBlock Text="{Binding CapturedInputDetail}" Style="{StaticResource MutedText}" Margin="0,4,0,0" />
+                </StackPanel>
+                <Button Grid.Column="1" Content="{DynamicResource CaptureNextRelease}" Command="{Binding CaptureInputCommand}" Style="{StaticResource AccentButton}" MinWidth="170" />
+              </Grid>
+            </Border>
+            <Border Style="{StaticResource Card}">
+              <StackPanel>
+                <TextBlock Text="{DynamicResource PerInputOverride}" Style="{StaticResource SectionTitle}" />
+                <Grid Margin="0,0,0,12">
+                  <Grid.ColumnDefinitions><ColumnDefinition Width="170" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
+                  <TextBlock Text="{DynamicResource ActionVariant}" VerticalAlignment="Center" />
+                  <ComboBox Grid.Column="1" ItemsSource="{Binding MappingVariants}" SelectedIndex="{Binding MappingVariantIndex}" />
+                </Grid>
+                <CheckBox Content="{DynamicResource ApplyWholeGroup}" IsChecked="{Binding ApplyToGroup}" />
+                <TextBlock Text="{Binding MappingScopeLabel}" Style="{StaticResource MutedText}" Margin="22,0,0,7" />
+                <CheckBox Content="{DynamicResource SoundEnabledInputVariant}" IsChecked="{Binding MappingEnabled}" />
+                <Grid Margin="0,10,0,2"><TextBlock Text="{DynamicResource InputVolume}" /><TextBlock Text="{Binding MappingVolume, StringFormat={}{0:0}%}" HorizontalAlignment="Right" FontWeight="SemiBold" /></Grid>
+                <Slider Minimum="0" Maximum="100" Value="{Binding MappingVolume, UpdateSourceTrigger=PropertyChanged}" />
+                <Grid Margin="0,12,0,14">
+                  <Grid.ColumnDefinitions><ColumnDefinition Width="170" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
+                  <TextBlock Text="{DynamicResource SoundSource}" VerticalAlignment="Center" />
+                  <TextBlock Grid.Column="1" Text="{Binding MappingSound}" FontWeight="SemiBold" VerticalAlignment="Center" />
+                </Grid>
+                <WrapPanel>
+                  <Button Content="{DynamicResource SaveOverride}" Command="{Binding SaveMappingCommand}" Style="{StaticResource AccentButton}" Margin="0,0,8,8" />
+                  <Button Content="{DynamicResource ImportSoundFormats}" Click="ImportSound_Click" Margin="0,0,8,8" />
+                  <Button Content="{DynamicResource Preview}" Command="{Binding PreviewMappingCommand}" Margin="0,0,8,8" />
+                  <Button Content="{DynamicResource RestoreBuiltIn}" Command="{Binding RestoreMappingCommand}" Margin="0,0,8,8" />
+                </WrapPanel>
+              </StackPanel>
+            </Border>
+            <Border Style="{StaticResource Card}">
+              <StackPanel>
+                <TextBlock Text="{DynamicResource HowVariantsWork}" Style="{StaticResource SectionTitle}" />
+                <TextBlock Text="{DynamicResource VariantsHelp}" Style="{StaticResource MutedText}" />
+              </StackPanel>
+            </Border>
+          </StackPanel>
+        </ScrollViewer>
+      </TabItem>
+
+      <TabItem>
+        <ScrollViewer VerticalScrollBarVisibility="Auto">
+          <StackPanel Margin="4,2,10,8">
+            <TextBlock Text="{DynamicResource ShortcutsTitle}" Style="{StaticResource PageTitle}" />
+            <TextBlock Text="{DynamicResource ShortcutsIntro}" Style="{StaticResource MutedText}" Margin="0,0,0,22" />
+            <Border Style="{StaticResource Card}">
+              <StackPanel>
+                <ListView ItemsSource="{Binding Shortcuts}" SelectedItem="{Binding SelectedShortcut}" Background="Transparent" BorderThickness="0" MinHeight="230">
+                  <ListView.View>
+                    <GridView>
+                      <GridViewColumn Header="{DynamicResource HeaderAction}" DisplayMemberBinding="{Binding Name}" Width="230" />
+                      <GridViewColumn Header="{DynamicResource HeaderShortcut}" Width="210">
+                        <GridViewColumn.CellTemplate><DataTemplate><TextBlock Text="{Binding Converter={StaticResource LocalizedGestureConverter}}" /></DataTemplate></GridViewColumn.CellTemplate>
+                      </GridViewColumn>
+                      <GridViewColumn Header="{DynamicResource HeaderScope}" Width="85">
+                        <GridViewColumn.CellTemplate><DataTemplate><TextBlock Text="{Binding Scope, Converter={StaticResource LocalizedEnumConverter}}" /></DataTemplate></GridViewColumn.CellTemplate>
+                      </GridViewColumn>
+                      <GridViewColumn Header="{DynamicResource HeaderType}" Width="85">
+                        <GridViewColumn.CellTemplate><DataTemplate><TextBlock Text="{Binding Kind, Converter={StaticResource LocalizedEnumConverter}}" /></DataTemplate></GridViewColumn.CellTemplate>
+                      </GridViewColumn>
+                    </GridView>
+                  </ListView.View>
+                </ListView>
+                <WrapPanel Margin="0,14,0,0">
+                  <Button Content="{DynamicResource EditSelectedShortcut}" Click="EditShortcut_Click" Style="{StaticResource AccentButton}" Margin="0,0,8,0" />
+                  <Button Content="{DynamicResource RestoreDefaults}" Click="RestoreShortcuts_Click" />
+                </WrapPanel>
+              </StackPanel>
+            </Border>
+            <Border Style="{StaticResource Card}">
+              <Grid>
+                <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="160" /></Grid.ColumnDefinitions>
+                <StackPanel><TextBlock Text="{DynamicResource SequenceTimeout}" FontWeight="SemiBold" /><TextBlock Text="{DynamicResource SequenceTimeoutHelp}" Style="{StaticResource MutedText}" /></StackPanel>
+                <TextBox Grid.Column="1" Text="{Binding SequenceTimeoutMs, UpdateSourceTrigger=LostFocus}" ToolTip="{DynamicResource MillisecondsTooltip}" />
+              </Grid>
+            </Border>
+          </StackPanel>
+        </ScrollViewer>
+      </TabItem>
+
+      <TabItem>
+        <ScrollViewer VerticalScrollBarVisibility="Auto">
+          <StackPanel Margin="4,2,10,8">
+            <TextBlock Text="{DynamicResource NavSettings}" Style="{StaticResource PageTitle}" />
+            <TextBlock Text="{DynamicResource SettingsIntro}" Style="{StaticResource MutedText}" Margin="0,0,0,22" />
+            <Border Style="{StaticResource Card}">
+              <StackPanel>
+                <TextBlock Text="{DynamicResource IdentityAppearance}" Style="{StaticResource SectionTitle}" />
+                <TextBlock Text="{DynamicResource DisplayName}" Margin="0,0,0,5" /><TextBox Text="{Binding DisplayName, UpdateSourceTrigger=PropertyChanged}" Margin="0,0,0,12" MaxLength="63" />
+                <TextBlock Text="{DynamicResource DisplayLanguage}" Margin="0,0,0,5" />
+                <ComboBox ItemsSource="{Binding DisplayLanguages}" SelectedIndex="{Binding DisplayLanguageIndex}" />
+                <TextBlock Text="{DynamicResource DisplayLanguageHelp}" Style="{StaticResource MutedText}" Margin="0,7,0,12" />
+                <TextBlock Text="{DynamicResource Theme}" Margin="0,0,0,5" /><ComboBox ItemsSource="{Binding ThemeModes}" SelectedIndex="{Binding ThemeIndex}" />
+                <CheckBox Content="{DynamicResource ReducedMotion}" IsChecked="{Binding ReducedMotion}" Margin="0,10,0,0" />
+              </StackPanel>
+            </Border>
+            <Border Style="{StaticResource Card}">
+              <StackPanel>
+                <TextBlock Text="{DynamicResource SoundControls}" Style="{StaticResource SectionTitle}" />
+                <CheckBox Content="{DynamicResource EnableAllSounds}" IsChecked="{Binding SoundsEnabled}" />
+                <CheckBox Content="{DynamicResource KeyboardSounds}" IsChecked="{Binding KeyboardEnabled}" />
+                <CheckBox Content="{DynamicResource PointerButtonSounds}" IsChecked="{Binding PointerEnabled}" />
+                <CheckBox Content="{DynamicResource WheelSounds}" IsChecked="{Binding WheelEnabled}" />
+                <CheckBox Content="{DynamicResource IntegrationResultSounds}" IsChecked="{Binding ResultSoundsEnabled}" />
+                <Grid Margin="0,12,0,0"><TextBlock Text="{DynamicResource KeyboardVolume}" /><TextBlock Text="{Binding KeyboardVolumeLabel}" HorizontalAlignment="Right" /></Grid>
+                <Slider Minimum="0" Maximum="100" Value="{Binding KeyboardVolume, UpdateSourceTrigger=PropertyChanged}" />
+                <Grid><TextBlock Text="{DynamicResource PointerVolume}" /><TextBlock Text="{Binding PointerVolumeLabel}" HorizontalAlignment="Right" /></Grid>
+                <Slider Minimum="0" Maximum="100" Value="{Binding PointerVolume, UpdateSourceTrigger=PropertyChanged}" />
+                <Grid><TextBlock Text="{DynamicResource ResultCueVolume}" /><TextBlock Text="{Binding ResultVolumeLabel}" HorizontalAlignment="Right" /></Grid>
+                <Slider Minimum="0" Maximum="100" Value="{Binding ResultVolume, UpdateSourceTrigger=PropertyChanged}" />
+                <CheckBox Content="{DynamicResource NormalizeImports}" IsChecked="{Binding NormalizeImports}" Margin="0,8,0,0" />
+              </StackPanel>
+            </Border>
+            <Border Style="{StaticResource Card}">
+              <StackPanel>
+                <TextBlock Text="{DynamicResource WindowsBehavior}" Style="{StaticResource SectionTitle}" />
+                <CheckBox Content="{DynamicResource LaunchAtStartup}" IsChecked="{Binding LaunchAtStartup}" />
+                <CheckBox Content="{DynamicResource StartMinimized}" IsChecked="{Binding StartMinimized}" />
+                <CheckBox Content="{DynamicResource CloseMinimizeTray}" IsChecked="{Binding CloseToTray}" />
+                <CheckBox Content="{DynamicResource PauseFullscreen}" IsChecked="{Binding PauseInFullscreen}" />
+              </StackPanel>
+            </Border>
+            <Border Style="{StaticResource Card}">
+              <StackPanel>
+                <TextBlock Text="{DynamicResource PerAppMuting}" Style="{StaticResource SectionTitle}" />
+                <Grid><Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
+                  <TextBox x:Name="ExclusionPath" ToolTip="{DynamicResource ExclusionTooltip}" />
+                  <Button Grid.Column="1" Content="{DynamicResource Add}" Click="AddExclusion_Click" Margin="8,0,0,0" />
+                </Grid>
+                <ListBox x:Name="ExclusionList" ItemsSource="{Binding ExcludedExecutables}" Background="Transparent" BorderThickness="0" MinHeight="60" Margin="0,8,0,8" />
+                <Button Content="{DynamicResource RemoveSelected}" Click="RemoveExclusion_Click" HorizontalAlignment="Left" />
+              </StackPanel>
+            </Border>
+            <Border Style="{StaticResource Card}">
+              <Grid>
+                <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
+                <StackPanel><TextBlock Text="{DynamicResource ResetSettings}" Style="{StaticResource SectionTitle}" /><TextBlock Text="{DynamicResource ResetSettingsHelp}" Style="{StaticResource MutedText}" /></StackPanel>
+                <Button Grid.Column="1" Content="{DynamicResource ResetSettings}" Click="ResetSettings_Click" Margin="18,0,0,0" VerticalAlignment="Center" />
+              </Grid>
+            </Border>
+          </StackPanel>
+        </ScrollViewer>
+      </TabItem>
+
+      <TabItem>
+        <ScrollViewer VerticalScrollBarVisibility="Auto">
+          <StackPanel Margin="4,2,10,8">
+            <TextBlock Text="{DynamicResource NavIntegrations}" Style="{StaticResource PageTitle}" />
+            <TextBlock Text="{DynamicResource IntegrationsIntro}" Style="{StaticResource MutedText}" Margin="0,0,0,22" />
+            <Border Style="{StaticResource Card}">
+              <StackPanel>
+                <CheckBox Content="{DynamicResource EnableActionResultApi}" IsChecked="{Binding IntegrationApiEnabled}" FontWeight="SemiBold" />
+                <TextBlock Text="{DynamicResource ActionApiHelp}" Style="{StaticResource MutedText}" Margin="0,6,0,0" />
+              </StackPanel>
+            </Border>
+            <Border Style="{StaticResource Card}">
+              <StackPanel>
+                <TextBlock Text="{DynamicResource NamedPipe}" Style="{StaticResource SectionTitle}" />
+                <TextBox Text="{Binding IntegrationPipeName}" IsReadOnly="True" />
+              </StackPanel>
+            </Border>
+            <Border Style="{StaticResource Card}">
+              <StackPanel>
+                <TextBlock Text="{DynamicResource AllowedClients}" Style="{StaticResource SectionTitle}" />
+                <WrapPanel><Button Content="{DynamicResource ChooseExecutable}" Click="AddIntegrationClient_Click" Style="{StaticResource AccentButton}" /><Button Content="{DynamicResource RemoveSelected}" Click="RemoveIntegrationClient_Click" Margin="8,0,0,0" /></WrapPanel>
+                <ListBox x:Name="IntegrationClientList" ItemsSource="{Binding AllowedIntegrationClients}" Background="Transparent" BorderThickness="0" MinHeight="90" Margin="0,10,0,0" />
+              </StackPanel>
+            </Border>
+            <Border Style="{StaticResource Card}">
+              <StackPanel>
+                <TextBlock Text="{DynamicResource OutcomeModel}" Style="{StaticResource SectionTitle}" />
+                <TextBlock Text="{DynamicResource OutcomeHelp}" Style="{StaticResource MutedText}" />
+              </StackPanel>
+            </Border>
+          </StackPanel>
+        </ScrollViewer>
+      </TabItem>
+
+      <TabItem>
+        <ScrollViewer VerticalScrollBarVisibility="Auto">
+          <StackPanel Margin="4,2,10,8">
+            <TextBlock Text="{DynamicResource NavAbout}" Style="{StaticResource PageTitle}" />
+            <TextBlock Text="{DynamicResource AboutIntro}" Style="{StaticResource MutedText}" Margin="0,0,0,22" />
+            <Border Style="{StaticResource Card}">
+              <StackPanel>
+                <TextBlock Text="KeyClick" FontSize="25" FontWeight="SemiBold" />
+                <TextBlock Text="{Binding VersionText}" Foreground="{DynamicResource AccentBrush}" Margin="0,4,0,10" />
+                <TextBlock Text="C# · WPF · .NET 10 LTS · SQLite · Raw Input · XAudio2" Style="{StaticResource MutedText}" />
+              </StackPanel>
+            </Border>
+            <Border Style="{StaticResource Card}">
+              <StackPanel>
+                <TextBlock Text="{DynamicResource Updates}" Style="{StaticResource SectionTitle}" />
+                <TextBlock Text="{DynamicResource UpdatesHelp}" Style="{StaticResource MutedText}" Margin="0,0,0,12" />
+                <Button Content="{DynamicResource CheckUpdates}" Click="CheckUpdates_Click" Style="{StaticResource AccentButton}" HorizontalAlignment="Left" />
+              </StackPanel>
+            </Border>
+            <Border Style="{StaticResource Card}">
+              <StackPanel>
+                <TextBlock Text="{DynamicResource BackupDiagnostics}" Style="{StaticResource SectionTitle}" />
+                <TextBlock Text="{DynamicResource BackupHelp}" Style="{StaticResource MutedText}" Margin="0,0,0,12" />
+                <WrapPanel><Button Content="{DynamicResource CreateBackup}" Command="{Binding BackupCommand}" /><Button Content="{DynamicResource RestoreBackup}" Click="RestoreBackup_Click" Margin="8,0,0,0" /><Button Content="{DynamicResource OpenDataFolder}" Click="OpenDataFolder_Click" Margin="8,0,0,0" /></WrapPanel>
+                <TextBlock Text="{Binding DataLocation}" Style="{StaticResource MutedText}" Margin="0,10,0,0" />
+              </StackPanel>
+            </Border>
+            <Border Style="{StaticResource Card}">
+              <StackPanel>
+                <TextBlock Text="{DynamicResource Privacy}" Style="{StaticResource SectionTitle}" />
+                <TextBlock Text="{DynamicResource PrivacyHelp}" Style="{StaticResource MutedText}" />
+              </StackPanel>
+            </Border>
+          </StackPanel>
+        </ScrollViewer>
+      </TabItem>
+    </TabControl>
+  </Grid>
+</Window>

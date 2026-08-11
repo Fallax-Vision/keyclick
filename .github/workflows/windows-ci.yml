@@ -1,0 +1,54 @@
+name: Windows CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  build-test:
+    name: ${{ matrix.architecture }} build and test
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - architecture: x64
+            runner: windows-2025
+            runtime: win-x64
+          - architecture: arm64
+            runner: windows-11-arm
+            runtime: win-arm64
+    runs-on: ${{ matrix.runner }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+          cache: true
+          cache-dependency-path: '**/packages.lock.json'
+      - name: Restore
+        run: dotnet restore KeyClick.sln
+      - name: Build
+        run: dotnet build KeyClick.sln -c Release --no-restore
+      - name: Test
+        run: dotnet test KeyClick.sln -c Release --no-build --logger "trx;LogFileName=${{ matrix.architecture }}.trx" --collect "XPlat Code Coverage"
+      - name: Publish portable executable
+        shell: pwsh
+        run: ./scripts/Build-Portable.ps1 -Version 1.0.0-ci -Runtime ${{ matrix.runtime }}
+      - uses: actions/upload-artifact@v4
+        with:
+          name: KeyClick-Windows-${{ matrix.architecture }}
+          path: |
+            artifacts/portable/KeyClick-Windows-${{ matrix.architecture }}.exe
+            artifacts/portable/checksums.txt
+          if-no-files-found: error
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: test-results-${{ matrix.architecture }}
+          path: '**/TestResults/**'
+          if-no-files-found: ignore

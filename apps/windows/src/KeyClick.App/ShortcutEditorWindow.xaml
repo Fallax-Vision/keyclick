@@ -1,0 +1,23 @@
+<Window x:Class="KeyClick.App.ShortcutEditorWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="{DynamicResource EditShortcutTitle}" Width="500" Height="410" ResizeMode="NoResize" WindowStartupLocation="CenterOwner"
+        PreviewKeyDown="Window_PreviewKeyDown">
+  <Grid Margin="22">
+    <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /><RowDefinition Height="*" /><RowDefinition Height="Auto" /></Grid.RowDefinitions>
+    <TextBlock x:Name="ActionName" Style="{StaticResource PageTitle}" />
+    <Grid Grid.Row="1" Margin="0,10,0,12"><Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="12" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
+      <StackPanel><TextBlock Text="{DynamicResource Scope}" Margin="0,0,0,5" /><ComboBox x:Name="ScopeBox" SelectionChanged="ScopeBox_SelectionChanged" /></StackPanel>
+      <StackPanel Grid.Column="2"><TextBlock Text="{DynamicResource Type}" Margin="0,0,0,5" /><ComboBox x:Name="KindBox" SelectionChanged="KindBox_SelectionChanged" /></StackPanel>
+    </Grid>
+    <CheckBox x:Name="EnabledBox" Grid.Row="2" Content="{DynamicResource ShortcutEnabled}" />
+    <Border Grid.Row="3" Style="{StaticResource Card}" Margin="0,12,0,10">
+      <StackPanel><TextBlock Text="{DynamicResource RecordedGesture}" Style="{StaticResource MutedText}" /><TextBlock x:Name="GestureText" FontSize="19" FontWeight="SemiBold" Margin="0,5,0,0" /></StackPanel>
+    </Border>
+    <TextBlock Grid.Row="4" Text="{DynamicResource ShortcutRecordingHelp}" Style="{StaticResource MutedText}" />
+    <Grid Grid.Row="5"><Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
+      <Button x:Name="RecordButton" Content="{DynamicResource RecordGesture}" Click="Record_Click" HorizontalAlignment="Left" />
+      <StackPanel Grid.Column="1" Orientation="Horizontal"><Button Content="{DynamicResource Cancel}" Click="Cancel_Click" Margin="0,0,8,0" /><Button Content="{DynamicResource Save}" Click="Save_Click" Style="{StaticResource AccentButton}" /></StackPanel>
+    </Grid>
+  </Grid>
+</Window>
