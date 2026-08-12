@@ -66,6 +66,18 @@ public sealed class LocalizationService
     KeyVariant.AltGr => Get("VariantAltGr"),
     KeyVariant.Enabled => Get("VariantEnabled"),
     KeyVariant.Disabled => Get("VariantDisabled"),
+    KeyboardSoundTiming.KeyDown => Get("SoundOnKeyDown"),
+    KeyboardSoundTiming.KeyUp => Get("SoundOnKeyUp"),
+    PackRotationInterval.OneMinute => Get("RotationOneMinute"),
+    PackRotationInterval.TenMinutes => Get("RotationTenMinutes"),
+    PackRotationInterval.ThirtyMinutes => Get("RotationThirtyMinutes"),
+    PackRotationInterval.OneHour => Get("RotationOneHour"),
+    PackRotationInterval.OneDay => Get("RotationOneDay"),
+    PackRotationInterval.OneWeek => Get("RotationOneWeek"),
+    PackRotationInterval.WindowsBoot => Get("RotationWindowsBoot"),
+    PackRotationInterval.Custom => Get("RotationCustom"),
+    PackRotationPoolMode.AllPacks => Get("RotationAllPacks"),
+    PackRotationPoolMode.SelectedPacks => Get("RotationSelectedPacks"),
     ShortcutScope.App => Get("ScopeApp"),
     ShortcutScope.Global => Get("ScopeGlobal"),
     ShortcutKind.Chord => Get("KindChord"),
@@ -129,6 +141,38 @@ public sealed class LocalizationService
     0x2E => Get("KeyDelete"),
     _ => KeyNames.Display(virtualKey)
   };
+
+  public string KeyNameFromScanCode(int scanCode, bool extended)
+  {
+    var value = scanCode & 0xFF;
+    if (extended)
+    {
+      return scanCode switch
+      {
+        0xE037 => Get("KeyPrintScreen"), 0xE145 => Get("KeyPause"), 0xE052 => Get("KeyInsert"),
+        0xE047 => KeyName(0x24), 0xE049 => KeyName(0x21), 0xE053 => KeyName(0x2E),
+        0xE04F => KeyName(0x23), 0xE051 => KeyName(0x22), 0xE048 => KeyName(0x26),
+        0xE04B => KeyName(0x25), 0xE050 => KeyName(0x28), 0xE04D => KeyName(0x27),
+        0xE035 => "Num /", 0xE01C => Get("KeyNumpadEnter"), 0xE038 => "AltGr", 0xE01D => "Ctrl",
+        0xE05B or 0xE05C => Get("KeyWindows"), 0xE05D => Get("KeyMenu"),
+        _ => $"SC {scanCode:X}"
+      };
+    }
+    return value switch
+    {
+      0x01 => KeyName(0x1B), 0x0E => KeyName(0x08), 0x0F => KeyName(0x09), 0x1C => KeyName(0x0D), 0x39 => KeyName(0x20),
+      >= 0x3B and <= 0x44 => $"F{value - 0x3A}", 0x57 => "F11", 0x58 => "F12",
+      0x1E => "A", 0x30 => "B", 0x2E => "C", 0x20 => "D", 0x12 => "E", 0x21 => "F", 0x22 => "G", 0x23 => "H", 0x17 => "I", 0x24 => "J", 0x25 => "K", 0x26 => "L", 0x32 => "M", 0x31 => "N", 0x18 => "O", 0x19 => "P", 0x10 => "Q", 0x13 => "R", 0x1F => "S", 0x14 => "T", 0x16 => "U", 0x2F => "V", 0x11 => "W", 0x2D => "X", 0x15 => "Y", 0x2C => "Z",
+      >= 0x02 and <= 0x0A => (value - 1).ToString(CultureInfo.InvariantCulture), 0x0B => "0",
+      0x29 => "`", 0x0C => "-", 0x0D => "=", 0x1A => "[", 0x1B => "]", 0x2B => "\\",
+      0x27 => ";", 0x28 => "'", 0x33 => ",", 0x34 => ".", 0x35 => "/",
+      0x2A or 0x36 => Get("ShortcutShift"), 0x1D => "Ctrl", 0x38 => "Alt", 0x3A => "Caps",
+      0x46 => Get("KeyScrollLock"), 0x45 => Get("KeyNumLock"), 0x37 => "Num *", 0x4A => "Num -", 0x4E => "Num +",
+      0x47 => "Num 7", 0x48 => "Num 8", 0x49 => "Num 9", 0x4B => "Num 4", 0x4C => "Num 5", 0x4D => "Num 6",
+      0x4F => "Num 1", 0x50 => "Num 2", 0x51 => "Num 3", 0x52 => "Num 0", 0x53 => "Num .",
+      _ => $"SC {scanCode:X}"
+    };
+  }
 
   public string Gesture(IReadOnlyList<ShortcutStep> steps) => string.Join(Get("SequenceSeparator"), steps.Select(step =>
     string.Join("+", new[]

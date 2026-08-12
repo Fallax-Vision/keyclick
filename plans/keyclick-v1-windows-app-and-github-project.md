@@ -12,8 +12,9 @@ Publish two architecture-specific single-file distributions—`KeyClick-Windows-
 - Provide Home, Sound Packs, Keyboard & Pointer Mappings, Shortcuts, Settings, Integrations, and About/Updates views.
 - Home exposes the enabled state, active pack, master volume, keyboard/pointer toggles, output device, and quick access to per-app muting.
 - Support Light, Dark, and System themes, reacting immediately to Windows theme changes.
-- Ship ten original, royalty-free packs:
+- Ship ten original royalty-free synthesized packs, plus three recorded packs:
   - Keyboard-focused: Clicky Switch, Tactile Switch, Linear Switch, Buckling Spring, Silent Switch.
+  - Recorded: Cream Keys, Bright Mechanical, Compact Mech Tap.
   - Balanced: Crisp Mechanical, Soft Thock, Classic Typewriter, Minimal Tap, Digital Pulse.
 - Each pack contains sample pools with no immediate repetition for letters, numbers/symbols, punctuation, modifiers, navigation, functions/media, numpad, locks, Space, Enter, editing/destructive keys, pointer buttons, wheels, and result cues.
 - Built-in mappings remain immutable. A key-specific override is stored as a separate per-pack layer; disabling or removing it restores the built-in mapping and volume.
@@ -79,3 +80,22 @@ Publish two architecture-specific single-file distributions—`KeyClick-Windows-
 - Raw Input device separation is best effort: some touchpad drivers merge events into a synthetic mouse. Fn, secure-desktop, and certain OEM keys may not be exposed and will be documented rather than worked around through elevation.
 - Integrations are disabled until the user enables the API and allow-lists a client. KeyClick never elevates itself, monitors UI content, infers third-party outcomes, sends telemetry, or accesses the network except for a user-triggered update check.
 - Linux and macOS application implementations, cloud sync, automatic updates, UI-outcome inference, gestures, pointer-movement sounds, and a full distributable pack marketplace are outside Windows v1.
+
+## Post-v1 Continuation: Local Statistics, Wellness, Rotation, and Distributions
+
+The approved continuation is specified in
+[`keyclick-statistics-wellness-rotation-privacy-and-distributions.md`](keyclick-statistics-wellness-rotation-privacy-and-distributions.md).
+It extends the same native Raw Input, SQLite WAL, XAudio2, offline-first, and
+current-user-only architecture with aggregate statistics and wellness features.
+
+The original release-only keyboard playback rule is amended: users may choose
+one sound on the first physical key-down or on key-up; typematic repeats never
+play sounds. Pointer playback remains button-up/wheel-detent only. Statistics
+may store aggregate physical-key and pointer counters in time buckets, but never
+typed characters, ordered input history, individual event timestamps,
+foreground-app activity, or UI content. Statistics never enter a network API.
+All application network activity remains disabled except an explicit manual
+update check and checksum-verified download initiated by the user.
+Closing the application window or choosing Exit from the tray terminates the
+process and therefore stops sound playback and all input statistics capture;
+only minimizing may keep the running app in the tray.

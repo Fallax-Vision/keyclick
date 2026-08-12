@@ -1,6 +1,7 @@
 using System.Text.Json;
 using KeyClick.Core;
 using KeyClick.Infrastructure.Windows;
+using KeyClick.Updater;
 
 namespace KeyClick.Tests;
 

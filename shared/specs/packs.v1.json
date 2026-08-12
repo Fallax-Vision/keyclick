@@ -1,6 +1,9 @@
 {
   "version": 1,
   "packs": [
+    { "id": "cream-keys", "name": "Cream Keys", "family": "keyboard-focused" },
+    { "id": "bright-mechanical", "name": "Bright Mechanical", "family": "keyboard-focused" },
+    { "id": "compact-mech-tap", "name": "Compact Mech Tap", "family": "keyboard-focused" },
     { "id": "clicky-switch", "name": "Clicky Switch", "family": "keyboard-focused" },
     { "id": "tactile-switch", "name": "Tactile Switch", "family": "keyboard-focused" },
     { "id": "linear-switch", "name": "Linear Switch", "family": "keyboard-focused" },

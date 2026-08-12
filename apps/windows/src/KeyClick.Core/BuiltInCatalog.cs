@@ -2,8 +2,16 @@ namespace KeyClick.Core;
 
 public static class BuiltInCatalog
 {
+  public const string DefaultPackId = "cream-keys";
+
   public static IReadOnlyList<SoundPackDefinition> Packs { get; } =
   [
+    new("cream-keys", "Cream Keys", "Keyboard focused", "Soft, polished cream-switch taps captured from Cloudflare Pay's name field.", 0, 0, 0, 0, "#F6821F", false,
+      AssetPools("cream-keys-1", "cream-keys-2", "cream-keys-3", "cream-keys-4", "cream-keys-5", "cream-keys-401")),
+    new("bright-mechanical", "Bright Mechanical", "Keyboard focused", "A lively mechanical keyboard recording with six short key variants.", 0, 0, 0, 0, "#5C7CFA", false,
+      AssetPools("pixabay-mechanical-1", "pixabay-mechanical-2", "pixabay-mechanical-3", "pixabay-mechanical-4", "pixabay-mechanical-5", "pixabay-mechanical-6")),
+    new("compact-mech-tap", "Compact Mech Tap", "Keyboard focused", "A short, dry mechanical tap in three subtle tonal variants.", 0, 0, 0, 0, "#9B7EDE", false,
+      AssetPools("pixabay-mech-tap-1", "pixabay-mech-tap-2", "pixabay-mech-tap-3")),
     new("clicky-switch", "Clicky Switch", "Keyboard focused", "Bright, precise switch clicks.", 2480, 0.34f, 0.026f, 0.94f, "#35E04B"),
     new("tactile-switch", "Tactile Switch", "Keyboard focused", "Rounded tactile bumps with a firm return.", 1760, 0.28f, 0.036f, 0.74f, "#64D978"),
     new("linear-switch", "Linear Switch", "Keyboard focused", "Clean linear clacks with minimal grit.", 1280, 0.18f, 0.030f, 0.62f, "#E05555"),
@@ -32,4 +40,9 @@ public static class BuiltInCatalog
     yield return $"{packId}/{groupId}-{suffix}-2";
     yield return $"{packId}/{groupId}-{suffix}-3";
   }
+
+  private static Dictionary<string, string[]> AssetPools(params string[] sampleIds) =>
+    Enum.GetValues<InputGroup>()
+      .SelectMany(group => Enum.GetValues<KeyVariant>().Select(variant => SoundPackDefinition.PoolKey(group, variant)))
+      .ToDictionary(key => key, _ => sampleIds, StringComparer.Ordinal);
 }

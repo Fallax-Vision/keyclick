@@ -3,6 +3,7 @@ using System.Diagnostics;
 using System.Runtime.InteropServices;
 using System.Security.Cryptography;
 using System.Text;
+using System.Threading.Channels;
 using KeyClick.Core;
 
 namespace KeyClick.Infrastructure.Windows;
@@ -24,20 +25,36 @@ public sealed class RawInputService : IRawInputService
   private static readonly nint HwndMessage = new(-3);
 
   private readonly ConcurrentDictionary<nint, DeviceDescriptor> _devices = new();
+  private readonly ConcurrentDictionary<nint, byte> _pendingDeviceLookups = new();
   private readonly Dictionary<(nint Device, bool Horizontal), WheelAccumulator> _wheelAccumulators = [];
+  private readonly HashSet<(nint Device, int ScanCode)> _pressedKeys = new(512);
+  private readonly ForegroundProcessCache _foreground = new();
   private readonly ManualResetEventSlim _ready = new(false);
+  private readonly Channel<InputActionEvent> _actions = Channel.CreateBounded<InputActionEvent>(new BoundedChannelOptions(4096)
+  {
+    SingleReader = true,
+    SingleWriter = true,
+    FullMode = BoundedChannelFullMode.Wait,
+    AllowSynchronousContinuations = false
+  });
   private Thread? _thread;
+  private Thread? _dispatchThread;
   private nint _window;
   private WndProc? _windowProc;
-  private nint _lastForegroundWindow;
-  private string? _lastForegroundExecutable;
 
-  public event EventHandler<InputReleaseEvent>? InputReleased;
-  public event EventHandler<string>? DeviceChanged;
+  public event EventHandler<InputActionEvent>? InputAction;
+  public event EventHandler<InputDeviceDescriptor>? DeviceChanged;
 
   public void Start()
   {
     if (_thread is not null) return;
+    _dispatchThread = new Thread(DispatchActions)
+    {
+      IsBackground = true,
+      Name = "KeyClick Input Dispatch",
+      Priority = ThreadPriority.AboveNormal
+    };
+    _dispatchThread.Start();
     _thread = new Thread(MessageLoop)
     {
       IsBackground = true,
@@ -56,6 +73,9 @@ public sealed class RawInputService : IRawInputService
   {
     if (_window != 0) PostMessage(_window, WmClose, 0, 0);
     _thread?.Join(TimeSpan.FromSeconds(1));
+    _actions.Writer.TryComplete();
+    _dispatchThread?.Join(TimeSpan.FromSeconds(1));
+    _foreground.Dispose();
     _ready.Dispose();
   }
 
@@ -109,8 +129,12 @@ public sealed class RawInputService : IRawInputService
         catch { }
         return 0;
       case WmInputDeviceChange:
-        _devices.TryRemove(lParam, out _);
-        DeviceChanged?.Invoke(this, lParam.ToString("X"));
+        _devices.TryRemove(lParam, out var removed);
+        _pendingDeviceLookups.TryRemove(lParam, out _);
+        _pressedKeys.RemoveWhere(item => item.Device == lParam);
+        lock (_wheelAccumulators)
+          foreach (var key in _wheelAccumulators.Keys.Where(key => key.Device == lParam).ToArray()) _wheelAccumulators.Remove(key);
+        if (removed is not null) DeviceChanged?.Invoke(this, new(removed.Id, removed.Family, false));
         return 0;
       case WmClose:
         DestroyWindow(window);
@@ -145,34 +169,45 @@ public sealed class RawInputService : IRawInputService
 
   private void ProcessKeyboard(nint device, RawKeyboard keyboard)
   {
-    if (!InputEventRules.IsKeyboardRelease(keyboard.Flags, keyboard.VirtualKey)) return;
+    if (keyboard.VirtualKey == 0x00FF) return;
     var extended = (keyboard.Flags & (RiKeyE0 | RiKeyE1)) != 0;
     var scanCode = keyboard.MakeCode | ((keyboard.Flags & RiKeyE0) != 0 ? 0xE000 : 0) | ((keyboard.Flags & RiKeyE1) != 0 ? 0xE100 : 0);
+    var phase = InputEventRules.IsKeyboardRelease(keyboard.Flags, keyboard.VirtualKey) ? InputPhase.Up : InputPhase.Down;
+    var stateKey = (device, scanCode);
+    if (phase == InputPhase.Down)
+    {
+      if (!_pressedKeys.Add(stateKey)) return;
+    }
+    else if (!_pressedKeys.Remove(stateKey))
+    {
+      return;
+    }
     var isLockKey = keyboard.VirtualKey is 0x14 or 0x90 or 0x91;
     var variant = InputEventRules.ResolveVariant(
       (GetKeyState(0xA5) & 0x8000) != 0,
       (GetKeyState(0x10) & 0x8000) != 0,
       isLockKey,
       isLockKey && (GetKeyState(keyboard.VirtualKey) & 1) != 0);
-    var identity = new InputIdentity(InputKind.KeyboardKey, scanCode, extended, DeviceFamily.Keyboard, DescribeDevice(device).Id);
-    InputReleased?.Invoke(this, new InputReleaseEvent(
+    var identity = new InputIdentity(InputKind.KeyboardKey, scanCode, extended, DeviceFamily.Keyboard, DescribeDevice(device, DeviceFamily.Keyboard).Id);
+    Emit(new InputActionEvent(
       identity,
       keyboard.VirtualKey,
       variant,
       KeyClassifier.ClassifyKeyboard(keyboard.VirtualKey),
+      phase,
       Stopwatch.GetTimestamp(),
-      ForegroundExecutable(),
-      new ShortcutStep(
+      _foreground.CurrentExecutable,
+      phase == InputPhase.Up ? new ShortcutStep(
         (GetKeyState(0x11) & 0x8000) != 0,
         (GetKeyState(0x12) & 0x8000) != 0,
         (GetKeyState(0x10) & 0x8000) != 0,
         (GetKeyState(0x5B) & 0x8000) != 0 || (GetKeyState(0x5C) & 0x8000) != 0,
-        keyboard.VirtualKey)));
+        keyboard.VirtualKey) : null));
   }
 
   private void ProcessMouse(nint device, RawMouse mouse)
   {
-    var descriptor = DescribeDevice(device);
+    var descriptor = DescribeDevice(device, DeviceFamily.UnknownPointer);
     var flags = mouse.ButtonFlags;
     if ((flags & 0x0002) != 0) EmitPointer(descriptor, 1, InputKind.PointerButton);
     if ((flags & 0x0008) != 0) EmitPointer(descriptor, 2, InputKind.PointerButton);
@@ -204,44 +239,49 @@ public sealed class RawInputService : IRawInputService
   private void EmitPointer(DeviceDescriptor descriptor, int code, InputKind kind)
   {
     var identity = new InputIdentity(kind, code, false, descriptor.Family, descriptor.Id);
-    InputReleased?.Invoke(this, new InputReleaseEvent(
+    Emit(new InputActionEvent(
       identity,
       0,
       KeyVariant.Base,
       KeyClassifier.ClassifyPointer(code),
+      kind == InputKind.Wheel ? InputPhase.WheelDetent : InputPhase.Up,
       Stopwatch.GetTimestamp(),
-      ForegroundExecutable()));
+      _foreground.CurrentExecutable));
   }
 
-  private DeviceDescriptor DescribeDevice(nint handle) => _devices.GetOrAdd(handle, static current =>
+  private void Emit(InputActionEvent action) => _actions.Writer.TryWrite(action);
+
+  private void DispatchActions()
+  {
+    while (_actions.Reader.WaitToReadAsync().AsTask().GetAwaiter().GetResult())
+      while (_actions.Reader.TryRead(out var action)) InputAction?.Invoke(this, action);
+  }
+
+  private DeviceDescriptor DescribeDevice(nint handle, DeviceFamily expectedFamily)
+  {
+    if (_devices.TryGetValue(handle, out var descriptor)) return descriptor;
+    if (_pendingDeviceLookups.TryAdd(handle, 0))
+      ThreadPool.UnsafeQueueUserWorkItem(static state => state.Owner.ResolveDevice(state.Handle, state.ExpectedFamily), (Owner: this, Handle: handle, ExpectedFamily: expectedFamily), false);
+    return new DeviceDescriptor(handle, "pending", expectedFamily);
+  }
+
+  private void ResolveDevice(nint current, DeviceFamily expectedFamily)
   {
     var capacity = 512u;
     var name = new StringBuilder((int)capacity);
     var result = GetRawInputDeviceInfo(current, RidiDeviceName, name, ref capacity);
     var rawName = result == uint.MaxValue ? $"device-{current:X}" : name.ToString();
     var lower = rawName.ToLowerInvariant();
-    var family = lower.Contains("touchpad") || lower.Contains("precision") || lower.Contains("synaptics") || lower.Contains("i2c")
-      ? DeviceFamily.Trackpad
-      : DeviceFamily.ExternalMouse;
+    var family = expectedFamily == DeviceFamily.Keyboard
+      ? DeviceFamily.Keyboard
+      : lower.Contains("touchpad") || lower.Contains("precision") || lower.Contains("synaptics") || lower.Contains("i2c")
+        ? DeviceFamily.Trackpad
+        : lower.Contains("mouse") ? DeviceFamily.ExternalMouse : DeviceFamily.UnknownPointer;
     var digest = SHA256.HashData(Encoding.UTF8.GetBytes(rawName));
-    return new DeviceDescriptor(current, Convert.ToHexString(digest.AsSpan(0, 8)), family);
-  });
-
-  private string? ForegroundExecutable()
-  {
-    var foreground = GetForegroundWindow();
-    if (foreground == _lastForegroundWindow) return _lastForegroundExecutable;
-    _lastForegroundWindow = foreground;
-    _lastForegroundExecutable = null;
-    if (foreground == 0) return null;
-    GetWindowThreadProcessId(foreground, out var processId);
-    try
-    {
-      using var process = Process.GetProcessById((int)processId);
-      _lastForegroundExecutable = process.MainModule?.FileName;
-    }
-    catch { }
-    return _lastForegroundExecutable;
+    var descriptor = new DeviceDescriptor(current, Convert.ToHexString(digest.AsSpan(0, 8)), family);
+    _devices[current] = descriptor;
+    _pendingDeviceLookups.TryRemove(current, out _);
+    DeviceChanged?.Invoke(this, new(descriptor.Id, descriptor.Family, true));
   }
 
   private sealed record DeviceDescriptor(nint Handle, string Id, DeviceFamily Family);

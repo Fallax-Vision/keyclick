@@ -12,4 +12,8 @@ Include the affected version/architecture, reproduction steps, expected impact, 
 
 ## Security boundaries
 
-KeyClick runs without elevation. Its integration pipe is restricted to the current user and an explicit executable allow-list. Update checks are user-triggered and release assets must match a published SHA-256 checksum before replacement. Authenticode signing will be enabled only when protected certificate secrets are available.
+KeyClick runs without elevation. Its integration pipe is restricted to the current user and an explicit executable allow-list and cannot access statistics. Update checks are manual, user-triggered, isolated in `KeyClick.Updater`, limited to HTTPS GETs on fixed GitHub hosts, and release assets must match a published SHA-256 checksum before replacement.
+
+The required **Privacy Boundary** check rejects production networking outside the updater, automatic/background update calls, telemetry, updater payload/body APIs, and dependencies from the updater to input, statistics, wellness, or profile types. Keyboard and mouse statistics are never transmitted. Changes to the guard, updater, statistics storage, privacy workflows, and privacy policy require CODEOWNERS approval from `@askasjeremy`.
+
+Aggregate statistics never contain typed characters, typing order, per-event timestamps, foreground applications, or UI content. Report any path that can weaken this boundary as a security vulnerability. Authenticode signing will be enabled only when protected certificate secrets are available.

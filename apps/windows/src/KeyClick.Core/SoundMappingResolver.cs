@@ -7,7 +7,7 @@ public sealed class SoundMappingResolver
   public ResolvedSound Resolve(
     AppSettings settings,
     SoundPackDefinition pack,
-    InputReleaseEvent input,
+    InputActionEvent input,
     GroupMapping? groupMapping,
     InputOverride? inputOverride,
     float packVolume = 1.0f)
@@ -20,10 +20,12 @@ public sealed class SoundMappingResolver
       _ => false
     };
 
+    var correctKeyboardPhase = input.Input.Kind != InputKind.KeyboardKey ||
+      InputEventRules.ShouldPlayKeyboardSound(settings.KeyboardSoundTiming, input.Phase);
     var excluded = input.ForegroundExecutable is not null &&
       settings.ExcludedExecutables.Any(item => string.Equals(item, input.ForegroundExecutable, StringComparison.OrdinalIgnoreCase));
 
-    if (!settings.SoundsEnabled || !categoryEnabled || excluded)
+    if (!settings.SoundsEnabled || !categoryEnabled || !correctKeyboardPhase || excluded)
     {
       return new(false, 0, [], inputOverride is not null);
     }
@@ -45,7 +47,7 @@ public sealed class SoundMappingResolver
       ? inputOverride.SampleIds
       : groupMapping?.SampleIds is { Count: > 0 }
         ? groupMapping.SampleIds
-        : BuiltInCatalog.SamplesFor(pack.Id, input.Group, input.Variant).ToArray();
+        : pack.SamplesFor(input.Group, input.Variant);
     var gain = Math.Clamp(settings.MasterVolume * categoryVolume * packVolume * groupVolume * inputVolume, 0, 1);
     return new(samples.Count > 0 && gain > 0, gain, samples, inputOverride is not null);
   }

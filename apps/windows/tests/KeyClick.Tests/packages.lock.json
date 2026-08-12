@@ -266,6 +266,9 @@
           "SQLitePCLRaw.lib.e_sqlite3": "[3.53.3, )",
           "Vortice.XAudio2": "[3.8.3, )"
         }
+      },
+      "keyclick.updater": {
+        "type": "Project"
       }
     }
   }

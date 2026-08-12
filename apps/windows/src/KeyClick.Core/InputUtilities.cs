@@ -2,7 +2,11 @@ namespace KeyClick.Core;
 
 public static class InputEventRules
 {
+  public static bool IsKeyboardDown(ushort flags, ushort virtualKey) => (flags & 0x0001) == 0 && virtualKey != 0x00FF;
   public static bool IsKeyboardRelease(ushort flags, ushort virtualKey) => (flags & 0x0001) != 0 && virtualKey != 0x00FF;
+
+  public static bool ShouldPlayKeyboardSound(KeyboardSoundTiming timing, InputPhase phase) =>
+    timing == KeyboardSoundTiming.KeyDown ? phase == InputPhase.Down : phase == InputPhase.Up;
 
   public static KeyVariant ResolveVariant(bool altGrDown, bool shiftDown, bool isLockKey, bool lockEnabled)
   {

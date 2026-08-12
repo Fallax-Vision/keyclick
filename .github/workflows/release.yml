@@ -25,17 +25,22 @@ jobs:
           "VERSION=$version" | Out-File -FilePath $env:GITHUB_ENV -Append
       - name: Test
         run: dotnet test KeyClick.sln -c Release
-      - name: Build x64 and ARM64
+      - name: Build setup and portable x64 and ARM64
         shell: pwsh
         run: ./scripts/Build-Portable.ps1 -Version $env:VERSION
       - name: Generate CycloneDX SBOM
         shell: pwsh
         run: |
           dotnet tool install --global CycloneDX
-          dotnet-CycloneDX KeyClick.sln -o artifacts/portable -fn sbom.cdx.json
+          dotnet-CycloneDX KeyClick.sln -o artifacts/portable -fn KeyClick-Portable-Windows-x64.sbom.cdx.json
+          Copy-Item artifacts/portable/KeyClick-Portable-Windows-x64.sbom.cdx.json artifacts/portable/KeyClick-Portable-Windows-arm64.sbom.cdx.json
+          Copy-Item artifacts/portable/KeyClick-Portable-Windows-x64.sbom.cdx.json artifacts/portable/KeyClick-Setup-Windows-x64.sbom.cdx.json
+          Copy-Item artifacts/portable/KeyClick-Portable-Windows-x64.sbom.cdx.json artifacts/portable/KeyClick-Setup-Windows-arm64.sbom.cdx.json
       - uses: actions/attest-build-provenance@v2
         with:
-          subject-path: artifacts/portable/KeyClick-Windows-*.exe
+          subject-path: |
+            artifacts/portable/KeyClick-Portable-Windows-*.exe
+            artifacts/portable/KeyClick-Setup-Windows-*.exe
       - uses: actions/upload-artifact@v4
         with:
           name: release-assets

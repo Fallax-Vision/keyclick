@@ -29,25 +29,38 @@ foreach ($rid in $Runtime) {
   $work = Join-Path $artifacts ".work-$architecture"
   $payloadDirectory = Join-Path $work 'payload'
   $payloadZip = Join-Path $work 'payload.zip'
-  $bootstrapDirectory = Join-Path $work 'bootstrap'
-  New-Item -ItemType Directory -Path $payloadDirectory, $bootstrapDirectory | Out-Null
+  $setupDirectory = Join-Path $work 'setup'
+  $portableDirectory = Join-Path $work 'portable'
+  New-Item -ItemType Directory -Path $payloadDirectory, $setupDirectory, $portableDirectory | Out-Null
 
   dotnet publish $appProject -c Release -r $rid --self-contained true -o $payloadDirectory `
     -p:Version=$Version -p:PublishSingleFile=false -p:DebugType=None -p:DebugSymbols=false
   if ($LASTEXITCODE -ne 0) { throw "Application publish failed for $rid." }
 
   Compress-Archive -Path (Join-Path $payloadDirectory '*') -DestinationPath $payloadZip -CompressionLevel Optimal
-  dotnet publish $bootstrapProject -c Release -r $rid --self-contained true -o $bootstrapDirectory `
+  dotnet publish $bootstrapProject -c Release -r $rid --self-contained true -o $setupDirectory `
     -p:Version=$Version -p:PayloadPath=$payloadZip -p:PublishSingleFile=true `
     -p:IncludeNativeLibrariesForSelfExtract=true -p:EnableCompressionInSingleFile=true `
     -p:DebugType=None -p:DebugSymbols=false
-  if ($LASTEXITCODE -ne 0) { throw "Bootstrap publish failed for $rid." }
+  if ($LASTEXITCODE -ne 0) { throw "Setup bootstrap publish failed for $rid." }
 
-  $source = Join-Path $bootstrapDirectory 'KeyClick.exe'
-  $destination = Join-Path $artifacts "KeyClick-Windows-$architecture.exe"
-  Copy-Item -LiteralPath $source -Destination $destination
-  $hash = (Get-FileHash -LiteralPath $destination -Algorithm SHA256).Hash.ToLowerInvariant()
-  $checksums.Add("$hash  $([IO.Path]::GetFileName($destination))")
+  dotnet publish $bootstrapProject -c Release -r $rid --self-contained true -o $portableDirectory `
+    -p:Version=$Version -p:PayloadPath=$payloadZip -p:PublishSingleFile=true `
+    -p:DefineConstants=PORTABLE_BUILD `
+    -p:IncludeNativeLibrariesForSelfExtract=true -p:EnableCompressionInSingleFile=true `
+    -p:DebugType=None -p:DebugSymbols=false
+  if ($LASTEXITCODE -ne 0) { throw "Portable bootstrap publish failed for $rid." }
+
+  $setup = Join-Path $artifacts "KeyClick-Setup-Windows-$architecture.exe"
+  $portable = Join-Path $artifacts "KeyClick-Portable-Windows-$architecture.exe"
+  $legacy = Join-Path $artifacts "KeyClick-Windows-$architecture.exe"
+  Copy-Item -LiteralPath (Join-Path $setupDirectory 'KeyClick.exe') -Destination $setup
+  Copy-Item -LiteralPath (Join-Path $portableDirectory 'KeyClick.exe') -Destination $portable
+  Copy-Item -LiteralPath $setup -Destination $legacy
+  foreach ($artifact in @($setup, $portable, $legacy)) {
+    $hash = (Get-FileHash -LiteralPath $artifact -Algorithm SHA256).Hash.ToLowerInvariant()
+    $checksums.Add("$hash  $([IO.Path]::GetFileName($artifact))")
+  }
 
   Remove-Item -LiteralPath $work -Recurse -Force
 }

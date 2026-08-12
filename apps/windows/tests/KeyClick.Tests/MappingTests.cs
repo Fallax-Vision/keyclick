@@ -1,12 +1,14 @@
 using KeyClick.Core;
+using KeyClick.Infrastructure.Windows;
+using NAudio.Wave;
 
 namespace KeyClick.Tests;
 
 public sealed class MappingTests
 {
   private static readonly SoundPackDefinition Pack = BuiltInCatalog.Packs[0];
-  private static readonly InputReleaseEvent Letter = new(
-    new InputIdentity(InputKind.KeyboardKey, 30), 0x41, KeyVariant.Shift, InputGroup.Letters, 42, "editor.exe");
+  private static readonly InputActionEvent Letter = new(
+    new InputIdentity(InputKind.KeyboardKey, 30), 0x41, KeyVariant.Shift, InputGroup.Letters, InputPhase.Down, 42, "editor.exe");
 
   [Fact]
   public void Exact_override_wins_over_muted_group_and_builtin()
@@ -70,9 +72,32 @@ public sealed class MappingTests
   }
 
   [Fact]
-  public void Catalog_contains_the_ten_unique_v1_packs()
+  public void Catalog_contains_thirteen_unique_packs()
   {
-    Assert.Equal(10, BuiltInCatalog.Packs.Count);
-    Assert.Equal(10, BuiltInCatalog.Packs.Select(pack => pack.Id).Distinct().Count());
+    Assert.Equal(13, BuiltInCatalog.Packs.Count);
+    Assert.Equal(13, BuiltInCatalog.Packs.Select(pack => pack.Id).Distinct().Count());
+  }
+
+  [Fact]
+  public void Recorded_pack_samples_are_embedded_normalized_pcm()
+  {
+    var recordedPacks = BuiltInCatalog.Packs.Where(pack => !pack.IsCustom && pack.SamplePools is { Count: > 0 }).ToArray();
+    Assert.Equal(3, recordedPacks.Length);
+    var sampleIds = recordedPacks.SelectMany(pack => pack.AllSampleIds()).Distinct(StringComparer.Ordinal).ToArray();
+    Assert.Equal(15, sampleIds.Length);
+
+    var assembly = typeof(XAudio2SoundEngine).Assembly;
+    var resources = assembly.GetManifestResourceNames();
+    foreach (var sampleId in sampleIds)
+    {
+      var resourceName = Assert.Single(resources, name => name.EndsWith($".{sampleId}.wav", StringComparison.Ordinal));
+      using var stream = Assert.IsAssignableFrom<Stream>(assembly.GetManifestResourceStream(resourceName));
+      using var reader = new WaveFileReader(stream);
+      Assert.Equal(48000, reader.WaveFormat.SampleRate);
+      Assert.Equal(1, reader.WaveFormat.Channels);
+      Assert.Equal(16, reader.WaveFormat.BitsPerSample);
+      Assert.True(reader.TotalTime > TimeSpan.Zero);
+      Assert.True(reader.TotalTime <= TimeSpan.FromMilliseconds(250));
+    }
   }
 }

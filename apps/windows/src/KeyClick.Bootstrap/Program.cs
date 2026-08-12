@@ -19,7 +19,11 @@ internal static class Program
   {
     try
     {
-      var root = Path.GetFullPath(Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), ProductFolder));
+      var portable = IsPortableBuild;
+      var root = ResolveRoot(args, portable);
+      var firstSetup = !portable && !File.Exists(Path.Combine(root, "KeyClick.exe"));
+      var shortcutSelection = firstSetup ? PromptForShortcuts() : null;
+      if (firstSetup && shortcutSelection is null) return 0;
       Directory.CreateDirectory(root);
       if (args.Contains("--uninstall", StringComparer.OrdinalIgnoreCase)) return Uninstall(root);
 
@@ -32,9 +36,17 @@ internal static class Program
       EnsureChild(root, versionDirectory);
       InstallPayload(root, versionDirectory, payload, payloadHash);
 
-      var launcher = Path.Combine(root, "KeyClick.exe");
-      InstallStableLauncher(launcher);
-      CreateShortcuts(launcher);
+      var launcher = portable ? Environment.ProcessPath! : Path.Combine(root, "KeyClick.exe");
+      if (!portable)
+      {
+        var shellIconsChanged = InstallStableLauncher(launcher);
+        shellIconsChanged |= CreateShortcuts(
+          launcher,
+          shortcutSelection?.Desktop ?? File.Exists(DesktopShortcutPath()),
+          shortcutSelection?.StartMenu ?? File.Exists(StartMenuShortcutPath()));
+        RegisterUninstall(launcher);
+        if (shellIconsChanged) RefreshShellIcons();
+      }
 
       var application = Path.Combine(versionDirectory, AppExecutable);
       if (!File.Exists(application)) throw new FileNotFoundException("The packaged KeyClick application is incomplete.", application);
@@ -47,14 +59,53 @@ internal static class Program
       }
       var forwarded = args.Where((value, index) =>
         !value.Equals("--update", StringComparison.OrdinalIgnoreCase) &&
+        !value.Equals("--use-installed-data", StringComparison.OrdinalIgnoreCase) &&
         !(restoreIndex >= 0 && (index == restoreIndex || index == restoreIndex + 1))).ToArray();
-      Process.Start(new ProcessStartInfo(application) { UseShellExecute = true, Arguments = JoinArguments(forwarded), WorkingDirectory = versionDirectory });
+      var appArguments = forwarded.Concat(["--data-root", root, "--launcher", launcher]).ToList();
+      if (portable) appArguments.Add("--distribution-portable");
+      Process.Start(new ProcessStartInfo(application) { UseShellExecute = true, Arguments = JoinArguments(appArguments), WorkingDirectory = versionDirectory });
       return 0;
     }
     catch (Exception exception)
     {
       Forms.MessageBox.Show($"KeyClick could not be installed or started.\n\n{exception.Message}", "KeyClick", Forms.MessageBoxButtons.OK, Forms.MessageBoxIcon.Error);
       return 1;
+    }
+  }
+
+  private static bool IsPortableBuild
+  {
+    get
+    {
+#if PORTABLE_BUILD
+      return true;
+#else
+      return false;
+#endif
+    }
+  }
+
+  private static string ResolveRoot(string[] args, bool portable)
+  {
+    var installed = Path.GetFullPath(Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), ProductFolder));
+    if (!portable || args.Contains("--use-installed-data", StringComparer.OrdinalIgnoreCase)) return installed;
+    var executableDirectory = Path.GetDirectoryName(Environment.ProcessPath) ?? Environment.CurrentDirectory;
+    var local = Path.GetFullPath(Path.Combine(executableDirectory, "KeyClickData"));
+    try
+    {
+      Directory.CreateDirectory(local);
+      var probe = Path.Combine(local, $".write-test-{Guid.NewGuid():N}");
+      File.WriteAllText(probe, string.Empty);
+      File.Delete(probe);
+      return local;
+    }
+    catch (Exception exception) when (exception is UnauthorizedAccessException or IOException)
+    {
+      var choice = Forms.MessageBox.Show(
+        "This folder is not writable, so portable KeyClick cannot use KeyClickData beside the app.\n\nUse the installed %LOCALAPPDATA%\\KeyClick data store instead?",
+        "KeyClick portable data", Forms.MessageBoxButtons.YesNo, Forms.MessageBoxIcon.Warning);
+      if (choice == Forms.DialogResult.Yes) return installed;
+      throw new InvalidOperationException("KeyClick exited without creating or changing a data store.");
     }
   }
 
@@ -90,14 +141,15 @@ internal static class Program
     }
   }
 
-  private static void InstallStableLauncher(string launcher)
+  private static bool InstallStableLauncher(string launcher)
   {
     var current = Environment.ProcessPath ?? throw new InvalidOperationException("The launcher path is unavailable.");
-    if (Path.GetFullPath(current).Equals(Path.GetFullPath(launcher), StringComparison.OrdinalIgnoreCase)) return;
-    if (File.Exists(launcher) && FilesEqual(current, launcher)) return;
+    if (Path.GetFullPath(current).Equals(Path.GetFullPath(launcher), StringComparison.OrdinalIgnoreCase)) return false;
+    if (File.Exists(launcher) && FilesEqual(current, launcher)) return false;
     var pending = launcher + ".new";
     File.Copy(current, pending, true);
     File.Move(pending, launcher, true);
+    return true;
   }
 
   private static bool FilesEqual(string left, string right)
@@ -110,26 +162,118 @@ internal static class Program
     return SHA256.HashData(leftStream).AsSpan().SequenceEqual(SHA256.HashData(rightStream));
   }
 
-  private static void CreateShortcuts(string launcher)
+  private static bool CreateShortcuts(string launcher, bool desktopRequested, bool startMenuRequested)
   {
-    var desktop = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.DesktopDirectory), "KeyClick.lnk");
-    var startMenu = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.StartMenu), "Programs", "KeyClick.lnk");
-    foreach (var shortcutPath in new[] { desktop, startMenu })
+    var workingDirectory = Path.GetDirectoryName(launcher)!;
+    var iconLocation = $"{launcher},0";
+    var changed = false;
+    var shortcuts = new List<string>();
+    if (desktopRequested) shortcuts.Add(DesktopShortcutPath());
+    if (startMenuRequested) shortcuts.Add(StartMenuShortcutPath());
+    foreach (var shortcutPath in shortcuts)
     {
-      if (File.Exists(shortcutPath)) continue;
       Directory.CreateDirectory(Path.GetDirectoryName(shortcutPath)!);
       var shellType = Type.GetTypeFromProgID("WScript.Shell") ?? throw new InvalidOperationException("Windows shortcut services are unavailable.");
       dynamic shell = Activator.CreateInstance(shellType)!;
       dynamic shortcut = shell.CreateShortcut(shortcutPath);
-      shortcut.TargetPath = launcher;
-      shortcut.WorkingDirectory = Path.GetDirectoryName(launcher);
-      shortcut.IconLocation = launcher;
-      shortcut.Description = "KeyClick key-up and pointer sound studio";
-      shortcut.Save();
-      Marshal.FinalReleaseComObject(shortcut);
-      Marshal.FinalReleaseComObject(shell);
+      try
+      {
+        if (File.Exists(shortcutPath) &&
+            string.Equals((string)shortcut.TargetPath, launcher, StringComparison.OrdinalIgnoreCase) &&
+            string.Equals((string)shortcut.WorkingDirectory, workingDirectory, StringComparison.OrdinalIgnoreCase) &&
+            string.Equals((string)shortcut.IconLocation, iconLocation, StringComparison.OrdinalIgnoreCase)) continue;
+
+        shortcut.TargetPath = launcher;
+        shortcut.WorkingDirectory = workingDirectory;
+        shortcut.IconLocation = iconLocation;
+        shortcut.Description = "KeyClick keyboard and pointer sound studio";
+        shortcut.Save();
+        changed = true;
+      }
+      finally
+      {
+        Marshal.FinalReleaseComObject(shortcut);
+        Marshal.FinalReleaseComObject(shell);
+      }
     }
+    return changed;
   }
+
+  private static ShortcutSelection? PromptForShortcuts()
+  {
+    var french = System.Globalization.CultureInfo.CurrentUICulture.TwoLetterISOLanguageName.Equals("fr", StringComparison.OrdinalIgnoreCase);
+    using var form = new Forms.Form
+    {
+      Text = french ? "Installer KeyClick" : "Install KeyClick",
+      Width = 470,
+      Height = 255,
+      FormBorderStyle = Forms.FormBorderStyle.FixedDialog,
+      MaximizeBox = false,
+      MinimizeBox = false,
+      StartPosition = Forms.FormStartPosition.CenterScreen,
+      ShowIcon = true
+    };
+    try { form.Icon = System.Drawing.Icon.ExtractAssociatedIcon(Environment.ProcessPath!); } catch { }
+    var heading = new Forms.Label
+    {
+      Text = french ? "Choisissez les raccourcis à créer pour votre compte." : "Choose the shortcuts to create for your account.",
+      AutoSize = false,
+      Dock = Forms.DockStyle.Top,
+      Height = 55,
+      Padding = new Forms.Padding(20, 20, 20, 0)
+    };
+    var desktop = new Forms.CheckBox
+    {
+      Text = french ? "Créer un raccourci sur le Bureau" : "Create a Desktop shortcut",
+      Checked = true,
+      AutoSize = true,
+      Location = new System.Drawing.Point(24, 76)
+    };
+    var startMenu = new Forms.CheckBox
+    {
+      Text = french ? "Créer un raccourci dans le menu Démarrer" : "Create a Start Menu shortcut",
+      Checked = true,
+      AutoSize = true,
+      Location = new System.Drawing.Point(24, 110)
+    };
+    var install = new Forms.Button
+    {
+      Text = french ? "Installer" : "Install",
+      DialogResult = Forms.DialogResult.OK,
+      AutoSize = true,
+      MinimumSize = new System.Drawing.Size(90, 34),
+      Location = new System.Drawing.Point(335, 164)
+    };
+    var cancel = new Forms.Button
+    {
+      Text = french ? "Annuler" : "Cancel",
+      DialogResult = Forms.DialogResult.Cancel,
+      AutoSize = true,
+      MinimumSize = new System.Drawing.Size(90, 34),
+      Location = new System.Drawing.Point(235, 164)
+    };
+    form.Controls.AddRange([heading, desktop, startMenu, cancel, install]);
+    form.AcceptButton = install;
+    form.CancelButton = cancel;
+    return form.ShowDialog() == Forms.DialogResult.OK ? new(desktop.Checked, startMenu.Checked) : null;
+  }
+
+  private static string DesktopShortcutPath() => Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.DesktopDirectory), "KeyClick.lnk");
+  private static string StartMenuShortcutPath() => Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.StartMenu), "Programs", "KeyClick.lnk");
+
+  private static void RegisterUninstall(string launcher)
+  {
+    using var key = Registry.CurrentUser.CreateSubKey(@"Software\Microsoft\Windows\CurrentVersion\Uninstall\KeyClick", true);
+    key.SetValue("DisplayName", "KeyClick", RegistryValueKind.String);
+    key.SetValue("DisplayVersion", SafeVersion(Assembly.GetExecutingAssembly().GetName().Version?.ToString(3) ?? "1.0.0"), RegistryValueKind.String);
+    key.SetValue("Publisher", "Fallax Vision", RegistryValueKind.String);
+    key.SetValue("DisplayIcon", launcher, RegistryValueKind.String);
+    key.SetValue("UninstallString", $"\"{launcher}\" --uninstall", RegistryValueKind.String);
+    key.SetValue("NoModify", 1, RegistryValueKind.DWord);
+    key.SetValue("NoRepair", 1, RegistryValueKind.DWord);
+  }
+
+  private static void RefreshShellIcons() => SHChangeNotify(0x08000000, 0, 0, 0);
 
   private static int Uninstall(string root)
   {
@@ -150,6 +294,7 @@ internal static class Program
     }
 
     using (var key = Registry.CurrentUser.OpenSubKey(@"Software\Microsoft\Windows\CurrentVersion\Run", true)) key?.DeleteValue("KeyClick", false);
+    Registry.CurrentUser.DeleteSubKeyTree(@"Software\Microsoft\Windows\CurrentVersion\Uninstall\KeyClick", false);
     DeleteShortcut(Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.DesktopDirectory), "KeyClick.lnk"));
     DeleteShortcut(Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.StartMenu), "Programs", "KeyClick.lnk"));
 
@@ -266,6 +411,11 @@ internal static class Program
 
   private static string JoinArguments(IEnumerable<string> args) => string.Join(' ', args.Select(value => $"\"{value.Replace("\"", "\\\"")}\""));
 
+  private sealed record ShortcutSelection(bool Desktop, bool StartMenu);
+
   [DllImport("kernel32.dll", CharSet = CharSet.Unicode, SetLastError = true)]
   private static extern bool MoveFileEx(string existingFileName, string? newFileName, int flags);
+
+  [DllImport("shell32.dll")]
+  private static extern void SHChangeNotify(uint eventId, uint flags, nint item1, nint item2);
 }
