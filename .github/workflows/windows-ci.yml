@@ -36,14 +36,15 @@ jobs:
         run: dotnet build KeyClick.sln -c Release --no-restore
       - name: Test
         run: dotnet test KeyClick.sln -c Release --no-build --logger "trx;LogFileName=${{ matrix.architecture }}.trx" --collect "XPlat Code Coverage"
-      - name: Publish portable executable
+      - name: Package setup and portable executables
         shell: pwsh
         run: ./scripts/Build-Portable.ps1 -Version 1.0.0-ci -Runtime ${{ matrix.runtime }}
       - uses: actions/upload-artifact@v4
         with:
-          name: KeyClick-Windows-${{ matrix.architecture }}
+          name: KeyClick-${{ matrix.architecture }}
           path: |
-            artifacts/portable/KeyClick-Windows-${{ matrix.architecture }}.exe
+            artifacts/portable/KeyClick-Setup-Windows-${{ matrix.architecture }}.exe
+            artifacts/portable/KeyClick-Portable-Windows-${{ matrix.architecture }}.exe
             artifacts/portable/checksums.txt
           if-no-files-found: error
       - uses: actions/upload-artifact@v4

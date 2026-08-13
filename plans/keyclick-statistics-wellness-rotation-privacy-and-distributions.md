@@ -81,8 +81,8 @@ tray when enabled.
 
 ## Distribution
 
-- Produce portable and setup executables for x64 and ARM64. Publish the setup
-  executables under the legacy names for one compatibility release.
+- Produce exactly one portable and one setup executable for each of x64 and
+  ARM64. Do not publish duplicate executables under legacy names.
 - Portable mode uses `KeyClickData` beside the launcher, performs no installation
   by default, and may explicitly switch to the installed AppData store after a
   restart. If its folder is not writable, offer AppData mode or exit clearly.

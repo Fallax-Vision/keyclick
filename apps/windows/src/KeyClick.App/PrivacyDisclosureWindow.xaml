@@ -18,8 +18,8 @@
     </Border>
     <TextBlock Text="{DynamicResource StatisticsNeverNetwork}" Foreground="{DynamicResource AccentBrush}" FontWeight="SemiBold" TextWrapping="Wrap" Margin="0,0,0,18" />
     <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
-      <Button Content="{DynamicResource NotNow}" Click="NotNow_Click" Margin="0,0,8,0" />
-      <Button Content="{DynamicResource ConfirmAndContinue}" Click="Continue_Click" Style="{StaticResource AccentButton}" />
+      <Button Content="{DynamicResource NotNow}" Click="NotNow_Click" Margin="0,0,10,0" Style="{StaticResource DialogButton}" />
+      <Button Content="{DynamicResource ConfirmAndContinue}" Click="Continue_Click" Style="{StaticResource DialogAccentButton}" />
     </StackPanel>
   </StackPanel>
 </Window>

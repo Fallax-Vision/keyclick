@@ -32,7 +32,7 @@ public sealed class IntegrationContractTests
       {
         "tag_name": "v1.2.3",
         "assets": [
-          { "name": "KeyClick-Windows-x64.exe", "browser_download_url": "https://example.test/x64", "size": 1234 },
+          { "name": "KeyClick-Setup-Windows-x64.exe", "browser_download_url": "https://example.test/x64", "size": 1234 },
           { "name": "checksums.txt", "browser_download_url": "https://example.test/checksums", "size": 100 }
         ]
       }
@@ -42,6 +42,7 @@ public sealed class IntegrationContractTests
 
     Assert.NotNull(selected);
     Assert.Equal("v1.2.3", selected.Version);
+    Assert.Equal("KeyClick-Setup-Windows-x64.exe", selected.AssetName);
     Assert.Null(UpdateAssetSelector.Select(document.RootElement, "arm64"));
   }
 }

@@ -4,7 +4,7 @@
 
 Build KeyClick as a native Windows 11 application using C#, WPF, [.NET 10 LTS](https://learn.microsoft.com/en-us/dotnet/core/whats-new/dotnet-10/overview), SQLite, Win32 Raw Input, and XAudio2. This avoids Electron/WebView overhead while supporting modern Windows UI, low-latency sound effects, system tray operation, and global input.
 
-Publish two architecture-specific single-file distributions—`KeyClick-Windows-x64.exe` and `KeyClick-Windows-arm64.exe`—because [.NET single-file applications are architecture-specific](https://learn.microsoft.com/en-us/dotnet/core/deploying/single-file/overview). Linux and macOS implementations are deferred, but the repository will reserve native-platform app folders and share protocols, pack specifications, assets, and fixtures.
+Publish architecture-specific single-file setup and portable distributions—`KeyClick-Setup-Windows-x64.exe`, `KeyClick-Portable-Windows-x64.exe`, `KeyClick-Setup-Windows-arm64.exe`, and `KeyClick-Portable-Windows-arm64.exe`—because [.NET single-file applications are architecture-specific](https://learn.microsoft.com/en-us/dotnet/core/deploying/single-file/overview). Do not publish duplicate legacy aliases. Linux and macOS implementations are deferred, but the repository will reserve native-platform app folders and share protocols, pack specifications, assets, and fixtures.
 
 ## Product and UX
 

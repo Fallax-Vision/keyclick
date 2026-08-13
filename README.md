@@ -86,7 +86,7 @@ The script writes these canonical artifacts plus SHA-256 checksums under `artifa
 - `KeyClick-Setup-Windows-x64.exe`
 - `KeyClick-Setup-Windows-arm64.exe`
 
-For one compatibility release, setup builds are also copied to `KeyClick-Windows-x64.exe` and `KeyClick-Windows-arm64.exe`. Setup is per-user and non-elevated, installs versioned code under `%LOCALAPPDATA%\KeyClick`, creates shortcuts, and registers HKCU uninstall metadata while preserving user data during upgrades. Portable builds create no shortcuts or registry entries and keep code, SQLite data/statistics, media, logs, and backups under `KeyClickData` beside the launcher. If that directory is not writable, the user can explicitly use the installed AppData store or exit.
+`KeyClick-Setup-Windows-<architecture>.exe` is the installable edition. Setup is per-user and non-elevated, installs versioned code under `%LOCALAPPDATA%\KeyClick`, creates shortcuts, and registers HKCU uninstall metadata while preserving user data during upgrades. `KeyClick-Portable-Windows-<architecture>.exe` is the portable edition. It creates no shortcuts or registry entries and keeps code, SQLite data/statistics, media, logs, and backups under `KeyClickData` beside the launcher. If that directory is not writable, the user can explicitly use the installed AppData store or exit. No legacy duplicate executables are produced.
 
 ## Custom sound packs
 

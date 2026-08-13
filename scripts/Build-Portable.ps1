@@ -53,11 +53,9 @@ foreach ($rid in $Runtime) {
 
   $setup = Join-Path $artifacts "KeyClick-Setup-Windows-$architecture.exe"
   $portable = Join-Path $artifacts "KeyClick-Portable-Windows-$architecture.exe"
-  $legacy = Join-Path $artifacts "KeyClick-Windows-$architecture.exe"
   Copy-Item -LiteralPath (Join-Path $setupDirectory 'KeyClick.exe') -Destination $setup
   Copy-Item -LiteralPath (Join-Path $portableDirectory 'KeyClick.exe') -Destination $portable
-  Copy-Item -LiteralPath $setup -Destination $legacy
-  foreach ($artifact in @($setup, $portable, $legacy)) {
+  foreach ($artifact in @($setup, $portable)) {
     $hash = (Get-FileHash -LiteralPath $artifact -Algorithm SHA256).Hash.ToLowerInvariant()
     $checksums.Add("$hash  $([IO.Path]::GetFileName($artifact))")
   }

@@ -8,10 +8,10 @@
     <CheckBox x:Name="Statistics" Content="{DynamicResource ProfileStatistics}" />
     <CheckBox x:Name="Wellness" Content="{DynamicResource ProfileWellness}" />
     <CheckBox x:Name="Protect" Content="{DynamicResource ProtectProfilePassword}" Checked="Protect_Changed" Unchecked="Protect_Changed" Margin="0,12,0,0" />
-    <Grid x:Name="PasswordFields" Visibility="Collapsed" Margin="22,7,0,0"><Grid.ColumnDefinitions><ColumnDefinition Width="150" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions><Grid.RowDefinitions><RowDefinition /><RowDefinition /></Grid.RowDefinitions>
-      <TextBlock Text="{DynamicResource Password}" VerticalAlignment="Center" /><PasswordBox x:Name="Password" Grid.Column="1" />
-      <TextBlock Grid.Row="1" Text="{DynamicResource ConfirmPassword}" VerticalAlignment="Center" Margin="0,7,0,0" /><PasswordBox x:Name="ConfirmPassword" Grid.Row="1" Grid.Column="1" Margin="0,7,0,0" />
+    <Grid x:Name="PasswordFields" Visibility="Collapsed" Margin="22,8,0,0"><Grid.ColumnDefinitions><ColumnDefinition Width="160" /><ColumnDefinition Width="12" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions><Grid.RowDefinitions><RowDefinition /><RowDefinition Height="10" /><RowDefinition /></Grid.RowDefinitions>
+      <TextBlock Text="{DynamicResource Password}" Style="{StaticResource FormRowLabel}" /><PasswordBox x:Name="Password" Grid.Column="2" />
+      <TextBlock Grid.Row="2" Text="{DynamicResource ConfirmPassword}" Style="{StaticResource FormRowLabel}" /><PasswordBox x:Name="ConfirmPassword" Grid.Row="2" Grid.Column="2" />
     </Grid>
-    <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,18,0,0"><Button Content="{DynamicResource Cancel}" IsCancel="True" Margin="0,0,8,0" /><Button Content="{DynamicResource Continue}" Click="Continue_Click" Style="{StaticResource AccentButton}" /></StackPanel>
+    <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,18,0,0"><Button Content="{DynamicResource Cancel}" IsCancel="True" Margin="0,0,10,0" Style="{StaticResource DialogButton}" /><Button Content="{DynamicResource Continue}" Click="Continue_Click" Style="{StaticResource DialogAccentButton}" /></StackPanel>
   </StackPanel>
 </Window>

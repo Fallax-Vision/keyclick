@@ -7,7 +7,7 @@
   <StackPanel Margin="24">
     <TextBlock Text="{DynamicResource DeleteStatistics}" Style="{StaticResource PageTitle}" />
     <TextBlock Text="{DynamicResource DeleteStatisticsHelp}" Style="{StaticResource MutedText}" TextWrapping="Wrap" Margin="0,2,0,16" />
-    <TextBlock Text="{DynamicResource DeletePeriod}" FontWeight="SemiBold" />
+    <TextBlock Text="{DynamicResource DeletePeriod}" FontWeight="SemiBold" Style="{StaticResource FieldLabel}" />
     <ComboBox x:Name="Period" SelectedIndex="0" SelectionChanged="Period_SelectionChanged" Margin="0,5,0,12">
       <ComboBoxItem Content="{DynamicResource PeriodAllTime}" />
       <ComboBoxItem Content="{DynamicResource PeriodToday}" />
@@ -16,9 +16,9 @@
       <ComboBoxItem Content="{DynamicResource PeriodCustom}" />
     </ComboBox>
     <Grid x:Name="CustomDates" Visibility="Collapsed" Margin="0,0,0,12">
-      <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="10" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
-      <StackPanel><TextBlock Text="{DynamicResource From}" /><DatePicker x:Name="StartDate" SelectedDate="{x:Static sys:DateTime.Today}" /></StackPanel>
-      <StackPanel Grid.Column="2"><TextBlock Text="{DynamicResource To}" /><DatePicker x:Name="EndDate" SelectedDate="{x:Static sys:DateTime.Today}" /></StackPanel>
+      <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="12" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
+      <StackPanel><TextBlock Text="{DynamicResource From}" Style="{StaticResource FieldLabel}" /><DatePicker x:Name="StartDate" SelectedDate="{x:Static sys:DateTime.Today}" /></StackPanel>
+      <StackPanel Grid.Column="2"><TextBlock Text="{DynamicResource To}" Style="{StaticResource FieldLabel}" /><DatePicker x:Name="EndDate" SelectedDate="{x:Static sys:DateTime.Today}" /></StackPanel>
     </Grid>
     <TextBlock Text="{DynamicResource Categories}" FontWeight="SemiBold" />
     <CheckBox x:Name="KeyboardCategory" Content="{DynamicResource KeyboardStatistics}" IsChecked="True" />
@@ -27,8 +27,8 @@
     <CheckBox x:Name="AchievementsCategory" Content="{DynamicResource WellnessAchievements}" />
     <CheckBox x:Name="SafetyBackup" Content="{DynamicResource CreateSafetyBackup}" IsChecked="True" Margin="0,12,0,0" />
     <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,18,0,0">
-      <Button Content="{DynamicResource Cancel}" IsCancel="True" Margin="0,0,8,0" />
-      <Button Content="{DynamicResource Delete}" Click="Delete_Click" Style="{StaticResource AccentButton}" />
+      <Button Content="{DynamicResource Cancel}" IsCancel="True" Margin="0,0,10,0" Style="{StaticResource DialogButton}" />
+      <Button Content="{DynamicResource Delete}" Click="Delete_Click" Style="{StaticResource DialogAccentButton}" />
     </StackPanel>
   </StackPanel>
 </Window>

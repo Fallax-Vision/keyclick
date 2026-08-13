@@ -10,7 +10,7 @@ public static class UpdateAssetSelector
 {
   public static UpdateInfo? Select(JsonElement release, string architecture)
   {
-    var expected = $"KeyClick-Windows-{architecture}.exe";
+    var expected = $"KeyClick-Setup-Windows-{architecture}.exe";
     var assets = release.GetProperty("assets").EnumerateArray().ToArray();
     var executable = assets.FirstOrDefault(asset => string.Equals(asset.GetProperty("name").GetString(), expected, StringComparison.OrdinalIgnoreCase));
     var checksum = assets.FirstOrDefault(asset => string.Equals(asset.GetProperty("name").GetString(), "checksums.txt", StringComparison.OrdinalIgnoreCase));
