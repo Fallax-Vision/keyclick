@@ -41,7 +41,7 @@ jobs:
           Copy-Item "artifacts/$source" "artifacts/KeyClick-Portable-Windows-arm64-$env:VERSION.sbom.cdx.json"
           Copy-Item "artifacts/$source" "artifacts/KeyClick-Setup-Windows-x64-$env:VERSION.sbom.cdx.json"
           Copy-Item "artifacts/$source" "artifacts/KeyClick-Setup-Windows-arm64-$env:VERSION.sbom.cdx.json"
-      - uses: actions/attest-build-provenance@v2
+      - uses: actions/attest-build-provenance@v4
         with:
           subject-path: |
             artifacts/KeyClick-Portable-Windows-*-${{ env.VERSION }}.exe
