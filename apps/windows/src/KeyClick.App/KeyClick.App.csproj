@@ -3,6 +3,7 @@
   <ItemGroup>
     <ProjectReference Include="..\KeyClick.Core\KeyClick.Core.csproj" />
     <ProjectReference Include="..\KeyClick.Infrastructure.Windows\KeyClick.Infrastructure.Windows.csproj" />
+    <ProjectReference Include="..\KeyClick.Updater\KeyClick.Updater.csproj" />
   </ItemGroup>
 
   <ItemGroup>
@@ -17,6 +18,12 @@
     <UseWPF>true</UseWPF>
     <UseWindowsForms>true</UseWindowsForms>
     <ApplicationManifest>app.manifest</ApplicationManifest>
+    <ApplicationIcon>..\..\assets\keyclick.ico</ApplicationIcon>
   </PropertyGroup>
+
+  <ItemGroup>
+    <Resource Include="..\..\assets\keyclick.ico" Link="Assets\keyclick.ico" />
+    <Resource Include="..\..\assets\keyclick-icon.png" Link="Assets\keyclick-icon.png" />
+  </ItemGroup>
 
 </Project>

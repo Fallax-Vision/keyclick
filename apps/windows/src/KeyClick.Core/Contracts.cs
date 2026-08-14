@@ -16,11 +16,41 @@ public interface IAppStore : IAsyncDisposable
   Task CheckpointAsync(CancellationToken cancellationToken = default);
 }
 
+public interface IStatisticsStore
+{
+  Task<string> GetStatisticsSourceIdAsync(CancellationToken cancellationToken = default);
+  Task MergeStatisticsAsync(IReadOnlyCollection<StatisticsAggregateDelta> deltas, CancellationToken cancellationToken = default);
+  Task<StatisticsSnapshot> QueryStatisticsAsync(StatisticsQuery query, CancellationToken cancellationToken = default);
+  Task DeleteStatisticsAsync(StatisticsDeleteRequest request, CancellationToken cancellationToken = default);
+  Task<IReadOnlyList<WellnessAchievement>> LoadWellnessAchievementsAsync(CancellationToken cancellationToken = default);
+  Task SaveWellnessAchievementAsync(WellnessAchievement achievement, CancellationToken cancellationToken = default);
+  Task<StatisticsTransferBundle> ExportStatisticsAsync(bool includeWellness, CancellationToken cancellationToken = default);
+  Task ImportStatisticsAsync(StatisticsTransferBundle bundle, bool includeWellness, CancellationToken cancellationToken = default);
+}
+
+public readonly record struct StatisticsAggregateKey(
+  DateTimeOffset BucketUtc,
+  InputKind Kind,
+  DeviceFamily DeviceFamily,
+  int PhysicalCode,
+  bool Extended,
+  InputGroup Group);
+
+public sealed record StatisticsAggregateDelta(
+  StatisticsAggregateKey Key,
+  long Count,
+  long ActiveMilliseconds,
+  long KeyboardActiveMilliseconds,
+  long PointerActiveMilliseconds,
+  int PeakTypingKeysPerMinute,
+  int PeakClicksPerFiveSeconds,
+  long Revision);
+
 public interface ISoundEngine : IDisposable
 {
   Task InitializeAsync(string outputDeviceId = "default", CancellationToken cancellationToken = default);
   Task ChangeOutputDeviceAsync(string outputDeviceId, CancellationToken cancellationToken = default);
-  Task LoadPackAsync(SoundPackDefinition pack, CancellationToken cancellationToken = default);
+  Task LoadPackAsync(SoundPackDefinition pack, IReadOnlyDictionary<string, string>? customSamplePaths = null, CancellationToken cancellationToken = default);
   Task LoadCustomSampleAsync(string sampleId, string wavPath, CancellationToken cancellationToken = default);
   bool TryPlay(SoundTrigger trigger);
   IReadOnlyList<AudioOutputDevice> OutputDevices { get; }
@@ -28,8 +58,8 @@ public interface ISoundEngine : IDisposable
 
 public interface IRawInputService : IDisposable
 {
-  event EventHandler<InputReleaseEvent>? InputReleased;
-  event EventHandler<string>? DeviceChanged;
+  event EventHandler<InputActionEvent>? InputAction;
+  event EventHandler<InputDeviceDescriptor>? DeviceChanged;
   void Start();
 }
 

@@ -1,7 +1,4 @@
 using System.IO.Compression;
-using System.Net.Http.Headers;
-using System.Security.Cryptography;
-using System.Text.Json;
 using Microsoft.Win32;
 
 namespace KeyClick.Infrastructure.Windows;
@@ -70,80 +67,6 @@ public sealed class BackupService(AppPaths paths)
       if (file.EndsWith("-wal", StringComparison.OrdinalIgnoreCase) || file.EndsWith("-shm", StringComparison.OrdinalIgnoreCase)) continue;
       var relative = Path.GetRelativePath(directory, file).Replace('\\', '/');
       archive.CreateEntryFromFile(file, $"{root}/{relative}", CompressionLevel.Optimal);
-    }
-  }
-}
-
-public sealed record UpdateInfo(string Version, string DownloadUrl, string ChecksumUrl, string AssetName, long Size);
-
-public static class UpdateAssetSelector
-{
-  public static UpdateInfo? Select(JsonElement release, string architecture)
-  {
-    var expected = $"KeyClick-Windows-{architecture}.exe";
-    var assets = release.GetProperty("assets").EnumerateArray().ToArray();
-    var executable = assets.FirstOrDefault(asset => string.Equals(asset.GetProperty("name").GetString(), expected, StringComparison.OrdinalIgnoreCase));
-    var checksum = assets.FirstOrDefault(asset => string.Equals(asset.GetProperty("name").GetString(), "checksums.txt", StringComparison.OrdinalIgnoreCase));
-    if (executable.ValueKind == JsonValueKind.Undefined || checksum.ValueKind == JsonValueKind.Undefined) return null;
-    return new UpdateInfo(
-      release.GetProperty("tag_name").GetString() ?? string.Empty,
-      executable.GetProperty("browser_download_url").GetString() ?? string.Empty,
-      checksum.GetProperty("browser_download_url").GetString() ?? string.Empty,
-      expected,
-      executable.GetProperty("size").GetInt64());
-  }
-}
-
-public sealed class UpdateService(HttpClient httpClient)
-{
-  private const string LatestRelease = "https://api.github.com/repos/Fallax-Vision/keyclick/releases/latest";
-
-  public async Task<UpdateInfo?> CheckAsync(string architecture, CancellationToken cancellationToken = default)
-  {
-    using var request = new HttpRequestMessage(HttpMethod.Get, LatestRelease);
-    request.Headers.UserAgent.Add(new ProductInfoHeaderValue("KeyClick", "1.0"));
-    request.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("application/vnd.github+json"));
-    using var response = await httpClient.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
-    if (response.StatusCode == System.Net.HttpStatusCode.NotFound) return null;
-    response.EnsureSuccessStatusCode();
-    await using var content = await response.Content.ReadAsStreamAsync(cancellationToken);
-    using var document = await JsonDocument.ParseAsync(content, cancellationToken: cancellationToken);
-    var root = document.RootElement;
-    return UpdateAssetSelector.Select(root, architecture);
-  }
-
-  public async Task<string> DownloadVerifiedAsync(UpdateInfo update, string destinationDirectory, CancellationToken cancellationToken = default)
-  {
-    Directory.CreateDirectory(destinationDirectory);
-    var checksumText = await httpClient.GetStringAsync(update.ChecksumUrl, cancellationToken);
-    var expected = checksumText.Split('\n', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
-      .Select(line => line.Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries))
-      .Where(parts => parts.Length >= 2 && string.Equals(parts[^1].TrimStart('*'), update.AssetName, StringComparison.OrdinalIgnoreCase))
-      .Select(parts => parts[0].ToLowerInvariant())
-      .FirstOrDefault();
-    if (expected is null || expected.Length != 64 || expected.Any(character => !Uri.IsHexDigit(character)))
-      throw new InvalidDataException("The release does not provide a valid checksum for this architecture.");
-
-    var destination = Path.Combine(destinationDirectory, update.AssetName);
-    var temporary = destination + $".{Guid.NewGuid():N}.download";
-    try
-    {
-      using var response = await httpClient.GetAsync(update.DownloadUrl, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
-      response.EnsureSuccessStatusCode();
-      if (response.Content.Headers.ContentLength is > 350_000_000) throw new InvalidDataException("The update asset is unexpectedly large.");
-      await using (var input = await response.Content.ReadAsStreamAsync(cancellationToken))
-      await using (var output = new FileStream(temporary, FileMode.CreateNew, FileAccess.Write, FileShare.None))
-        await input.CopyToAsync(output, cancellationToken);
-      await using var verify = File.OpenRead(temporary);
-      var actual = Convert.ToHexString(await SHA256.HashDataAsync(verify, cancellationToken)).ToLowerInvariant();
-      if (!CryptographicOperations.FixedTimeEquals(Convert.FromHexString(expected), Convert.FromHexString(actual)))
-        throw new InvalidDataException("The downloaded update failed SHA-256 verification.");
-      File.Move(temporary, destination, true);
-      return destination;
-    }
-    finally
-    {
-      if (File.Exists(temporary)) File.Delete(temporary);
     }
   }
 }

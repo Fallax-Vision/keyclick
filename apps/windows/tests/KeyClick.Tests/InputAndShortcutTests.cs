@@ -5,11 +5,22 @@ namespace KeyClick.Tests;
 public sealed class InputAndShortcutTests
 {
   [Fact]
-  public void Keyboard_rule_accepts_break_only_and_rejects_invalid_virtual_key()
+  public void Keyboard_rules_distinguish_make_break_and_reject_invalid_virtual_key()
   {
+    Assert.True(InputEventRules.IsKeyboardDown(0, 0x41));
+    Assert.False(InputEventRules.IsKeyboardDown(1, 0x41));
     Assert.False(InputEventRules.IsKeyboardRelease(0, 0x41));
     Assert.True(InputEventRules.IsKeyboardRelease(1, 0x41));
     Assert.False(InputEventRules.IsKeyboardRelease(1, 0xFF));
+  }
+
+  [Fact]
+  public void Keyboard_sound_timing_plays_only_the_selected_phase()
+  {
+    Assert.True(InputEventRules.ShouldPlayKeyboardSound(KeyboardSoundTiming.KeyDown, InputPhase.Down));
+    Assert.False(InputEventRules.ShouldPlayKeyboardSound(KeyboardSoundTiming.KeyDown, InputPhase.Up));
+    Assert.True(InputEventRules.ShouldPlayKeyboardSound(KeyboardSoundTiming.KeyUp, InputPhase.Up));
+    Assert.False(InputEventRules.ShouldPlayKeyboardSound(KeyboardSoundTiming.KeyUp, InputPhase.Down));
   }
 
   [Theory]

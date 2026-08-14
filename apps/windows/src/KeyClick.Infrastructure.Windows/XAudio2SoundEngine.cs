@@ -64,30 +64,60 @@ public sealed class XAudio2SoundEngine : ISoundEngine
     return Task.CompletedTask;
   }
 
-  public Task LoadPackAsync(SoundPackDefinition pack, CancellationToken cancellationToken = default)
+  public Task LoadPackAsync(SoundPackDefinition pack, IReadOnlyDictionary<string, string>? customSamplePaths = null, CancellationToken cancellationToken = default)
   {
     return Task.Run(() =>
     {
       var next = new Dictionary<string, PinnedSample>(StringComparer.Ordinal);
-      foreach (var group in Enum.GetValues<InputGroup>())
+      var committed = false;
+      try
       {
-        foreach (var variant in Enum.GetValues<KeyVariant>())
+        if (!pack.IsCustom && pack.SamplePools is { Count: > 0 })
         {
-          for (var variation = 1; variation <= 3; variation++)
+          foreach (var sampleId in pack.AllSampleIds())
           {
             cancellationToken.ThrowIfCancellationRequested();
-            var id = $"{pack.Id}/{group.ToString().ToLowerInvariant()}-{variant.ToString().ToLowerInvariant()}-{variation}";
-            next[id] = new PinnedSample(SynthSoundFactory.Generate(pack, group, variant, variation));
+            next[sampleId] = ReadBuiltInSample(sampleId, cancellationToken);
           }
         }
-      }
+        else if (!pack.IsCustom)
+        {
+          foreach (var group in Enum.GetValues<InputGroup>())
+          {
+            foreach (var variant in Enum.GetValues<KeyVariant>())
+            {
+              for (var variation = 1; variation <= 3; variation++)
+              {
+                cancellationToken.ThrowIfCancellationRequested();
+                var id = $"{pack.Id}/{group.ToString().ToLowerInvariant()}-{variant.ToString().ToLowerInvariant()}-{variation}";
+                next[id] = new PinnedSample(SynthSoundFactory.Generate(pack, group, variant, variation));
+              }
+            }
+          }
+        }
 
-      lock (_samples)
+        if (customSamplePaths is not null)
+        {
+          foreach (var pair in customSamplePaths)
+          {
+            cancellationToken.ThrowIfCancellationRequested();
+            next[pair.Key] = ReadNormalizedSample(pair.Value, cancellationToken);
+          }
+        }
+
+        lock (_samples)
+        {
+          StopAndFlushVoices();
+          foreach (var sample in _samples.Values) sample.Dispose();
+          _samples.Clear();
+          foreach (var pair in next) _samples.Add(pair.Key, pair.Value);
+          committed = true;
+        }
+      }
+      finally
       {
-        StopAndFlushVoices();
-        foreach (var sample in _samples.Values) sample.Dispose();
-        _samples.Clear();
-        foreach (var pair in next) _samples.Add(pair.Key, pair.Value);
+        if (!committed)
+          foreach (var sample in next.Values) sample.Dispose();
       }
     }, cancellationToken);
   }
@@ -98,27 +128,49 @@ public sealed class XAudio2SoundEngine : ISoundEngine
   {
     return Task.Run(() =>
     {
-      using var reader = new NAudio.Wave.WaveFileReader(wavPath);
-      if (reader.WaveFormat.SampleRate != SynthSoundFactory.SampleRate ||
-          reader.WaveFormat.BitsPerSample != SynthSoundFactory.BitsPerSample ||
-          reader.WaveFormat.Channels != SynthSoundFactory.Channels)
-        throw new InvalidDataException("Custom sounds must use KeyClick's normalized 48 kHz mono PCM format.");
-      var bytes = new byte[reader.Length];
-      var read = 0;
-      while (read < bytes.Length)
-      {
-        cancellationToken.ThrowIfCancellationRequested();
-        var count = reader.Read(bytes, read, bytes.Length - read);
-        if (count == 0) break;
-        read += count;
-      }
-      var sample = new PinnedSample(bytes);
+      var sample = ReadNormalizedSample(wavPath, cancellationToken);
       lock (_samples)
       {
         if (_samples.Remove(sampleId, out var existing)) existing.Dispose();
         _samples[sampleId] = sample;
       }
     }, cancellationToken);
+  }
+
+  private static PinnedSample ReadNormalizedSample(string wavPath, CancellationToken cancellationToken)
+  {
+    using var reader = new NAudio.Wave.WaveFileReader(wavPath);
+    return ReadNormalizedSample(reader, cancellationToken);
+  }
+
+  private static PinnedSample ReadBuiltInSample(string sampleId, CancellationToken cancellationToken)
+  {
+    var suffix = $".{sampleId}.wav";
+    var assembly = typeof(XAudio2SoundEngine).Assembly;
+    var resourceName = assembly.GetManifestResourceNames().SingleOrDefault(name => name.EndsWith(suffix, StringComparison.Ordinal))
+      ?? throw new InvalidDataException($"Built-in sound sample '{sampleId}' is missing.");
+    using var stream = assembly.GetManifestResourceStream(resourceName)
+      ?? throw new InvalidDataException($"Built-in sound sample '{sampleId}' cannot be opened.");
+    using var reader = new NAudio.Wave.WaveFileReader(stream);
+    return ReadNormalizedSample(reader, cancellationToken);
+  }
+
+  private static PinnedSample ReadNormalizedSample(NAudio.Wave.WaveFileReader reader, CancellationToken cancellationToken)
+  {
+    if (reader.WaveFormat.SampleRate != SynthSoundFactory.SampleRate ||
+        reader.WaveFormat.BitsPerSample != SynthSoundFactory.BitsPerSample ||
+        reader.WaveFormat.Channels != SynthSoundFactory.Channels)
+      throw new InvalidDataException("Custom sounds must use KeyClick's normalized 48 kHz mono PCM format.");
+    var bytes = new byte[reader.Length];
+    var read = 0;
+    while (read < bytes.Length)
+    {
+      cancellationToken.ThrowIfCancellationRequested();
+      var count = reader.Read(bytes, read, bytes.Length - read);
+      if (count == 0) break;
+      read += count;
+    }
+    return new PinnedSample(bytes);
   }
 
   public void Dispose()

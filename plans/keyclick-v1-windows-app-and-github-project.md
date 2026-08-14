@@ -4,7 +4,7 @@
 
 Build KeyClick as a native Windows 11 application using C#, WPF, [.NET 10 LTS](https://learn.microsoft.com/en-us/dotnet/core/whats-new/dotnet-10/overview), SQLite, Win32 Raw Input, and XAudio2. This avoids Electron/WebView overhead while supporting modern Windows UI, low-latency sound effects, system tray operation, and global input.
 
-Publish two architecture-specific single-file distributions—`KeyClick-Windows-x64.exe` and `KeyClick-Windows-arm64.exe`—because [.NET single-file applications are architecture-specific](https://learn.microsoft.com/en-us/dotnet/core/deploying/single-file/overview). Linux and macOS implementations are deferred, but the repository will reserve native-platform app folders and share protocols, pack specifications, assets, and fixtures.
+Publish architecture-specific, SemVer-stamped single-file setup and portable distributions—`KeyClick-Setup-Windows-x64-<version>.exe`, `KeyClick-Portable-Windows-x64-<version>.exe`, `KeyClick-Setup-Windows-arm64-<version>.exe`, and `KeyClick-Portable-Windows-arm64-<version>.exe`—because [.NET single-file applications are architecture-specific](https://learn.microsoft.com/en-us/dotnet/core/deploying/single-file/overview). Keep only the current and immediately preceding artifact versions and do not publish duplicate legacy aliases. Linux and macOS implementations are deferred, but the repository will reserve native-platform app folders and share protocols, pack specifications, assets, and fixtures.
 
 ## Product and UX
 
@@ -12,10 +12,11 @@ Publish two architecture-specific single-file distributions—`KeyClick-Windows-
 - Provide Home, Sound Packs, Keyboard & Pointer Mappings, Shortcuts, Settings, Integrations, and About/Updates views.
 - Home exposes the enabled state, active pack, master volume, keyboard/pointer toggles, output device, and quick access to per-app muting.
 - Support Light, Dark, and System themes, reacting immediately to Windows theme changes.
-- Ship ten original, royalty-free packs:
+- Ship ten original royalty-free synthesized packs, plus three recorded packs:
   - Keyboard-focused: Clicky Switch, Tactile Switch, Linear Switch, Buckling Spring, Silent Switch.
+  - Recorded: Cream Keys, Bright Mechanical, Compact Mech Tap.
   - Balanced: Crisp Mechanical, Soft Thock, Classic Typewriter, Minimal Tap, Digital Pulse.
-- Each pack contains sample pools with no immediate repetition for letters, numbers/symbols, punctuation, modifiers, navigation, functions/media, numpad, locks, Space, Enter, editing/destructive keys, pointer buttons, wheels, and result cues.
+- Each pack contains category-specific sample pools for letters, numbers/symbols, punctuation, modifiers, navigation, functions/media, numpad, locks, Space, Enter, editing/destructive keys, pointer buttons, wheels, and result cues. A physical key deterministically keeps the same sound instead of changing recordings between presses.
 - Built-in mappings remain immutable. A key-specific override is stored as a separate per-pack layer; disabling or removing it restores the built-in mapping and volume.
 - Support Base, Shift, and AltGr variants using the active Windows keyboard layout. NumLock, CapsLock, and ScrollLock receive separate enabled/disabled samples.
 - Enter may use a positive role cue and Delete/Backspace a negative role cue, but KeyClick will not claim to know another app’s outcome.
@@ -29,7 +30,7 @@ Publish two architecture-specific single-file distributions—`KeyClick-Windows-
   - Launch at startup, start minimized, minimize/close to tray, and fullscreen pause.
   - Theme, output device, all volume layers, active pack, app exclusions, input-device classification, and shortcut sequence timeout.
   - Integration API permissions, manual update check, backup/restore, reset options, reduced motion, diagnostics, and log cleanup.
-- Defaults: sounds enabled, System theme, 70% master volume, launch at startup off, close to tray on, startup runs hidden only when enabled, system-default audio output, no app exclusions, and no background update checks.
+- Defaults: sounds enabled, System theme, 35% master volume, launch at startup off, close to tray on, startup runs hidden only when enabled, system-default audio output, no app exclusions, and no background update checks.
 
 ## Technical Implementation and Interfaces
 
@@ -79,3 +80,22 @@ Publish two architecture-specific single-file distributions—`KeyClick-Windows-
 - Raw Input device separation is best effort: some touchpad drivers merge events into a synthetic mouse. Fn, secure-desktop, and certain OEM keys may not be exposed and will be documented rather than worked around through elevation.
 - Integrations are disabled until the user enables the API and allow-lists a client. KeyClick never elevates itself, monitors UI content, infers third-party outcomes, sends telemetry, or accesses the network except for a user-triggered update check.
 - Linux and macOS application implementations, cloud sync, automatic updates, UI-outcome inference, gestures, pointer-movement sounds, and a full distributable pack marketplace are outside Windows v1.
+
+## Post-v1 Continuation: Local Statistics, Wellness, Rotation, and Distributions
+
+The approved continuation is specified in
+[`keyclick-statistics-wellness-rotation-privacy-and-distributions.md`](keyclick-statistics-wellness-rotation-privacy-and-distributions.md).
+It extends the same native Raw Input, SQLite WAL, XAudio2, offline-first, and
+current-user-only architecture with aggregate statistics and wellness features.
+
+The original release-only keyboard playback rule is amended: users may choose
+one sound on the first physical key-down or on key-up; typematic repeats never
+play sounds. Pointer playback remains button-up/wheel-detent only. Statistics
+may store aggregate physical-key and pointer counters in time buckets, but never
+typed characters, ordered input history, individual event timestamps,
+foreground-app activity, or UI content. Statistics never enter a network API.
+All application network activity remains disabled except an explicit manual
+update check and checksum-verified download initiated by the user.
+Closing the application window or choosing Exit from the tray terminates the
+process and therefore stops sound playback and all input statistics capture;
+only minimizing may keep the running app in the tray.

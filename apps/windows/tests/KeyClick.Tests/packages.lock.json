@@ -253,19 +253,25 @@
           "xunit.extensibility.core": "[2.9.3]"
         }
       },
+      "KeyClick": {
+        "type": "Project"
+      },
       "keyclick.core": {
         "type": "Project"
       },
       "keyclick.infrastructure.windows": {
         "type": "Project",
         "dependencies": {
-          "KeyClick.Core": "[1.0.0, )",
+          "KeyClick.Core": "[1.1.2, )",
           "Microsoft.Data.Sqlite": "[10.0.10, )",
           "NAudio": "[2.3.0, )",
           "NAudio.Vorbis": "[1.5.0, )",
           "SQLitePCLRaw.lib.e_sqlite3": "[3.53.3, )",
           "Vortice.XAudio2": "[3.8.3, )"
         }
+      },
+      "keyclick.updater": {
+        "type": "Project"
       }
     }
   }

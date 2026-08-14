@@ -2,12 +2,10 @@ namespace KeyClick.Core;
 
 public sealed class SoundMappingResolver
 {
-  private readonly Dictionary<string, int> _shuffleIndexes = new(StringComparer.Ordinal);
-
   public ResolvedSound Resolve(
     AppSettings settings,
     SoundPackDefinition pack,
-    InputReleaseEvent input,
+    InputActionEvent input,
     GroupMapping? groupMapping,
     InputOverride? inputOverride,
     float packVolume = 1.0f)
@@ -20,10 +18,12 @@ public sealed class SoundMappingResolver
       _ => false
     };
 
+    var correctKeyboardPhase = input.Input.Kind != InputKind.KeyboardKey ||
+      InputEventRules.ShouldPlayKeyboardSound(settings.KeyboardSoundTiming, input.Phase);
     var excluded = input.ForegroundExecutable is not null &&
       settings.ExcludedExecutables.Any(item => string.Equals(item, input.ForegroundExecutable, StringComparison.OrdinalIgnoreCase));
 
-    if (!settings.SoundsEnabled || !categoryEnabled || excluded)
+    if (!settings.SoundsEnabled || !categoryEnabled || !correctKeyboardPhase || excluded)
     {
       return new(false, 0, [], inputOverride is not null);
     }
@@ -45,28 +45,24 @@ public sealed class SoundMappingResolver
       ? inputOverride.SampleIds
       : groupMapping?.SampleIds is { Count: > 0 }
         ? groupMapping.SampleIds
-        : BuiltInCatalog.SamplesFor(pack.Id, input.Group, input.Variant).ToArray();
+        : pack.SamplesFor(input.Group, input.Variant);
     var gain = Math.Clamp(settings.MasterVolume * categoryVolume * packVolume * groupVolume * inputVolume, 0, 1);
     return new(samples.Count > 0 && gain > 0, gain, samples, inputOverride is not null);
   }
 
-  public string SelectWithoutImmediateRepeat(ResolvedSound sound, string poolId)
+  public string SelectStable(ResolvedSound sound, string identity)
   {
     if (sound.SampleIds.Count == 0)
     {
       throw new InvalidOperationException("The sound pool is empty.");
     }
 
-    if (!_shuffleIndexes.TryGetValue(poolId, out var index))
+    uint hash = 2166136261;
+    foreach (var character in identity)
     {
-      index = Random.Shared.Next(sound.SampleIds.Count);
+      hash ^= character;
+      hash *= 16777619;
     }
-    else
-    {
-      index = (index + 1 + Random.Shared.Next(Math.Max(1, sound.SampleIds.Count - 1))) % sound.SampleIds.Count;
-    }
-
-    _shuffleIndexes[poolId] = index;
-    return sound.SampleIds[index];
+    return sound.SampleIds[(int)(hash % (uint)sound.SampleIds.Count)];
   }
 }

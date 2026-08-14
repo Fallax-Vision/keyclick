@@ -21,29 +21,39 @@ jobs:
         shell: pwsh
         run: |
           $version = '${{ github.ref_name }}'.TrimStart('v')
-          if ($version -notmatch '^\d+\.\d+\.\d+(?:-[A-Za-z0-9.-]+)?$') { throw 'Use a semantic version tag.' }
+          $semver = '^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)(?:-((?:0|[1-9][0-9]*|[0-9]*[A-Za-z-][0-9A-Za-z-]*)(?:\.(?:0|[1-9][0-9]*|[0-9]*[A-Za-z-][0-9A-Za-z-]*))*))?$'
+          if ($version -notmatch $semver) { throw 'Use a SemVer 2.0.0 core or prerelease tag without build metadata.' }
+          [xml] $properties = Get-Content Directory.Build.props
+          $sourceVersion = [string] $properties.Project.PropertyGroup.VersionPrefix
+          if ($version -ne $sourceVersion) { throw "Tag version $version does not match source version $sourceVersion." }
           "VERSION=$version" | Out-File -FilePath $env:GITHUB_ENV -Append
       - name: Test
         run: dotnet test KeyClick.sln -c Release
-      - name: Build x64 and ARM64
+      - name: Build setup and portable x64 and ARM64
         shell: pwsh
         run: ./scripts/Build-Portable.ps1 -Version $env:VERSION
       - name: Generate CycloneDX SBOM
         shell: pwsh
         run: |
           dotnet tool install --global CycloneDX
-          dotnet-CycloneDX KeyClick.sln -o artifacts/portable -fn sbom.cdx.json
+          $source = "KeyClick-Portable-Windows-x64-$env:VERSION.sbom.cdx.json"
+          dotnet-CycloneDX KeyClick.sln -o artifacts -fn $source
+          Copy-Item "artifacts/$source" "artifacts/KeyClick-Portable-Windows-arm64-$env:VERSION.sbom.cdx.json"
+          Copy-Item "artifacts/$source" "artifacts/KeyClick-Setup-Windows-x64-$env:VERSION.sbom.cdx.json"
+          Copy-Item "artifacts/$source" "artifacts/KeyClick-Setup-Windows-arm64-$env:VERSION.sbom.cdx.json"
       - uses: actions/attest-build-provenance@v2
         with:
-          subject-path: artifacts/portable/KeyClick-Windows-*.exe
+          subject-path: |
+            artifacts/KeyClick-Portable-Windows-*-${{ env.VERSION }}.exe
+            artifacts/KeyClick-Setup-Windows-*-${{ env.VERSION }}.exe
       - uses: actions/upload-artifact@v4
         with:
           name: release-assets
-          path: artifacts/portable/*
+          path: artifacts/*-${{ env.VERSION }}.*
           if-no-files-found: error
       - name: Create draft GitHub release
         uses: softprops/action-gh-release@v2
         with:
           draft: true
           generate_release_notes: true
-          files: artifacts/portable/*
+          files: artifacts/*-${{ env.VERSION }}.*

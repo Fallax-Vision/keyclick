@@ -1,0 +1,19 @@
+name: Privacy Boundary
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  privacy-boundary:
+    name: Privacy Boundary
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Enforce offline statistics boundary
+        shell: pwsh
+        run: ./scripts/Test-PrivacyBoundary.ps1

@@ -1,0 +1,15 @@
+# Privacy-critical surfaces require explicit owner approval.
+/.github/CODEOWNERS @askasjeremy
+/.github/workflows/privacy-boundary.yml @askasjeremy
+/scripts/Test-PrivacyBoundary.ps1 @askasjeremy
+/apps/windows/src/KeyClick.Updater/ @askasjeremy
+/apps/windows/src/KeyClick.Core/Contracts.cs @askasjeremy
+/apps/windows/src/KeyClick.Core/Models.cs @askasjeremy
+/apps/windows/src/KeyClick.Infrastructure.Windows/RawInputService.cs @askasjeremy
+/apps/windows/src/KeyClick.Infrastructure.Windows/StatisticsService.cs @askasjeremy
+/apps/windows/src/KeyClick.Infrastructure.Windows/WellnessService.cs @askasjeremy
+/apps/windows/src/KeyClick.Infrastructure.Windows/SqliteAppStore.cs @askasjeremy
+/apps/windows/src/KeyClick.Infrastructure.Windows/ProfileTransferService.cs @askasjeremy
+/PRIVACY.md @askasjeremy
+/SECURITY.md @askasjeremy
+/AGENTS.md @askasjeremy
