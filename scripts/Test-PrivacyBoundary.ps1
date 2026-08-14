@@ -21,7 +21,7 @@ $updaterFiles = Get-ChildItem -LiteralPath $updaterRoot -Recurse -Filter '*.cs' 
   Where-Object { $_.FullName -notmatch '[\\/](bin|obj)[\\/]' }
 foreach ($file in $updaterFiles) {
   $content = Get-Content -LiteralPath $file.FullName -Raw
-  if ($content -match '\b(KeyClick\.Core|InputAction|Statistics|Wellness|ProfileManifest)\b') {
+  if ($content -match '\b(KeyClick\.Core|InputAction|Statistics|Wellness|TypingChallenge|ChallengeResult|ChallengePrompt|ProfileManifest)\b') {
     $failures.Add("Updater references input/statistics/profile types: $($file.FullName)")
   }
   if ($content -match 'public\s+[^\r\n]+\(([^)]*(HttpContent|Stream|byte\[\]|string\s+(body|payload))[^)]*)\)') {
@@ -29,6 +29,52 @@ foreach ($file in $updaterFiles) {
   }
   if ($content -match '\b(PostAsync|PutAsync|PatchAsync)\b') {
     $failures.Add("Updater contains a non-GET network operation: $($file.FullName)")
+  }
+}
+
+$statisticsService = Join-Path $productionRoot 'KeyClick.Infrastructure.Windows/StatisticsService.cs'
+if (Test-Path -LiteralPath $statisticsService) {
+  $content = Get-Content -LiteralPath $statisticsService -Raw
+  if ($content -match '(?s)(?<csv>public async Task ExportCsvAsync.*?)(?=\r?\n  public )' -and $Matches['csv'] -match 'ApplicationStatistics|application(_id|_name)|DisplayName') {
+    $failures.Add("Per-application statistics entered the CSV export surface: $statisticsService")
+  }
+}
+
+$challengeService = Join-Path $productionRoot 'KeyClick.Infrastructure.Windows/TypingChallengeService.cs'
+if (Test-Path -LiteralPath $challengeService) {
+  $content = Get-Content -LiteralPath $challengeService -Raw
+  if ($content -match '(?s)(?<csv>ExportCsvAsync.*?)(?=\r?\n  private )' -and $Matches['csv'] -match 'PromptTitle|\.Text\b|Response') {
+    $failures.Add("Typing response or prompt content entered the challenge CSV surface: $challengeService")
+  }
+}
+
+$coreModels = Join-Path $productionRoot 'KeyClick.Core/Models.cs'
+if (Test-Path -LiteralPath $coreModels) {
+  $content = Get-Content -LiteralPath $coreModels -Raw
+  if ($content -match '(?s)(?<bundle>public sealed record StatisticsTransferBundle\(.*?\);)' -and $Matches['bundle'] -match 'Application') {
+    $failures.Add("Per-application statistics entered the profile transfer contract: $coreModels")
+  }
+  if ($content -match '(?s)(?<result>public sealed record TypingChallengeResult\(.*?\);)' -and $Matches['result'] -match 'Response(Text|Content)|Typed(Text|Content)|Ordered') {
+    $failures.Add("Typing response content entered the persisted challenge result contract: $coreModels")
+  }
+}
+
+$storeFile = Join-Path $productionRoot 'KeyClick.Infrastructure.Windows/SqliteAppStore.cs'
+if (Test-Path -LiteralPath $storeFile) {
+  $content = Get-Content -LiteralPath $storeFile -Raw
+  if ($content -match '(?s)ExportStatisticsAsync.*?statistics_application_hourly.*?ImportStatisticsAsync') {
+    $failures.Add("Per-application statistics entered the profile transfer surface: $storeFile")
+  }
+  if ($content -match 'typing_challenge_results[^;]*(response_text|typed_text|typed_content|key_history)') {
+    $failures.Add("Typing response content entered the persisted challenge result schema: $storeFile")
+  }
+}
+
+$profileService = Join-Path $productionRoot 'KeyClick.Infrastructure.Windows/ProfileTransferService.cs'
+if (Test-Path -LiteralPath $profileService) {
+  $content = Get-Content -LiteralPath $profileService -Raw
+  if ($content -match '\bApplicationStatistics\w*\b|statistics_application_hourly') {
+    $failures.Add("Per-application statistics entered profile transfer code: $profileService")
   }
 }
 
@@ -62,8 +108,8 @@ foreach ($file in $projectFiles) {
 }
 
 $requiredDocumentation = @{
-  'README.md' = @('never stores typed characters', 'never transmitted', 'manual update')
-  'PRIVACY.md' = @('never stores typed characters', 'never transmitted', 'manual update')
+  'README.md' = @('never stores typed characters', 'challenge responses are never stored', 'never transmitted', 'per-application details are excluded', 'manual update')
+  'PRIVACY.md' = @('never stores typed characters', 'challenge responses are never stored', 'never transmitted', 'per-application details are also excluded', 'manual update')
   'SECURITY.md' = @('Privacy Boundary')
   'CONTRIBUTING.md' = @('Privacy Boundary')
 }
@@ -86,4 +132,4 @@ if ($failures.Count -gt 0) {
   exit 1
 }
 
-Write-Host 'Privacy Boundary passed: networking is isolated and local statistics cannot enter updater APIs.'
+Write-Host 'Privacy Boundary passed: networking is isolated; local/per-application statistics and typing challenges cannot enter updater or network APIs.'

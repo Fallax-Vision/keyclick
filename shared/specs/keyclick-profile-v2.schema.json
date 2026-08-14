@@ -1,0 +1,30 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/Fallax-Vision/keyclick/shared/specs/keyclick-profile-v2.schema.json",
+  "title": "KeyClick profile manifest v2",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "createdUtc", "applicationVersion", "sections", "passwordProtected", "fileHashes"],
+  "properties": {
+    "schemaVersion": { "const": 2 },
+    "createdUtc": { "type": "string", "format": "date-time" },
+    "applicationVersion": { "type": "string", "maxLength": 64 },
+    "sections": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": { "enum": ["settings-mappings", "custom-packs-audio", "statistics", "wellness-achievements", "challenge-history", "challenge-prompts"] }
+    },
+    "passwordProtected": { "type": "boolean" },
+    "fileHashes": {
+      "type": "object",
+      "propertyNames": { "pattern": "^(settings|statistics|challenges)\\.json$|^media/(packs|sounds)/[^/]+$" },
+      "additionalProperties": { "type": "string", "pattern": "^[a-f0-9]{64}$" }
+    }
+  },
+  "allOf": [
+    {
+      "if": { "properties": { "sections": { "contains": { "const": "challenge-prompts" } } } },
+      "then": { "properties": { "passwordProtected": { "const": true } } }
+    }
+  ]
+}

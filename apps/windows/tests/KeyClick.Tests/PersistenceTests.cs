@@ -19,7 +19,8 @@ public sealed class PersistenceTests
         DisplayName = "Studio",
         MasterVolume = 0.42f,
         Theme = ThemeMode.Light,
-        DisplayLanguage = DisplayLanguageMode.French
+        DisplayLanguage = DisplayLanguageMode.French,
+        SoundPackViewMode = SoundPackViewMode.Grid
       };
       await store.SaveSettingsAsync(settings);
       var inputOverride = new InputOverride("clicky-switch", "KeyboardKey:Keyboard:30:0", KeyVariant.Shift, false, 0.6f, ["custom:abc"]);
@@ -33,6 +34,7 @@ public sealed class PersistenceTests
       Assert.Equal(0.42f, loaded.MasterVolume);
       Assert.Equal(ThemeMode.Light, loaded.Theme);
       Assert.Equal(DisplayLanguageMode.French, loaded.DisplayLanguage);
+      Assert.Equal(SoundPackViewMode.Grid, loaded.SoundPackViewMode);
       var loadedOverride = Assert.Single(overrides);
       Assert.Equal(inputOverride.PackId, loadedOverride.PackId);
       Assert.Equal(inputOverride.InputId, loadedOverride.InputId);
@@ -59,6 +61,12 @@ public sealed class PersistenceTests
       var command = connection.CreateCommand();
       command.CommandText = "PRAGMA journal_mode;";
       Assert.Equal("wal", (await command.ExecuteScalarAsync())?.ToString());
+      command.CommandText = "SELECT MAX(version) FROM schema_migrations;";
+      Assert.Equal(5L, (long)(await command.ExecuteScalarAsync())!);
+      command.CommandText = "SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name='statistics_application_hourly';";
+      Assert.Equal(1L, (long)(await command.ExecuteScalarAsync())!);
+      command.CommandText = "SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name='typing_challenge_results';";
+      Assert.Equal(1L, (long)(await command.ExecuteScalarAsync())!);
     }
   }
 

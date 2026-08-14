@@ -158,6 +158,7 @@ public sealed class MainViewModel : INotifyPropertyChanged, IDisposable
   public string AvailableUpdateText => AvailableUpdate is null ? string.Empty : _localization.Format(
     AvailableUpdate.IsLocal ? "LocalUpdateAvailableFormat" : "UpdateReadyFormat", AvailableUpdate.Version);
   public StatisticsViewModel? Statistics { get; private set; }
+  public TypingChallengeViewModel? TypingChallenges { get; private set; }
   public WellnessSnapshot? WellnessSnapshot { get; private set; }
   public string WellnessTodaySummary => WellnessSnapshot is null ? _localization.Get("NoStatisticsYet") :
     _localization.Format("WellnessTodayFormat", WellnessSnapshot.KeyboardPressesToday, WellnessSnapshot.PointerClicksToday, WellnessSnapshot.ActiveMinutesToday);
@@ -272,7 +273,30 @@ public sealed class MainViewModel : INotifyPropertyChanged, IDisposable
   public bool ReducedMotion { get => _settings.ReducedMotion; set { if (_settings.ReducedMotion == value) return; _settings.ReducedMotion = value; SettingChanged(nameof(ReducedMotion)); } }
   public bool IntegrationApiEnabled { get => _settings.IntegrationApiEnabled; set { if (_settings.IntegrationApiEnabled == value) return; _settings.IntegrationApiEnabled = value; SettingChanged(nameof(IntegrationApiEnabled)); } }
   public bool NormalizeImports { get => _settings.NormalizeImports; set { if (_settings.NormalizeImports == value) return; _settings.NormalizeImports = value; SettingChanged(nameof(NormalizeImports)); } }
-  public bool StatisticsDisclosureConfirmed => _settings.StatisticsDisclosureConfirmed;
+  public bool SoundPackListView
+  {
+    get => _settings.SoundPackViewMode == SoundPackViewMode.List;
+    set
+    {
+      if (!value || _settings.SoundPackViewMode == SoundPackViewMode.List) return;
+      _settings.SoundPackViewMode = SoundPackViewMode.List;
+      Notify(nameof(SoundPackListView), nameof(SoundPackGridView));
+      QueueSettingsSave();
+    }
+  }
+  public bool SoundPackGridView
+  {
+    get => _settings.SoundPackViewMode == SoundPackViewMode.Grid;
+    set
+    {
+      if (!value || _settings.SoundPackViewMode == SoundPackViewMode.Grid) return;
+      _settings.SoundPackViewMode = SoundPackViewMode.Grid;
+      Notify(nameof(SoundPackListView), nameof(SoundPackGridView));
+      QueueSettingsSave();
+    }
+  }
+  public bool StatisticsDisclosureConfirmed =>
+    _settings.StatisticsDisclosureConfirmed && _settings.StatisticsDisclosureVersion >= AppSettings.CurrentStatisticsDisclosureVersion;
   public bool KeyboardStatisticsEnabled { get => _settings.KeyboardStatisticsEnabled; set { if (_settings.KeyboardStatisticsEnabled == value) return; _settings.KeyboardStatisticsEnabled = value; StatisticsSettingChanged(nameof(KeyboardStatisticsEnabled)); } }
   public bool PointerStatisticsEnabled { get => _settings.PointerStatisticsEnabled; set { if (_settings.PointerStatisticsEnabled == value) return; _settings.PointerStatisticsEnabled = value; StatisticsSettingChanged(nameof(PointerStatisticsEnabled)); } }
   public bool ScrollingStatisticsEnabled { get => _settings.ScrollingStatisticsEnabled; set { if (_settings.ScrollingStatisticsEnabled == value) return; _settings.ScrollingStatisticsEnabled = value; StatisticsSettingChanged(nameof(ScrollingStatisticsEnabled)); } }
@@ -357,7 +381,7 @@ public sealed class MainViewModel : INotifyPropertyChanged, IDisposable
     {
       if (_settings.Theme == value) return;
       _settings.Theme = value;
-      Notify(nameof(Theme), nameof(ThemeIndex));
+      Notify(nameof(Theme), nameof(ThemeIndex), nameof(SystemThemeSelected), nameof(LightThemeSelected), nameof(DarkThemeSelected));
       _themes.Apply(value, Application.Current?.MainWindow);
       QueueSettingsSave();
     }
@@ -367,6 +391,26 @@ public sealed class MainViewModel : INotifyPropertyChanged, IDisposable
   {
     get => (int)Theme;
     set { if (Enum.IsDefined(typeof(ThemeMode), value)) Theme = (ThemeMode)value; }
+  }
+
+  public void ApplyTheme(Window window) => _themes.Apply(Theme, window);
+
+  public bool SystemThemeSelected
+  {
+    get => Theme == ThemeMode.System;
+    set { if (value) Theme = ThemeMode.System; }
+  }
+
+  public bool LightThemeSelected
+  {
+    get => Theme == ThemeMode.Light;
+    set { if (value) Theme = ThemeMode.Light; }
+  }
+
+  public bool DarkThemeSelected
+  {
+    get => Theme == ThemeMode.Dark;
+    set { if (value) Theme = ThemeMode.Dark; }
   }
 
   public DisplayLanguageMode DisplayLanguage
@@ -598,7 +642,15 @@ public sealed class MainViewModel : INotifyPropertyChanged, IDisposable
     await CreateBackupNowAsync();
     _startup.SetEnabled(false);
     var disclosureConfirmed = _settings.StatisticsDisclosureConfirmed;
-    _settings = new AppSettings { StatisticsDisclosureConfirmed = disclosureConfirmed };
+    var disclosureVersion = _settings.StatisticsDisclosureVersion;
+    var challengeDisclosureConfirmed = _settings.TypingChallengeDisclosureConfirmed;
+    _settings = new AppSettings
+    {
+      StatisticsDisclosureConfirmed = disclosureConfirmed,
+      StatisticsDisclosureVersion = disclosureVersion,
+      TypingChallengeDisclosureConfirmed = challengeDisclosureConfirmed
+    };
+    TypingChallenges?.UpdateSettings(_settings);
     ExcludedExecutables.Clear();
     StatisticsExcludedExecutables.Clear();
     AllowedIntegrationClients.Clear();
@@ -650,6 +702,7 @@ public sealed class MainViewModel : INotifyPropertyChanged, IDisposable
   public void Dispose()
   {
     Statistics?.Dispose();
+    TypingChallenges?.Dispose();
     _rotationTimer.Dispose();
     _saveDebounce?.Cancel();
     _saveDebounce?.Dispose();
@@ -718,6 +771,7 @@ public sealed class MainViewModel : INotifyPropertyChanged, IDisposable
   public async Task ConfirmStatisticsDisclosureAsync(bool keyboardEnabled, bool pointerEnabled)
   {
     _settings.StatisticsDisclosureConfirmed = true;
+    _settings.StatisticsDisclosureVersion = AppSettings.CurrentStatisticsDisclosureVersion;
     _settings.KeyboardStatisticsEnabled = keyboardEnabled;
     _settings.PointerStatisticsEnabled = pointerEnabled;
     _settings.ScrollingStatisticsEnabled = pointerEnabled;
@@ -731,6 +785,13 @@ public sealed class MainViewModel : INotifyPropertyChanged, IDisposable
     Statistics?.Dispose();
     Statistics = new StatisticsViewModel(service, _localization);
     Notify(nameof(Statistics));
+  }
+
+  public void AttachTypingChallenges(TypingChallengeService service, StatisticsService statistics)
+  {
+    TypingChallenges?.Dispose();
+    TypingChallenges = new(service, statistics, _settings, _localization, SaveSettingsNowAsync);
+    Notify(nameof(TypingChallenges));
   }
 
   public void AttachWellness(WellnessService service)
@@ -779,6 +840,8 @@ public sealed class MainViewModel : INotifyPropertyChanged, IDisposable
   public async Task ImportProfileAsync(string path, string? password, bool useImportedMedia)
   {
     _settings = await (_profiles ?? throw new InvalidOperationException("Profile transfer is unavailable.")).ImportAsync(path, password, useImportedMedia);
+    TypingChallenges?.UpdateSettings(_settings);
+    if (TypingChallenges is not null) await TypingChallenges.InitializeAsync();
     ExcludedExecutables.Clear();
     foreach (var executable in _settings.ExcludedExecutables) ExcludedExecutables.Add(executable);
     StatisticsExcludedExecutables.Clear();
@@ -1081,6 +1144,7 @@ public sealed class MainViewModel : INotifyPropertyChanged, IDisposable
     if (_capturedInput is not null) LoadMappingEditor();
     else MappingSound = _localization.Get("BuiltInSoundPool");
     Statistics?.RefreshLocalization();
+    TypingChallenges?.RefreshLocalization();
 
     Notify(
       nameof(DisplayLanguage), nameof(DisplayLanguageIndex), nameof(DisplayLanguages), nameof(Theme), nameof(ThemeIndex),
@@ -1103,7 +1167,8 @@ public sealed class MainViewModel : INotifyPropertyChanged, IDisposable
     nameof(Settings), nameof(DisplayName), nameof(AppTitle), nameof(SoundsEnabled), nameof(SoundStateText), nameof(SoundStateDescription),
     nameof(KeyboardEnabled), nameof(PointerEnabled), nameof(WheelEnabled), nameof(ResultSoundsEnabled), nameof(LaunchAtStartup),
     nameof(StartMinimized), nameof(CloseToTray), nameof(PauseInFullscreen), nameof(ReducedMotion), nameof(IntegrationApiEnabled),
-      nameof(NormalizeImports), nameof(Theme), nameof(ThemeIndex), nameof(ThemeModes), nameof(DisplayLanguage),
+      nameof(NormalizeImports), nameof(SoundPackListView), nameof(SoundPackGridView),
+      nameof(Theme), nameof(ThemeIndex), nameof(ThemeModes), nameof(SystemThemeSelected), nameof(LightThemeSelected), nameof(DarkThemeSelected), nameof(DisplayLanguage),
       nameof(KeyboardStatisticsEnabled), nameof(PointerStatisticsEnabled), nameof(ScrollingStatisticsEnabled),
       nameof(WellnessEnabled),
       nameof(BreakReminderEnabled), nameof(BreakReminderActiveMinutes), nameof(BreakReminderRestMinutes),

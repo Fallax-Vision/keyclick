@@ -91,11 +91,22 @@ current-user-only architecture with aggregate statistics and wellness features.
 The original release-only keyboard playback rule is amended: users may choose
 one sound on the first physical key-down or on key-up; typematic repeats never
 play sounds. Pointer playback remains button-up/wheel-detent only. Statistics
-may store aggregate physical-key and pointer counters in time buckets, but never
-typed characters, ordered input history, individual event timestamps,
-foreground-app activity, or UI content. Statistics never enter a network API.
+may store aggregate physical-key and pointer counters in time buckets. A later
+privacy-minimized application breakdown may additionally store only a local
+source-salted application ID, executable filename, and category totals—never a
+raw path or per-key activity for an application. KeyClick never stores typed
+characters, ordered input history, individual event timestamps, or UI content.
+Statistics never enter a network API, and application details are excluded from
+CSV and profile exports.
 All application network activity remains disabled except an explicit manual
 update check and checksum-verified download initiated by the user.
 Closing the application window or choosing Exit from the tray terminates the
 process and therefore stops sound playback and all input statistics capture;
 only minimizing may keep the running app in the tray.
+
+## Post-v1 Continuation: Typing Challenges
+
+The approved private typing-practice continuation is specified in
+[`keyclick-typing-challenges.md`](keyclick-typing-challenges.md). It adds a
+dedicated offline challenge workspace while preserving the aggregate-only
+storage, manual-only networking, and low-resource Raw Input architecture.

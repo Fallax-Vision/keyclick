@@ -7,9 +7,9 @@ using KeyClick.Core;
 
 namespace KeyClick.Infrastructure.Windows;
 
-public sealed class ProfileTransferService(AppPaths paths, IAppStore appStore, IStatisticsStore statisticsStore)
+public sealed class ProfileTransferService(AppPaths paths, IAppStore appStore, IStatisticsStore statisticsStore, ITypingChallengeStore? challengeStore = null)
 {
-  private const int SchemaVersion = 1;
+  private const int SchemaVersion = 2;
   private const long MaxProfileBytes = 500L * 1024 * 1024;
   private static readonly byte[] Header = Encoding.ASCII.GetBytes("KCPROF1\0");
   private static readonly JsonSerializerOptions Json = new(JsonSerializerDefaults.Web)
@@ -20,6 +20,8 @@ public sealed class ProfileTransferService(AppPaths paths, IAppStore appStore, I
 
   public async Task ExportAsync(string destination, ProfileExportOptions options, CancellationToken cancellationToken = default)
   {
+    if (options.ChallengePrompts && string.IsNullOrWhiteSpace(options.Password))
+      throw new InvalidDataException("Saved typing prompts require a password-protected profile.");
     var sections = new List<string>();
     var entries = new Dictionary<string, byte[]>(StringComparer.Ordinal);
     if (options.SettingsAndMappings)
@@ -50,6 +52,14 @@ public sealed class ProfileTransferService(AppPaths paths, IAppStore appStore, I
       AddMedia(entries, paths.Packs, "media/packs", [".json"], cancellationToken);
       AddMedia(entries, paths.Sounds, "media/sounds", [".wav", ".mp3", ".ogg"], cancellationToken);
     }
+    if (options.ChallengeHistory || options.ChallengePrompts)
+    {
+      if (challengeStore is null) throw new InvalidOperationException("Typing challenge transfer is unavailable.");
+      if (options.ChallengeHistory) sections.Add("challenge-history");
+      if (options.ChallengePrompts) sections.Add("challenge-prompts");
+      entries["challenges.json"] = JsonSerializer.SerializeToUtf8Bytes(
+        await challengeStore.ExportTypingChallengesAsync(options.ChallengeHistory, options.ChallengePrompts, cancellationToken), Json);
+    }
 
     var hashes = entries.ToDictionary(item => item.Key, item => Convert.ToHexString(SHA256.HashData(item.Value)).ToLowerInvariant(), StringComparer.Ordinal);
     var manifest = new ProfileManifest(SchemaVersion, DateTimeOffset.UtcNow, typeof(ProfileTransferService).Assembly.GetName().Version?.ToString(3) ?? "1.0.0", sections, !string.IsNullOrEmpty(options.Password), hashes);
@@ -75,13 +85,22 @@ public sealed class ProfileTransferService(AppPaths paths, IAppStore appStore, I
     using var zip = new ZipArchive(new MemoryStream(archive, false), ZipArchiveMode.Read);
     ValidateEntries(zip);
     var manifest = await ReadJsonAsync<ProfileManifest>(zip, "manifest.json", cancellationToken) ?? throw new InvalidDataException("The profile manifest is missing.");
-    if (manifest.SchemaVersion != SchemaVersion) throw new InvalidDataException("This profile schema version is not supported.");
+    if (manifest.SchemaVersion is < 1 or > SchemaVersion) throw new InvalidDataException("This profile schema version is not supported.");
     VerifyHashes(zip, manifest);
     var mediaCount = zip.Entries.Count(entry => entry.FullName.StartsWith("media/", StringComparison.Ordinal));
     long buckets = 0;
     if (manifest.Sections.Contains("statistics", StringComparer.Ordinal) && zip.GetEntry("statistics.json") is not null)
       buckets = (await ReadJsonAsync<StatisticsTransferBundle>(zip, "statistics.json", cancellationToken))?.Summaries.Count ?? 0;
-    return new(manifest, manifest.Sections, mediaCount, buckets, manifest.PasswordProtected);
+    long challengeResults = 0;
+    long savedPrompts = 0;
+    if ((manifest.Sections.Contains("challenge-history", StringComparer.Ordinal) || manifest.Sections.Contains("challenge-prompts", StringComparer.Ordinal))
+      && zip.GetEntry("challenges.json") is not null)
+    {
+      var challenges = await ReadJsonAsync<TypingChallengeTransferBundle>(zip, "challenges.json", cancellationToken);
+      challengeResults = challenges?.Results.Count ?? 0;
+      savedPrompts = challenges?.Prompts.Count ?? 0;
+    }
+    return new(manifest, manifest.Sections, mediaCount, buckets, manifest.PasswordProtected, challengeResults, savedPrompts);
   }
 
   public async Task<AppSettings> ImportAsync(string source, string? password, bool useImportedMediaOnConflict, CancellationToken cancellationToken = default)
@@ -90,7 +109,7 @@ public sealed class ProfileTransferService(AppPaths paths, IAppStore appStore, I
     using var zip = new ZipArchive(new MemoryStream(archive, false), ZipArchiveMode.Read);
     ValidateEntries(zip);
     var manifest = await ReadJsonAsync<ProfileManifest>(zip, "manifest.json", cancellationToken) ?? throw new InvalidDataException("The profile manifest is missing.");
-    if (manifest.SchemaVersion != SchemaVersion) throw new InvalidDataException("This profile schema version is not supported.");
+    if (manifest.SchemaVersion is < 1 or > SchemaVersion) throw new InvalidDataException("This profile schema version is not supported.");
     VerifyHashes(zip, manifest);
 
     var local = await appStore.LoadSettingsAsync(cancellationToken);
@@ -110,6 +129,15 @@ public sealed class ProfileTransferService(AppPaths paths, IAppStore appStore, I
     }
     if (manifest.Sections.Contains("custom-packs-audio", StringComparer.Ordinal))
       await ImportMediaAsync(zip, useImportedMediaOnConflict, cancellationToken);
+    if (manifest.Sections.Contains("challenge-history", StringComparer.Ordinal) || manifest.Sections.Contains("challenge-prompts", StringComparer.Ordinal))
+    {
+      if (challengeStore is null) throw new InvalidOperationException("Typing challenge transfer is unavailable.");
+      var bundle = await ReadJsonAsync<TypingChallengeTransferBundle>(zip, "challenges.json", cancellationToken)
+        ?? throw new InvalidDataException("The typing challenge section is invalid.");
+      await challengeStore.ImportTypingChallengesAsync(bundle,
+        manifest.Sections.Contains("challenge-history", StringComparer.Ordinal),
+        manifest.Sections.Contains("challenge-prompts", StringComparer.Ordinal), cancellationToken);
+    }
     return local;
   }
 
@@ -151,6 +179,7 @@ public sealed class ProfileTransferService(AppPaths paths, IAppStore appStore, I
     local.Theme = imported.Theme;
     local.DisplayLanguage = imported.DisplayLanguage;
     local.KeyboardSoundTiming = imported.KeyboardSoundTiming;
+    local.SoundPackViewMode = imported.SoundPackViewMode;
     local.ActivePackId = imported.ActivePackId;
     local.MasterVolume = imported.MasterVolume;
     local.KeyboardVolume = imported.KeyboardVolume;
@@ -160,6 +189,10 @@ public sealed class ProfileTransferService(AppPaths paths, IAppStore appStore, I
     local.KeyboardStatisticsEnabled = imported.KeyboardStatisticsEnabled;
     local.PointerStatisticsEnabled = imported.PointerStatisticsEnabled;
     local.ScrollingStatisticsEnabled = imported.ScrollingStatisticsEnabled;
+    local.IncludeChallengeTypingInStatistics = imported.IncludeChallengeTypingInStatistics;
+    local.TypingChallengeGoalWordsPerMinute = imported.TypingChallengeGoalWordsPerMinute;
+    local.TypingChallengeGoalAccuracy = imported.TypingChallengeGoalAccuracy;
+    local.FavoriteTypingChallengeIds = [.. imported.FavoriteTypingChallengeIds];
     local.WellnessEnabled = imported.WellnessEnabled;
     local.BreakReminderEnabled = imported.BreakReminderEnabled;
     local.BreakReminderActiveMinutes = imported.BreakReminderActiveMinutes;

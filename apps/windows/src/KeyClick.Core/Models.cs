@@ -13,12 +13,30 @@ public enum KeyVariant { Base, Shift, AltGr, Enabled, Disabled }
 public enum SoundOutcome { Success, Failure, Authorized, Blocked }
 public enum ShortcutScope { App, Global }
 public enum ShortcutKind { Chord, Sequence }
-public enum StatisticsPeriod { Today, SevenDays, ThirtyDays, ThisMonth, ThisYear, AllTime, Custom }
+public enum StatisticsPeriod
+{
+  Today,
+  SevenDays,
+  ThirtyDays,
+  ThisMonth,
+  ThisYear,
+  AllTime,
+  Custom,
+  LastThirtyMinutes,
+  LastHour,
+  LastFiveHours
+}
 public enum StatisticsComparison { None, PreviousPeriod, PreviousYear }
 public enum StatisticsCategory { Keyboard, Pointer, Scrolling }
 public enum PackRotationInterval { OneMinute, TenMinutes, ThirtyMinutes, OneHour, OneDay, OneWeek, WindowsBoot, Custom }
 public enum PackRotationPoolMode { AllPacks, SelectedPacks }
+public enum SoundPackViewMode { List, Grid }
 public enum DistributionMode { Installed, Portable }
+public enum TypingChallengeSource { BuiltIn, Custom, FreeWriting }
+public enum TypingChallengeRunMode { PassageCompletion, SinglePassageTimed, ContinuousTimed, FreeWriting }
+public enum TypingChallengeMistakeMode { Flow, Strict }
+public enum TypingChallengeDifficulty { Easy, Medium, Hard }
+public enum TypingChallengeComparisonMode { None, PreviousSimilar, PersonalBest, SelectedResult, NormalStatistics }
 
 public enum InputGroup
 {
@@ -82,6 +100,134 @@ public sealed record StatisticsBreakdown(
   InputGroup Group,
   long Count);
 
+public sealed record ApplicationStatisticsRow(
+  string ApplicationId,
+  string DisplayName,
+  long KeyboardPresses,
+  long PointerClicks,
+  long VerticalScroll,
+  long HorizontalScroll)
+{
+  public string FriendlyName => DisplayName.ToLowerInvariant() switch
+  {
+    "brave" => "Brave",
+    "chrome" => "Chrome",
+    "firefox" => "Firefox",
+    "msedge" => "Microsoft Edge",
+    "vlc" => "VLC",
+    "explorer" => "File Explorer",
+    "code" => "Visual Studio Code",
+    "devenv" => "Visual Studio",
+    "winword" => "Microsoft Word",
+    "excel" => "Microsoft Excel",
+    "powerpnt" => "Microsoft PowerPoint",
+    "obs64" => "OBS Studio",
+    "teams" or "ms-teams" => "Microsoft Teams",
+    _ => CultureInfo.CurrentCulture.TextInfo.ToTitleCase(DisplayName.Replace('_', ' ').Replace('-', ' '))
+  };
+  public string ExecutableName => DisplayName.EndsWith(".exe", StringComparison.OrdinalIgnoreCase) ? DisplayName : $"{DisplayName}.exe";
+  public long Scrolling => VerticalScroll + HorizontalScroll;
+  public long TotalActivity => KeyboardPresses + PointerClicks + VerticalScroll + HorizontalScroll;
+}
+
+public sealed record TypingChallengeDefinition(
+  string Id,
+  string Title,
+  string Text,
+  string Language,
+  TypingChallengeDifficulty Difficulty,
+  TypingChallengeSource Source,
+  bool IsFavorite = false);
+
+public sealed record TypingChallengeSample(
+  int IntervalIndex,
+  long CharacterAttempts,
+  long CorrectCharacters,
+  long Errors,
+  double NetWordsPerMinute);
+
+public sealed record TypingChallengeResult(
+  string Id,
+  string SourceId,
+  DateTimeOffset CompletedUtc,
+  TypingChallengeSource Source,
+  string? PromptId,
+  string PromptTitle,
+  string Language,
+  TypingChallengeDifficulty Difficulty,
+  TypingChallengeRunMode RunMode,
+  TypingChallengeMistakeMode MistakeMode,
+  int? DurationLimitSeconds,
+  long ActiveMilliseconds,
+  long CharacterAttempts,
+  long CorrectCharacters,
+  long ErrorAttempts,
+  long Corrections,
+  long RetainedCharacters,
+  long Words,
+  double GrossWordsPerMinute,
+  double NetWordsPerMinute,
+  double AccuracyPercent,
+  double ConsistencyPercent,
+  bool ReferenceTextCompleted,
+  bool ValidForStreak,
+  double GoalWordsPerMinuteSnapshot,
+  double GoalAccuracySnapshot,
+  long Revision,
+  IReadOnlyList<TypingChallengeSample> Samples);
+
+public sealed record TypingChallengeQuery(
+  DateTimeOffset StartUtc,
+  DateTimeOffset EndUtc,
+  TypingChallengeSource? Source = null,
+  TypingChallengeRunMode? RunMode = null);
+
+public sealed record TypingChallengeComparison(
+  TypingChallengeResult Current,
+  TypingChallengeResult? PreviousSimilar,
+  TypingChallengeResult? PersonalBest,
+  TypingChallengeResult? SelectedResult,
+  StatisticsSnapshot? NormalStatistics);
+
+public sealed record TypingChallengeStreakSnapshot(
+  int ParticipationCurrent,
+  int ParticipationLongest,
+  int PerformanceCurrent,
+  int PerformanceLongest);
+
+public sealed record TypingChallengeDeleteRequest(
+  IReadOnlySet<string> ResultIds,
+  DateTimeOffset? StartUtc,
+  DateTimeOffset? EndUtc,
+  bool DeleteAchievements,
+  bool CreateSafetyBackup = true,
+  bool DeleteResults = true);
+
+public sealed record SavedTypingPrompt(
+  string Id,
+  string Title,
+  string Text,
+  string Language,
+  TypingChallengeDifficulty Difficulty,
+  bool IsFavorite,
+  DateTimeOffset CreatedUtc,
+  DateTimeOffset UpdatedUtc,
+  long Revision);
+
+public sealed record TypingChallengeAchievement(
+  string Id,
+  string Kind,
+  DateOnly LocalDate,
+  string ResultId,
+  double GoalWordsPerMinuteSnapshot,
+  double GoalAccuracySnapshot,
+  DateTimeOffset AchievedUtc);
+
+public sealed record TypingChallengeTransferBundle(
+  IReadOnlyList<TypingChallengeResult> Results,
+  IReadOnlyList<SavedTypingPrompt> Prompts,
+  IReadOnlyList<TypingChallengeAchievement> Achievements);
+
 public sealed record StatisticsSnapshot(
   StatisticsQuery Query,
   long KeyboardPresses,
@@ -112,7 +258,9 @@ public sealed record StatisticsDeleteRequest(
   DateTimeOffset? EndUtc,
   IReadOnlySet<StatisticsCategory> Categories,
   bool DeleteWellnessAchievements,
-  bool CreateSafetyBackup = true);
+  bool CreateSafetyBackup = true,
+  bool DeleteTypingChallengeResults = false,
+  bool DeleteTypingChallengeAchievements = false);
 
 public sealed record PackRotationPolicy
 {
@@ -189,6 +337,8 @@ public sealed record ProfileExportOptions(
   bool CustomPacksAndAudio = false,
   bool Statistics = false,
   bool WellnessAchievements = false,
+  bool ChallengeHistory = false,
+  bool ChallengePrompts = false,
   string? Password = null);
 
 public sealed record ProfileImportPreview(
@@ -196,7 +346,9 @@ public sealed record ProfileImportPreview(
   IReadOnlyList<string> Sections,
   int MediaFileCount,
   long StatisticsBucketCount,
-  bool RequiresPassword);
+  bool RequiresPassword,
+  long ChallengeResultCount = 0,
+  long SavedPromptCount = 0);
 
 public readonly record struct SoundTrigger(
   string SampleId,
@@ -281,6 +433,7 @@ public sealed record ShortcutBinding(
 
 public sealed class AppSettings
 {
+  public const int CurrentStatisticsDisclosureVersion = 2;
   public string DisplayName { get; set; } = "KeyClick";
   public bool SoundsEnabled { get; set; } = true;
   public bool KeyboardEnabled { get; set; } = true;
@@ -295,9 +448,15 @@ public sealed class AppSettings
   public bool IntegrationApiEnabled { get; set; }
   public bool NormalizeImports { get; set; } = true;
   public bool StatisticsDisclosureConfirmed { get; set; }
+  public int StatisticsDisclosureVersion { get; set; }
   public bool KeyboardStatisticsEnabled { get; set; } = true;
   public bool PointerStatisticsEnabled { get; set; } = true;
   public bool ScrollingStatisticsEnabled { get; set; } = true;
+  public bool IncludeChallengeTypingInStatistics { get; set; }
+  public bool TypingChallengeDisclosureConfirmed { get; set; }
+  public double TypingChallengeGoalWordsPerMinute { get; set; } = 40;
+  public double TypingChallengeGoalAccuracy { get; set; } = 95;
+  public List<string> FavoriteTypingChallengeIds { get; set; } = [];
   public bool WellnessEnabled { get; set; }
   public bool BreakReminderEnabled { get; set; }
   public int BreakReminderActiveMinutes { get; set; } = 60;
@@ -311,9 +470,10 @@ public sealed class AppSettings
   public ThemeMode Theme { get; set; } = ThemeMode.System;
   public DisplayLanguageMode DisplayLanguage { get; set; } = DisplayLanguageMode.System;
   public KeyboardSoundTiming KeyboardSoundTiming { get; set; } = KeyboardSoundTiming.KeyDown;
+  public SoundPackViewMode SoundPackViewMode { get; set; } = SoundPackViewMode.Grid;
   public string ActivePackId { get; set; } = BuiltInCatalog.DefaultPackId;
   public string OutputDeviceId { get; set; } = "default";
-  public float MasterVolume { get; set; } = 0.35f;
+  public float MasterVolume { get; set; } = 0.30f;
   public float KeyboardVolume { get; set; } = 1.0f;
   public float PointerVolume { get; set; } = 0.80f;
   public float ResultVolume { get; set; } = 1.0f;

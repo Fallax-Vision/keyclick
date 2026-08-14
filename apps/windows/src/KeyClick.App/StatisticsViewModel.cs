@@ -11,6 +11,20 @@ public sealed record StatisticRow(string Label, long Count, string Detail = "");
 
 public sealed class StatisticsViewModel : INotifyPropertyChanged, IDisposable
 {
+  private static readonly StatisticsPeriod[] PeriodValues =
+  [
+    StatisticsPeriod.Today,
+    StatisticsPeriod.LastThirtyMinutes,
+    StatisticsPeriod.LastHour,
+    StatisticsPeriod.LastFiveHours,
+    StatisticsPeriod.SevenDays,
+    StatisticsPeriod.ThirtyDays,
+    StatisticsPeriod.ThisMonth,
+    StatisticsPeriod.ThisYear,
+    StatisticsPeriod.AllTime,
+    StatisticsPeriod.Custom
+  ];
+  private static readonly StatisticsPeriod[] HeatmapPeriodValues = PeriodValues.Where(value => value != StatisticsPeriod.Custom).ToArray();
   private readonly StatisticsService _service;
   private readonly LocalizationService _localization;
   private CancellationTokenSource? _visibleRefresh;
@@ -26,6 +40,7 @@ public sealed class StatisticsViewModel : INotifyPropertyChanged, IDisposable
   private bool _heatmapLoading;
   private bool _heatmapRefreshPending;
   private bool _heatmapVisible;
+  private bool _applicationsVisible;
   private bool _heatmapTooltipsEnabled = true;
 
   public StatisticsViewModel(StatisticsService service, LocalizationService localization)
@@ -37,7 +52,8 @@ public sealed class StatisticsViewModel : INotifyPropertyChanged, IDisposable
   public event PropertyChangedEventHandler? PropertyChanged;
   public IReadOnlyList<string> PeriodOptions =>
   [
-    _localization.Get("PeriodToday"), _localization.Get("PeriodSevenDays"), _localization.Get("PeriodThirtyDays"),
+    _localization.Get("PeriodToday"), _localization.Get("PeriodLastThirtyMinutes"), _localization.Get("PeriodLastHour"),
+    _localization.Get("PeriodLastFiveHours"), _localization.Get("PeriodSevenDays"), _localization.Get("PeriodThirtyDays"),
     _localization.Get("PeriodThisMonth"), _localization.Get("PeriodThisYear"), _localization.Get("PeriodAllTime"), _localization.Get("PeriodCustom")
   ];
   public IReadOnlyList<string> ComparisonOptions =>
@@ -46,7 +62,8 @@ public sealed class StatisticsViewModel : INotifyPropertyChanged, IDisposable
   ];
   public IReadOnlyList<string> HeatmapPeriodOptions =>
   [
-    _localization.Get("PeriodToday"), _localization.Get("PeriodSevenDays"), _localization.Get("PeriodThirtyDays"),
+    _localization.Get("PeriodToday"), _localization.Get("PeriodLastThirtyMinutes"), _localization.Get("PeriodLastHour"),
+    _localization.Get("PeriodLastFiveHours"), _localization.Get("PeriodSevenDays"), _localization.Get("PeriodThirtyDays"),
     _localization.Get("PeriodThisMonth"), _localization.Get("PeriodThisYear"), _localization.Get("PeriodAllTime")
   ];
   public IReadOnlyList<string> PointerDeviceFilterOptions =>
@@ -56,6 +73,7 @@ public sealed class StatisticsViewModel : INotifyPropertyChanged, IDisposable
   ];
   public ObservableCollection<StatisticRow> PointerRows { get; } = [];
   public ObservableCollection<StatisticRow> KeyboardRows { get; } = [];
+  public ObservableCollection<ApplicationStatisticsRow> ApplicationRows { get; } = [];
   public StatisticsSnapshot? Snapshot { get => _snapshot; private set { _snapshot = value; Notify(); NotifyMetrics(); } }
   public StatisticsSnapshot? HeatmapSnapshot { get => _heatmapSnapshot; private set { _heatmapSnapshot = value; Notify(); } }
   public bool IsLoading { get => _loading; private set { _loading = value; Notify(); } }
@@ -67,8 +85,8 @@ public sealed class StatisticsViewModel : INotifyPropertyChanged, IDisposable
     set
     {
       if (_periodIndex == value) return;
-      _periodIndex = Math.Clamp(value, 0, 6);
-      if (_periodIndex == (int)StatisticsPeriod.AllTime) _comparisonIndex = 0;
+      _periodIndex = Math.Clamp(value, 0, PeriodValues.Length - 1);
+      if (SelectedPeriod == StatisticsPeriod.AllTime) _comparisonIndex = 0;
       Notify();
       Notify(nameof(CustomDatesVisible), nameof(ComparisonEnabled), nameof(ComparisonIndex));
       _ = RefreshAsync();
@@ -88,13 +106,13 @@ public sealed class StatisticsViewModel : INotifyPropertyChanged, IDisposable
     }
   }
 
-  public bool ComparisonEnabled => PeriodIndex != (int)StatisticsPeriod.AllTime;
+  public bool ComparisonEnabled => SelectedPeriod != StatisticsPeriod.AllTime;
   public int HeatmapPeriodIndex
   {
     get => _heatmapPeriodIndex;
     set
     {
-      var next = Math.Clamp(value, 0, 5);
+      var next = Math.Clamp(value, 0, HeatmapPeriodValues.Length - 1);
       if (_heatmapPeriodIndex == next) return;
       _heatmapPeriodIndex = next;
       Notify();
@@ -118,7 +136,7 @@ public sealed class StatisticsViewModel : INotifyPropertyChanged, IDisposable
       RebuildPointerRows();
     }
   }
-  public bool CustomDatesVisible => PeriodIndex == (int)StatisticsPeriod.Custom;
+  public bool CustomDatesVisible => SelectedPeriod == StatisticsPeriod.Custom;
   public DateTime? CustomStart { get => _customStart; set { _customStart = value; Notify(); _ = RefreshAsync(); } }
   public DateTime? CustomEnd { get => _customEnd; set { _customEnd = value; Notify(); _ = RefreshAsync(); } }
 
@@ -153,15 +171,31 @@ public sealed class StatisticsViewModel : INotifyPropertyChanged, IDisposable
     if (visible) _ = RefreshHeatmapAsync();
   }
 
+  public void SetApplicationsVisible(bool visible)
+  {
+    if (_applicationsVisible == visible) return;
+    _applicationsVisible = visible;
+    if (visible) _ = RefreshApplicationsAsync();
+  }
+
   public async Task RefreshAsync(CancellationToken cancellationToken = default)
   {
     if (IsLoading) return;
     IsLoading = true;
     try
     {
-      Snapshot = await _service.QueryAsync(CreateQuery(), cancellationToken);
+      var query = CreateQuery();
+      Snapshot = await _service.QueryAsync(query, cancellationToken);
       RebuildBreakdowns();
-      if (_heatmapVisible) await RefreshHeatmapAsync(cancellationToken);
+      if (_heatmapVisible)
+      {
+        var heatmapQuery = CreateHeatmapQuery();
+        if (heatmapQuery.StartUtc == query.StartUtc && heatmapQuery.EndUtc == query.EndUtc)
+          HeatmapSnapshot = Snapshot;
+        else
+          await RefreshHeatmapAsync(cancellationToken);
+      }
+      if (_applicationsVisible) await RefreshApplicationsAsync(query, cancellationToken);
       Notify(nameof(QueueDiagnostics));
     }
     catch (OperationCanceledException) { }
@@ -195,6 +229,9 @@ public sealed class StatisticsViewModel : INotifyPropertyChanged, IDisposable
     finally { _heatmapLoading = false; }
   }
 
+  public Task RefreshApplicationsAsync(CancellationToken cancellationToken = default) =>
+    RefreshApplicationsAsync(CreateQuery(), cancellationToken);
+
   public void RefreshLocalization()
   {
     Notify(nameof(PeriodOptions), nameof(ComparisonOptions), nameof(HeatmapPeriodOptions), nameof(PointerDeviceFilterOptions), nameof(QueueDiagnostics));
@@ -215,7 +252,7 @@ public sealed class StatisticsViewModel : INotifyPropertyChanged, IDisposable
       while (!cancellationToken.IsCancellationRequested)
       {
         await RefreshAsync(cancellationToken);
-        await Task.Delay(TimeSpan.FromSeconds(5), cancellationToken);
+        await Task.Delay(TimeSpan.FromSeconds(1), cancellationToken);
       }
     }
     catch (OperationCanceledException) { }
@@ -223,22 +260,37 @@ public sealed class StatisticsViewModel : INotifyPropertyChanged, IDisposable
 
   private StatisticsQuery CreateQuery()
   {
-    var (start, end) = CreateRange((StatisticsPeriod)PeriodIndex);
+    var (start, end) = CreateRange(SelectedPeriod);
     var comparison = ComparisonEnabled ? (StatisticsComparison)ComparisonIndex : StatisticsComparison.None;
     return new(ToUtc(start), ToUtc(end), comparison);
   }
 
+  private async Task RefreshApplicationsAsync(StatisticsQuery query, CancellationToken cancellationToken)
+  {
+    try
+    {
+      var rows = await _service.QueryApplicationAsync(query with { Comparison = StatisticsComparison.None }, cancellationToken);
+      ApplicationRows.Clear();
+      foreach (var row in rows) ApplicationRows.Add(row);
+    }
+    catch (OperationCanceledException) { }
+  }
+
   private StatisticsQuery CreateHeatmapQuery()
   {
-    var (start, end) = CreateRange((StatisticsPeriod)HeatmapPeriodIndex);
+    var (start, end) = CreateRange(HeatmapPeriodValues[HeatmapPeriodIndex]);
     return new(ToUtc(start), ToUtc(end));
   }
 
   private (DateTime Start, DateTime End) CreateRange(StatisticsPeriod period)
   {
-    var today = DateTime.Today;
+    var now = DateTime.Now;
+    var today = now.Date;
     var (start, end) = period switch
     {
+      StatisticsPeriod.LastThirtyMinutes => (now.AddMinutes(-30), now),
+      StatisticsPeriod.LastHour => (now.AddHours(-1), now),
+      StatisticsPeriod.LastFiveHours => (now.AddHours(-5), now),
       StatisticsPeriod.Today => (today, today.AddDays(1)),
       StatisticsPeriod.SevenDays => (today.AddDays(-6), today.AddDays(1)),
       StatisticsPeriod.ThirtyDays => (today.AddDays(-29), today.AddDays(1)),
@@ -250,6 +302,8 @@ public sealed class StatisticsViewModel : INotifyPropertyChanged, IDisposable
     if (end <= start) end = start.AddDays(1);
     return (start, end);
   }
+
+  private StatisticsPeriod SelectedPeriod => PeriodValues[PeriodIndex];
 
   private void RebuildBreakdowns()
   {

@@ -24,6 +24,7 @@ public partial class App : Application
   private XAudio2SoundEngine? _audio;
   private RawInputService? _rawInput;
   private StatisticsService? _statistics;
+  private TypingChallengeService? _typingChallenges;
   private WellnessService? _wellness;
   private GlobalShortcutService? _shortcuts;
   private OutcomePipeServer? _outcomePipe;
@@ -92,8 +93,6 @@ public partial class App : Application
           ?? @"C:\wamp64\www\fallax_projects\lab\keyclick\artifacts";
         _ = _viewModel.DiscoverLocalUpdateAsync(localArtifacts);
       }
-      _viewModel.AttachProfiles(new ProfileTransferService(Paths, _store, _store));
-
       if (!_viewModel.StatisticsDisclosureConfirmed)
       {
         var disclosure = new PrivacyDisclosureWindow();
@@ -103,6 +102,10 @@ public partial class App : Application
       }
       _statistics = new StatisticsService(_store, _viewModel.Settings);
       _viewModel.AttachStatistics(_statistics);
+      _typingChallenges = new TypingChallengeService(_store, _store);
+      _viewModel.AttachTypingChallenges(_typingChallenges, _statistics);
+      await _viewModel.TypingChallenges!.InitializeAsync();
+      _viewModel.AttachProfiles(new ProfileTransferService(Paths, _store, _store, _store));
       _wellness = new WellnessService(_store, _viewModel.Settings);
       _viewModel.AttachWellness(_wellness);
       await _wellness.InitializeAsync();
@@ -114,8 +117,14 @@ public partial class App : Application
       _viewModel.LanguageChanged += (_, _) => UpdateTrayLanguage();
       _rawInput.InputAction += (_, input) =>
       {
-        _statistics.TryRecord(input);
-        _wellness.TryRecord(input);
+        var suppressChallengeKeyboard = input.Input.Kind == InputKind.KeyboardKey
+          && _typingChallenges?.IsSessionActive == true
+          && !_viewModel.Settings.IncludeChallengeTypingInStatistics;
+        if (!suppressChallengeKeyboard)
+        {
+          _statistics.TryRecord(input);
+          _wellness.TryRecord(input);
+        }
         _viewModel.HandleInputAction(input);
       };
       _rawInput.DeviceChanged += (_, device) => _viewModel.HandleDeviceChanged(device);

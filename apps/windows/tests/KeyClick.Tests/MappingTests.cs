@@ -58,6 +58,53 @@ public sealed class MappingTests
   }
 
   [Fact]
+  public void Wheel_sound_is_independent_from_pointer_button_sound()
+  {
+    var wheel = new InputActionEvent(
+      new InputIdentity(InputKind.Wheel, 6, DeviceFamily: DeviceFamily.ExternalMouse),
+      0,
+      KeyVariant.Base,
+      InputGroup.Wheel,
+      InputPhase.WheelDetent,
+      42);
+    var settings = new AppSettings
+    {
+      SoundsEnabled = true,
+      PointerEnabled = false,
+      WheelEnabled = true
+    };
+
+    var result = new SoundMappingResolver().Resolve(settings, Pack, wheel, null, null);
+
+    Assert.True(result.Enabled);
+    Assert.NotEmpty(result.SampleIds);
+    Assert.True(result.Gain > 0);
+  }
+
+  [Fact]
+  public void Disabled_wheel_sound_stays_silent_when_pointer_buttons_are_enabled()
+  {
+    var wheel = new InputActionEvent(
+      new InputIdentity(InputKind.Wheel, 7, DeviceFamily: DeviceFamily.ExternalMouse),
+      0,
+      KeyVariant.Base,
+      InputGroup.Wheel,
+      InputPhase.WheelDetent,
+      42);
+    var settings = new AppSettings
+    {
+      SoundsEnabled = true,
+      PointerEnabled = true,
+      WheelEnabled = false
+    };
+
+    var result = new SoundMappingResolver().Resolve(settings, Pack, wheel, null, null);
+
+    Assert.False(result.Enabled);
+    Assert.Empty(result.SampleIds);
+  }
+
+  [Fact]
   public void Physical_input_always_selects_the_same_sample()
   {
     var resolver = new SoundMappingResolver();

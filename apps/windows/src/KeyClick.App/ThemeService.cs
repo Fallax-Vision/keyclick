@@ -31,7 +31,7 @@ public sealed class ThemeService : IDisposable
     SetBrush("TextBrush", dark ? "#F5F5F5" : "#151815");
     SetBrush("MutedTextBrush", dark ? "#9EA3A8" : "#626962");
     SetBrush("BorderBrush", dark ? "#2D2D2D" : "#D9DED9");
-    SetBrush("AccentBrush", "#35E04B");
+    SetBrush("AccentBrush", dark ? "#2ABF3F" : "#35E04B");
     SetBrush("AccentTextBrush", "#000000");
     SetBrush("DangerBrush", dark ? "#D95B5B" : "#B52727");
     SetBrush("SelectionBrush", dark ? "#173A1C" : "#D9F6DD");

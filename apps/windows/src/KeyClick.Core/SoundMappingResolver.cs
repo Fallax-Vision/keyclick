@@ -14,7 +14,7 @@ public sealed class SoundMappingResolver
     {
       InputKind.KeyboardKey => settings.KeyboardEnabled,
       InputKind.PointerButton => settings.PointerEnabled,
-      InputKind.Wheel => settings.PointerEnabled && settings.WheelEnabled,
+      InputKind.Wheel => settings.WheelEnabled,
       _ => false
     };
 

@@ -33,6 +33,8 @@
         <CheckBox x:Name="PointerCategory" Content="{DynamicResource DeletePointerCategory}" IsChecked="True" />
         <CheckBox x:Name="ScrollingCategory" Content="{DynamicResource DeleteScrollingCategory}" IsChecked="True" />
         <CheckBox x:Name="AchievementsCategory" Content="{DynamicResource WellnessAchievements}" />
+        <CheckBox x:Name="ChallengeResultsCategory" Content="{DynamicResource ChallengeHistory}" />
+        <CheckBox x:Name="ChallengeAchievementsCategory" Content="{DynamicResource ChallengeStreakAchievements}" />
       </StackPanel>
     </Border>
     <CheckBox x:Name="SafetyBackup" Content="{DynamicResource CreateSafetyBackup}" IsChecked="True" />

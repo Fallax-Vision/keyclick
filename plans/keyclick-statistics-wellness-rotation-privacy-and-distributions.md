@@ -9,9 +9,12 @@ portable and per-user setup distributions.
 
 Statistics remain independent from sound playback. Keyboard and pointer
 statistics default on after a one-time disclosure; only aggregate physical
-input counts are retained. KeyClick never stores typed characters, ordered
-input history, individual input timestamps, foreground-app activity, or UI
-content, and statistics never leave the device through any network path.
+input counts are retained. A privacy-minimized Applications section may store
+hourly keyboard, pointer, and scrolling totals using a local source-salted app
+ID plus executable filename only; raw paths and app-specific physical-key
+counts are forbidden. KeyClick never stores typed characters, ordered input
+history, individual input timestamps, or UI content, and statistics never leave
+the device through any network path.
 Sounds and statistics run only while the process is alive: choosing Exit in the
 tray or closing the app window flushes pending aggregates, disposes Raw Input
 and audio, and terminates KeyClick. Minimizing may keep the app running in the
@@ -19,8 +22,9 @@ tray when enabled.
 
 ## Product behavior
 
-- Add a Statistics page with Overview, Pointer, Keyboard, and Wellness views.
-  Support Today, 7 days, 30 days, This month, This year, All time, and custom
+- Add a Statistics page with Overview, Pointer, Keyboard, Applications, and
+  Wellness views. Support Today, Last 30 minutes, Last 1 hour, Last 5 hours,
+  7 days, 30 days, This month, This year, All time, and custom
   periods, compared with the previous equivalent period or the same period in
   the previous year.
 - Show colored summary cards, native WPF charts, pointer-button/device-family
@@ -31,6 +35,8 @@ tray when enabled.
   app exclusions, tray pause controls, and manual pointer-device classification.
 - Retain aggregates until the user deletes a chosen period/category or all
   statistics. Offer a checked-by-default safety backup and CSV aggregate export.
+- Keep application totals local-only and UI-only. Never include them in CSV,
+  profile transfer, named-pipe, updater, or any network-facing surface.
 - Add keyboard audio timing. New installs/resets use Key down; existing installs
   migrate to Key up. Ignore typematic repeats. Pointer audio stays release-only.
 - Add sound-pack rotation, disabled by default, with 1/10/30 minutes, 1 hour,
@@ -53,7 +59,8 @@ tray when enabled.
   Never access SQLite from the input callback or write once per input.
 - Add idempotent migration 3 for a random local statistics source, per-input
   hourly buckets, hourly activity summaries, revisions, and wellness
-  achievement snapshots. Keep the database in existing backups.
+  achievement snapshots. Add migration 4 for privacy-minimized per-application
+  category totals. Keep the database in existing backups.
 - Define a versioned `.keyclickprofile` contract under `shared/specs`. Export
   selected transferable preferences/mappings by default and optionally local
   packs/media, aggregates, and achievements. Never export machine paths,
@@ -100,3 +107,9 @@ tray when enabled.
 - Preserve the v1 performance gates: no input-path blocking/database work, idle
   tray CPU below 0.2%, hidden working set below 120 MB, input-to-audio submit p95
   at or below 5 ms, stable rapid-input operation, and no work from pointer motion.
+
+## Continuation: Typing Challenges
+
+The next approved continuation is specified in
+[`keyclick-typing-challenges.md`](keyclick-typing-challenges.md). Challenge
+responses remain memory-only; only local aggregate results may be retained.

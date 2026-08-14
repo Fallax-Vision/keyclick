@@ -8,6 +8,8 @@
 /apps/windows/src/KeyClick.Infrastructure.Windows/RawInputService.cs @askasjeremy
 /apps/windows/src/KeyClick.Infrastructure.Windows/StatisticsService.cs @askasjeremy
 /apps/windows/src/KeyClick.Infrastructure.Windows/WellnessService.cs @askasjeremy
+/apps/windows/src/KeyClick.Core/TypingChallengeSession.cs @askasjeremy
+/apps/windows/src/KeyClick.Infrastructure.Windows/TypingChallengeService.cs @askasjeremy
 /apps/windows/src/KeyClick.Infrastructure.Windows/SqliteAppStore.cs @askasjeremy
 /apps/windows/src/KeyClick.Infrastructure.Windows/ProfileTransferService.cs @askasjeremy
 /PRIVACY.md @askasjeremy

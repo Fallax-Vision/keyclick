@@ -13,7 +13,8 @@
         <CheckBox x:Name="KeyboardToggle" Content="{DynamicResource KeyboardStatistics}" IsChecked="True" FontWeight="SemiBold" />
         <TextBlock Text="{DynamicResource KeyboardStatisticsPrivacyHelp}" Style="{StaticResource MutedText}" Margin="22,2,0,12" TextWrapping="Wrap" />
         <CheckBox x:Name="PointerToggle" Content="{DynamicResource PointerStatistics}" IsChecked="True" FontWeight="SemiBold" />
-        <TextBlock Text="{DynamicResource PointerStatisticsPrivacyHelp}" Style="{StaticResource MutedText}" Margin="22,2,0,0" TextWrapping="Wrap" />
+        <TextBlock Text="{DynamicResource PointerStatisticsPrivacyHelp}" Style="{StaticResource MutedText}" Margin="22,2,0,12" TextWrapping="Wrap" />
+        <TextBlock Text="{DynamicResource ApplicationStatisticsPrivacyHelp}" Style="{StaticResource MutedText}" Margin="22,0,0,0" TextWrapping="Wrap" />
       </StackPanel>
     </Border>
     <TextBlock Text="{DynamicResource StatisticsNeverNetwork}" Foreground="{DynamicResource AccentBrush}" FontWeight="SemiBold" TextWrapping="Wrap" Margin="0,0,0,18" />

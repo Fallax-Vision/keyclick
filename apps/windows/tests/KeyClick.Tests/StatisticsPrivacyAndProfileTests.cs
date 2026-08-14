@@ -13,8 +13,9 @@ public sealed class StatisticsPrivacyAndProfileTests
   {
     var settings = new AppSettings();
     Assert.Equal(BuiltInCatalog.DefaultPackId, settings.ActivePackId);
-    Assert.Equal(0.35f, settings.MasterVolume);
+    Assert.Equal(0.30f, settings.MasterVolume);
     Assert.Equal(KeyboardSoundTiming.KeyDown, settings.KeyboardSoundTiming);
+    Assert.Equal(SoundPackViewMode.Grid, settings.SoundPackViewMode);
     Assert.True(settings.KeyboardStatisticsEnabled);
     Assert.True(settings.PointerStatisticsEnabled);
     Assert.True(settings.ScrollingStatisticsEnabled);
@@ -42,6 +43,23 @@ public sealed class StatisticsPrivacyAndProfileTests
     var loaded = await store.LoadSettingsAsync();
     Assert.Equal(KeyboardSoundTiming.KeyUp, loaded.KeyboardSoundTiming);
     Assert.Equal("clicky-switch", loaded.ActivePackId);
+  }
+
+  [Fact]
+  public async Task Earlier_privacy_confirmation_requires_the_application_statistics_disclosure()
+  {
+    using var folder = new TemporaryFolder();
+    var paths = new AppPaths(folder.Path);
+    await using var store = new SqliteAppStore(paths);
+    await store.InitializeAsync();
+    await using var service = new StatisticsService(store, new AppSettings
+    {
+      StatisticsDisclosureConfirmed = true,
+      StatisticsDisclosureVersion = AppSettings.CurrentStatisticsDisclosureVersion - 1
+    });
+    Assert.False(service.TryRecord(new(
+      new(InputKind.KeyboardKey, 0x1E, DeviceFamily: DeviceFamily.Keyboard),
+      0x41, KeyVariant.Base, InputGroup.Letters, InputPhase.Down, Stopwatch.GetTimestamp(), @"C:\Private\Writer.exe")));
   }
 
   [Fact]
@@ -88,7 +106,11 @@ public sealed class StatisticsPrivacyAndProfileTests
     var paths = new AppPaths(folder.Path);
     await using var store = new SqliteAppStore(paths);
     await store.InitializeAsync();
-    var settings = new AppSettings { StatisticsDisclosureConfirmed = true };
+    var settings = new AppSettings
+    {
+      StatisticsDisclosureConfirmed = true,
+      StatisticsDisclosureVersion = AppSettings.CurrentStatisticsDisclosureVersion
+    };
     var service = new StatisticsService(store, settings);
     Assert.True(service.TryRecord(new(
       new(InputKind.KeyboardKey, 0x1E, DeviceFamily: DeviceFamily.Keyboard),
@@ -97,6 +119,71 @@ public sealed class StatisticsPrivacyAndProfileTests
 
     var snapshot = await store.QueryStatisticsAsync(new(DateTimeOffset.UtcNow.AddHours(-1), DateTimeOffset.UtcNow.AddHours(1)));
     Assert.Equal(1, snapshot.KeyboardPresses);
+  }
+
+  [Fact]
+  public async Task Application_statistics_are_salted_live_local_totals_and_never_enter_profiles()
+  {
+    using var folder = new TemporaryFolder();
+    var paths = new AppPaths(folder.Path);
+    await using var store = new SqliteAppStore(paths);
+    await store.InitializeAsync();
+    var service = new StatisticsService(store, new AppSettings
+    {
+      StatisticsDisclosureConfirmed = true,
+      StatisticsDisclosureVersion = AppSettings.CurrentStatisticsDisclosureVersion
+    });
+    var applicationPath = @"C:\Private\PrivateWriter.exe";
+    var timestamp = Stopwatch.GetTimestamp();
+    Assert.True(service.TryRecord(new(
+      new(InputKind.KeyboardKey, 0x1E, DeviceFamily: DeviceFamily.Keyboard),
+      0x41, KeyVariant.Base, InputGroup.Letters, InputPhase.Down, timestamp, applicationPath)));
+    Assert.True(service.TryRecord(new(
+      new(InputKind.PointerButton, 1, DeviceFamily: DeviceFamily.ExternalMouse),
+      0, KeyVariant.Base, InputGroup.PointerPrimary, InputPhase.Up, timestamp + 1, applicationPath)));
+    Assert.True(service.TryRecord(new(
+      new(InputKind.Wheel, 6, DeviceFamily: DeviceFamily.ExternalMouse),
+      0, KeyVariant.Base, InputGroup.Wheel, InputPhase.WheelDetent, timestamp + 2, applicationPath)));
+
+    var query = new StatisticsQuery(DateTimeOffset.UtcNow.AddHours(-1), DateTimeOffset.UtcNow.AddHours(1));
+    var live = Assert.Single(await service.QueryApplicationAsync(query));
+    Assert.Equal("PrivateWriter", live.DisplayName);
+    Assert.Equal(1, live.KeyboardPresses);
+    Assert.Equal(1, live.PointerClicks);
+    Assert.Equal(1, live.Scrolling);
+    Assert.Equal(64, live.ApplicationId.Length);
+    Assert.DoesNotContain("PrivateWriter", live.ApplicationId, StringComparison.OrdinalIgnoreCase);
+    Assert.Empty(await store.QueryApplicationStatisticsAsync(query));
+    Assert.Equal(1, (await service.QueryAsync(query)).KeyboardPresses);
+
+    await service.DisposeAsync();
+    var stored = Assert.Single(await store.QueryApplicationStatisticsAsync(query));
+    Assert.Equal("PrivateWriter", stored.DisplayName);
+    await using (var connection = new SqliteConnection($"Data Source={paths.Database};Pooling=False"))
+    {
+      await connection.OpenAsync();
+      var command = connection.CreateCommand();
+      command.CommandText = "SELECT COUNT(*) FROM statistics_application_hourly WHERE application_id LIKE '%PrivateWriter%' OR display_name LIKE '%C:%';";
+      Assert.Equal(0L, (long)(await command.ExecuteScalarAsync())!);
+    }
+
+    var profile = Path.Combine(folder.Path, "statistics.keyclickprofile");
+    await new ProfileTransferService(paths, store, store).ExportAsync(profile, new(Statistics: true));
+    using var targetFolder = new TemporaryFolder();
+    var targetPaths = new AppPaths(targetFolder.Path);
+    await using var targetStore = new SqliteAppStore(targetPaths);
+    await targetStore.InitializeAsync();
+    await new ProfileTransferService(targetPaths, targetStore, targetStore).ImportAsync(profile, null, false);
+    Assert.Empty(await targetStore.QueryApplicationStatisticsAsync(query));
+    Assert.Equal(1, (await targetStore.QueryStatisticsAsync(query)).KeyboardPresses);
+
+    await store.DeleteStatisticsAsync(new(query.StartUtc, query.EndUtc, new HashSet<StatisticsCategory>
+    {
+      StatisticsCategory.Keyboard,
+      StatisticsCategory.Pointer,
+      StatisticsCategory.Scrolling
+    }, false));
+    Assert.Empty(await store.QueryApplicationStatisticsAsync(query));
   }
 
   [Fact]

@@ -1,9 +1,13 @@
 using System.ComponentModel;
 using System.Diagnostics;
 using System.IO;
+using System.Globalization;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Documents;
+using System.Windows.Input;
 using System.Windows.Interop;
+using System.Windows.Media;
 using KeyClick.Infrastructure.Windows;
 using Microsoft.Win32;
 using Application = System.Windows.Application;
@@ -17,6 +21,7 @@ namespace KeyClick.App;
 public partial class MainWindow : Window
 {
   private readonly MainViewModel _viewModel;
+  private bool _spaceEnteredOnKeyDown;
   private static LocalizationService L => LocalizationService.Current;
   internal bool AllowClose { get; set; }
 
@@ -25,6 +30,8 @@ public partial class MainWindow : Window
     _viewModel = viewModel;
     DataContext = viewModel;
     InitializeComponent();
+    System.Windows.DataObject.AddPastingHandler(ChallengeInput, ChallengeInput_Pasting);
+    if (_viewModel.TypingChallenges is not null) _viewModel.TypingChallenges.SessionDisplayChanged += (_, _) => Dispatcher.BeginInvoke(RenderChallengeText);
   }
 
   private void Navigation_Checked(object sender, RoutedEventArgs e)
@@ -54,6 +61,167 @@ public partial class MainWindow : Window
     {
       MessageBox.Show(this, L.Get("SoundPackArchiveInvalid"), L.Get("DialogSoundPackImportFailed"), MessageBoxButton.OK, MessageBoxImage.Warning);
     }
+  }
+
+  private async void ChallengeStart_Click(object sender, RoutedEventArgs e)
+  {
+    if (_viewModel.TypingChallenges is not { } challenges) return;
+    if (!challenges.DisclosureConfirmed)
+    {
+      var disclosure = new ChallengePrivacyWindow { Owner = this };
+      disclosure.SourceInitialized += (_, _) => _viewModel.ApplyTheme(disclosure);
+      if (disclosure.ShowDialog() != true) return;
+      await challenges.ConfirmDisclosureAsync();
+    }
+    if (challenges.SourceIndex == 1 && challenges.SaveCustomPrompt
+      && MessageBox.Show(this, L.Get("ChallengeSavePromptQuestion"), L.Get("ChallengeSavePrompt"), MessageBoxButton.YesNo, MessageBoxImage.Warning) != MessageBoxResult.Yes) return;
+    try
+    {
+      await challenges.StartAsync();
+      RenderChallengeText();
+      ChallengeInput.Focus();
+    }
+    catch (Exception exception) { MessageBox.Show(this, exception.Message, L.Get("NavTypingChallenge"), MessageBoxButton.OK, MessageBoxImage.Information); }
+  }
+
+  private void ChallengeInput_PreviewTextInput(object sender, TextCompositionEventArgs e)
+  {
+    if (_viewModel.TypingChallenges is not { IsSessionActive: true } challenges) return;
+    if (_spaceEnteredOnKeyDown && e.Text == " ")
+    {
+      _spaceEnteredOnKeyDown = false;
+      e.Handled = true;
+      return;
+    }
+    _spaceEnteredOnKeyDown = false;
+    challenges.Input(e.Text);
+    e.Handled = true;
+    UpdateChallengeInput(challenges);
+  }
+
+  private void ChallengeInput_PreviewKeyDown(object sender, System.Windows.Input.KeyEventArgs e)
+  {
+    if (_viewModel.TypingChallenges is not { IsSessionActive: true } challenges) return;
+    if (e.Key == Key.Back)
+    {
+      challenges.Backspace();
+      e.Handled = true;
+      UpdateChallengeInput(challenges);
+    }
+    else if (e.Key == Key.Space)
+    {
+      challenges.Input(" ");
+      _spaceEnteredOnKeyDown = true;
+      e.Handled = true;
+      UpdateChallengeInput(challenges);
+    }
+    else if (e.Key == Key.Enter)
+    {
+      challenges.Input("\n");
+      e.Handled = true;
+      UpdateChallengeInput(challenges);
+    }
+  }
+
+  private void ChallengeInput_PreviewKeyUp(object sender, System.Windows.Input.KeyEventArgs e)
+  {
+    if (e.Key == Key.Space) _spaceEnteredOnKeyDown = false;
+  }
+
+  private void ChallengeInput_Pasting(object sender, DataObjectPastingEventArgs e)
+  {
+    e.CancelCommand();
+    MessageBox.Show(this, L.Get("ChallengePasteBlocked"), L.Get("NavTypingChallenge"), MessageBoxButton.OK, MessageBoxImage.Information);
+  }
+
+  private async void ChallengeFinish_Click(object sender, RoutedEventArgs e)
+  {
+    if (_viewModel.TypingChallenges is not { } challenges) return;
+    await challenges.FinishAsync();
+    RenderChallengeText();
+  }
+
+  private void ChallengeCancel_Click(object sender, RoutedEventArgs e) => _viewModel.TypingChallenges?.Cancel();
+  private void ChallengeResume_Click(object sender, RoutedEventArgs e) { _viewModel.TypingChallenges?.Resume(); ChallengeInput.Focus(); }
+  private void ChallengeShowSetup_Click(object sender, RoutedEventArgs e) => _viewModel.TypingChallenges?.ShowSetup();
+  private async void ChallengeShowHistory_Click(object sender, RoutedEventArgs e) { if (_viewModel.TypingChallenges is { } value) await value.ShowHistoryAsync(); }
+  private void ChallengeRandom_Click(object sender, RoutedEventArgs e) => _viewModel.TypingChallenges?.SelectRandomPassage();
+  private void ChallengeFavorite_Click(object sender, RoutedEventArgs e) => _viewModel.TypingChallenges?.ToggleFavorite();
+  private void ChallengeCompareSelected_Click(object sender, RoutedEventArgs e) => _viewModel.TypingChallenges?.UseSelectedForComparison();
+
+  private async void ChallengeExport_Click(object sender, RoutedEventArgs e)
+  {
+    if (_viewModel.TypingChallenges is not { } challenges) return;
+    var dialog = new SaveFileDialog { Title = L.Get("ExportCsv"), Filter = L.Get("FilterCsv"), FileName = $"KeyClick-challenges-{DateTime.Now:yyyy-MM-dd}.csv" };
+    if (dialog.ShowDialog(this) == true) await challenges.ExportCsvAsync(dialog.FileName);
+  }
+
+  private async void ChallengeDeleteSelected_Click(object sender, RoutedEventArgs e)
+  {
+    if (_viewModel.TypingChallenges is not { CanDeleteSelected: true } challenges) return;
+    if (MessageBox.Show(this, L.Get("ChallengeDeleteSelectedQuestion"), L.Get("ChallengeDeleteSelected"), MessageBoxButton.YesNo, MessageBoxImage.Warning) != MessageBoxResult.Yes) return;
+    await _viewModel.CreateBackupNowAsync();
+    await challenges.DeleteSelectedAsync();
+  }
+
+  private async void ChallengeDeletePeriod_Click(object sender, RoutedEventArgs e)
+  {
+    if (_viewModel.TypingChallenges is not { } challenges) return;
+    if (MessageBox.Show(this, L.Get("ChallengeDeletePeriodQuestion"), L.Get("ChallengeDeletePeriod"), MessageBoxButton.YesNo, MessageBoxImage.Warning) != MessageBoxResult.Yes) return;
+    await _viewModel.CreateBackupNowAsync();
+    await challenges.DeleteVisiblePeriodAsync();
+  }
+
+  private async void ChallengeDeletePrompt_Click(object sender, RoutedEventArgs e)
+  {
+    if (_viewModel.TypingChallenges?.SelectedSavedPrompt is null) return;
+    if (MessageBox.Show(this, L.Get("ChallengeDeletePromptQuestion"), L.Get("RemoveSelected"), MessageBoxButton.YesNo, MessageBoxImage.Warning) != MessageBoxResult.Yes) return;
+    await _viewModel.CreateBackupNowAsync();
+    await _viewModel.TypingChallenges.DeleteSelectedPromptAsync();
+  }
+
+  private void UpdateChallengeInput(TypingChallengeViewModel challenges)
+  {
+    ChallengeInput.Text = challenges.ResponseText;
+    ChallengeInput.CaretIndex = ChallengeInput.Text.Length;
+    RenderChallengeText();
+  }
+
+  private void RenderChallengeText()
+  {
+    if (ChallengeTargetText is null || _viewModel.TypingChallenges is not { } challenges) return;
+    ChallengeTargetText.Inlines.Clear();
+    var target = TextElements(challenges.TargetText);
+    var response = TextElements(challenges.ResponseText);
+    var normal = (System.Windows.Media.Brush)FindResource("TextBrush");
+    var muted = (System.Windows.Media.Brush)FindResource("MutedTextBrush");
+    var danger = (System.Windows.Media.Brush)FindResource("DangerBrush");
+    var accent = (System.Windows.Media.Brush)FindResource("AccentBrush");
+    for (var index = 0; index < target.Count; index++)
+    {
+      var run = new Run(target[index]) { Foreground = index < response.Count ? (target[index] == response[index] ? muted : danger) : normal };
+      if (index == response.Count) run.TextDecorations = TextDecorations.Underline;
+      if (index == response.Count) run.Foreground = accent;
+      ChallengeTargetText.Inlines.Add(run);
+    }
+  }
+
+  private static IReadOnlyList<string> TextElements(string value)
+  {
+    var values = new List<string>();
+    var enumerator = StringInfo.GetTextElementEnumerator(value);
+    while (enumerator.MoveNext()) values.Add(enumerator.GetTextElement());
+    return values;
+  }
+
+  private void SoundPackList_PreviewMouseWheel(object sender, MouseWheelEventArgs e)
+  {
+    e.Handled = true;
+    SoundPacksScrollViewer.RaiseEvent(new MouseWheelEventArgs(e.MouseDevice, e.Timestamp, e.Delta)
+    {
+      RoutedEvent = UIElement.MouseWheelEvent,
+      Source = SoundPacksScrollViewer
+    });
   }
 
   private async void EditShortcut_Click(object sender, RoutedEventArgs e)
@@ -104,17 +272,14 @@ public partial class MainWindow : Window
     var homeVisible = PageTabs.SelectedIndex == 0;
     _viewModel.Statistics?.SetVisible(homeVisible || statisticsVisible);
     _viewModel.Statistics?.SetHeatmapVisible(homeVisible || statisticsVisible && StatisticsSectionTabs?.SelectedIndex == 2);
+    _viewModel.Statistics?.SetApplicationsVisible(statisticsVisible && StatisticsSectionTabs?.SelectedIndex == 3);
   }
 
   private void StatisticsSectionTabs_SelectionChanged(object sender, SelectionChangedEventArgs e)
   {
     if (!ReferenceEquals(e.Source, StatisticsSectionTabs)) return;
     _viewModel.Statistics?.SetHeatmapVisible(PageTabs?.SelectedIndex == 1 && StatisticsSectionTabs.SelectedIndex == 2);
-  }
-
-  private async void RefreshStatistics_Click(object sender, RoutedEventArgs e)
-  {
-    if (_viewModel.Statistics is not null) await _viewModel.Statistics.RefreshAsync();
+    _viewModel.Statistics?.SetApplicationsVisible(PageTabs?.SelectedIndex == 1 && StatisticsSectionTabs.SelectedIndex == 3);
   }
 
   private async void ExportStatistics_Click(object sender, RoutedEventArgs e)
@@ -132,6 +297,8 @@ public partial class MainWindow : Window
     if (MessageBox.Show(this, L.Get("DeleteStatisticsQuestion"), L.Get("DeleteStatistics"), MessageBoxButton.YesNo, MessageBoxImage.Warning) != MessageBoxResult.Yes) return;
     if (dialog.Request.CreateSafetyBackup) await _viewModel.CreateBackupNowAsync();
     await _viewModel.Statistics.DeleteAsync(dialog.Request);
+    if ((dialog.Request.DeleteTypingChallengeResults || dialog.Request.DeleteTypingChallengeAchievements) && _viewModel.TypingChallenges is { } challenges)
+      await challenges.DeleteFromStatisticsDialogAsync(dialog.Request);
     await _viewModel.Statistics.RefreshAsync();
   }
 
@@ -282,6 +449,8 @@ public partial class MainWindow : Window
     if (WindowState == WindowState.Minimized && _viewModel.CloseToTray)
       Dispatcher.BeginInvoke(() => ((App)Application.Current).HideWindow());
   }
+
+  private void Window_Deactivated(object? sender, EventArgs e) => _viewModel.TypingChallenges?.Pause();
 
   private void Window_SourceInitialized(object sender, EventArgs e) => ((App)Application.Current).MainWindow = this;
 }

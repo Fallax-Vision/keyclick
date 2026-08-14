@@ -12,6 +12,7 @@ using FlowDirection = System.Windows.FlowDirection;
 using MouseEventArgs = System.Windows.Input.MouseEventArgs;
 using Pen = System.Windows.Media.Pen;
 using Point = System.Windows.Point;
+using Size = System.Windows.Size;
 using WpfCursors = System.Windows.Input.Cursors;
 
 namespace KeyClick.App;
@@ -83,6 +84,60 @@ public sealed class ActivityChart : FrameworkElement
     new FormattedText(text, CultureInfo.CurrentUICulture, FlowDirection.LeftToRight, new Typeface("Segoe UI"), 11, Brushes.Gray, 1.0), origin);
 }
 
+public sealed class TypingSpeedChart : FrameworkElement
+{
+  public static readonly DependencyProperty SamplesProperty = DependencyProperty.Register(
+    nameof(Samples), typeof(IReadOnlyList<TypingChallengeSample>), typeof(TypingSpeedChart),
+    new FrameworkPropertyMetadata(null, FrameworkPropertyMetadataOptions.AffectsRender));
+  private static readonly Pen GridPen = new(new SolidColorBrush(Color.FromArgb(60, 128, 128, 128)), 1);
+  private static readonly Pen SpeedPen = new(new SolidColorBrush(Color.FromRgb(24, 169, 91)), 2);
+
+  public IReadOnlyList<TypingChallengeSample>? Samples { get => (IReadOnlyList<TypingChallengeSample>?)GetValue(SamplesProperty); set => SetValue(SamplesProperty, value); }
+
+  protected override void OnRender(DrawingContext drawingContext)
+  {
+    base.OnRender(drawingContext);
+    var area = new Rect(38, 12, Math.Max(0, ActualWidth - 50), Math.Max(0, ActualHeight - 36));
+    for (var line = 0; line <= 4; line++)
+    {
+      var y = area.Top + area.Height * line / 4d;
+      drawingContext.DrawLine(GridPen, new(area.Left, y), new(area.Right, y));
+    }
+    if (Samples is not { Count: > 0 } samples)
+    {
+      DrawChartText(drawingContext, LocalizationService.Current.Get("NoStatisticsYet"), new(area.Left + 12, area.Top + area.Height / 2 - 8));
+      return;
+    }
+    var max = Math.Max(1, samples.Max(value => value.NetWordsPerMinute));
+    if (samples.Count == 1)
+      drawingContext.DrawEllipse(SpeedPen.Brush, null, new(area.Left + area.Width / 2, area.Bottom - area.Height * samples[0].NetWordsPerMinute / max), 4, 4);
+    else
+    {
+      var geometry = new StreamGeometry();
+      using var stream = geometry.Open();
+      for (var index = 0; index < samples.Count; index++)
+      {
+        var point = new Point(area.Left + area.Width * index / (samples.Count - 1d), area.Bottom - area.Height * samples[index].NetWordsPerMinute / max);
+        if (index == 0) stream.BeginFigure(point, false, false); else stream.LineTo(point, true, false);
+      }
+      drawingContext.DrawGeometry(null, SpeedPen, geometry);
+    }
+    DrawChartText(drawingContext, $"{max:0} WPM", new(0, area.Top));
+  }
+
+  protected override void OnMouseMove(MouseEventArgs e)
+  {
+    base.OnMouseMove(e);
+    if (Samples is not { Count: > 0 } samples) return;
+    var index = Math.Clamp((int)Math.Round((e.GetPosition(this).X - 38) / Math.Max(1, ActualWidth - 50) * (samples.Count - 1)), 0, samples.Count - 1);
+    var sample = samples[index];
+    ToolTip = LocalizationService.Current.Format("ChallengeChartTooltipFormat", sample.IntervalIndex * 5, (sample.IntervalIndex + 1) * 5, sample.NetWordsPerMinute, sample.Errors);
+  }
+
+  private static void DrawChartText(DrawingContext context, string text, Point origin) => context.DrawText(
+    new FormattedText(text, CultureInfo.CurrentUICulture, FlowDirection.LeftToRight, new Typeface("Segoe UI"), 11, Brushes.Gray, 1.0), origin);
+}
+
 public sealed class KeyboardHeatmap : FrameworkElement
 {
   public static readonly DependencyProperty SnapshotProperty = DependencyProperty.Register(
@@ -127,11 +182,15 @@ public sealed class KeyboardHeatmap : FrameworkElement
   private readonly Popup _detailsPopup;
   private readonly TextBlock _detailsTitle;
   private readonly TextBlock _detailsBody;
+  private readonly MouseButtonEventHandler _outsideClickHandler;
+  private readonly List<ScrollViewer> _scrollOwners = [];
+  private Window? _ownerWindow;
   private int? _selectedCode;
 
   public KeyboardHeatmap()
   {
     Cursor = WpfCursors.Hand;
+    _outsideClickHandler = OwnerWindow_PreviewMouseDown;
     _detailsTitle = new TextBlock { FontSize = 14, FontWeight = FontWeights.SemiBold, Margin = new Thickness(0, 0, 0, 7) };
     _detailsTitle.SetResourceReference(TextBlock.ForegroundProperty, "TextBrush");
     _detailsBody = new TextBlock { TextWrapping = TextWrapping.Wrap, MaxWidth = 270 };
@@ -149,8 +208,12 @@ public sealed class KeyboardHeatmap : FrameworkElement
       Child = card,
       Placement = PlacementMode.Relative,
       PlacementTarget = this,
-      StaysOpen = false
+      StaysOpen = true
     };
+    _detailsPopup.Closed += (_, _) => _selectedCode = null;
+    Loaded += KeyboardHeatmap_Loaded;
+    Unloaded += KeyboardHeatmap_Unloaded;
+    SizeChanged += KeyboardHeatmap_SizeChanged;
   }
 
   public StatisticsSnapshot? Snapshot { get => (StatisticsSnapshot?)GetValue(SnapshotProperty); set => SetValue(SnapshotProperty, value); }
@@ -193,14 +256,21 @@ public sealed class KeyboardHeatmap : FrameworkElement
       CloseDetails();
       return;
     }
-    if (_selectedCode == key.Code && _detailsPopup.IsOpen)
+    if ((_ownerWindow ?? Window.GetWindow(this))?.IsActive != true)
     {
       CloseDetails();
-      e.Handled = true;
       return;
     }
-
     _selectedCode = key.Code;
+    UpdateDetails(key);
+    PositionDetails(key);
+    _detailsPopup.IsOpen = true;
+    e.Handled = true;
+  }
+
+  private void UpdateDetails(KeyLayout key)
+  {
+    if (Snapshot is null) return;
     var rows = Snapshot.Breakdown.Where(item => item.Kind == InputKind.KeyboardKey && item.PhysicalCode == key.Code).ToArray();
     var count = rows.Sum(item => item.Count);
     var group = rows.OrderByDescending(item => item.Count).FirstOrDefault()?.Group;
@@ -213,12 +283,6 @@ public sealed class KeyboardHeatmap : FrameworkElement
     var groupLabel = group is null ? "—" : localization.EnumName(group.Value);
     _detailsTitle.Text = label;
     _detailsBody.Text = $"{localization.Get("HeatmapTooltipPresses")}: {count.ToString("N0", CultureInfo.CurrentUICulture)}\n{localization.Get("HeatmapTooltipShare")}: {share:0.0}%\n{localization.Get("HeatmapTooltipGroup")}: {groupLabel}\n{localization.Get("HeatmapTooltipPeriod")}: {period}";
-    var rect = KeyRect(key, unit, gap, originX);
-    _detailsPopup.HorizontalOffset = Math.Min(rect.Left, Math.Max(0, ActualWidth - 290));
-    _detailsPopup.VerticalOffset = rect.Bottom + 7;
-    _detailsPopup.IsOpen = false;
-    _detailsPopup.IsOpen = true;
-    e.Handled = true;
   }
 
   private static void OnTooltipsEnabledChanged(DependencyObject sender, DependencyPropertyChangedEventArgs e)
@@ -228,8 +292,127 @@ public sealed class KeyboardHeatmap : FrameworkElement
     if (e.NewValue is false) heatmap.CloseDetails();
   }
 
-  private static void OnSnapshotChanged(DependencyObject sender, DependencyPropertyChangedEventArgs e) =>
-    ((KeyboardHeatmap)sender).CloseDetails();
+  private static void OnSnapshotChanged(DependencyObject sender, DependencyPropertyChangedEventArgs e)
+  {
+    var heatmap = (KeyboardHeatmap)sender;
+    if (!heatmap._detailsPopup.IsOpen || heatmap._selectedCode is not { } selectedCode) return;
+    var key = Keys.FirstOrDefault(item => item.Code == selectedCode);
+    if (key is null) return;
+    heatmap.UpdateDetails(key);
+    heatmap.PositionDetails(key);
+  }
+
+  private void KeyboardHeatmap_Loaded(object sender, RoutedEventArgs e)
+  {
+    var window = Window.GetWindow(this);
+    if (ReferenceEquals(window, _ownerWindow)) return;
+    DetachOutsideClickHandler();
+    _ownerWindow = window;
+    if (_ownerWindow is null) return;
+    _ownerWindow.AddHandler(UIElement.PreviewMouseDownEvent, _outsideClickHandler, true);
+    _ownerWindow.Deactivated += OwnerWindow_Deactivated;
+    _ownerWindow.SizeChanged += OwnerWindow_SizeChanged;
+    AttachScrollHandlers();
+  }
+
+  private void KeyboardHeatmap_Unloaded(object sender, RoutedEventArgs e)
+  {
+    DetachScrollHandlers();
+    DetachOutsideClickHandler();
+    CloseDetails();
+  }
+
+  private void OwnerWindow_PreviewMouseDown(object sender, MouseButtonEventArgs e)
+  {
+    if (_detailsPopup.IsOpen && !IsMouseOver) CloseDetails();
+  }
+
+  private void OwnerWindow_Deactivated(object? sender, EventArgs e) => CloseDetails();
+
+  private void OwnerWindow_SizeChanged(object sender, SizeChangedEventArgs e) => RepositionOpenDetails();
+
+  private void KeyboardHeatmap_SizeChanged(object sender, SizeChangedEventArgs e) => RepositionOpenDetails();
+
+  private void AncestorScrollViewer_ScrollChanged(object sender, ScrollChangedEventArgs e) => RepositionOpenDetails(true);
+
+  private void AttachScrollHandlers()
+  {
+    DetachScrollHandlers();
+    DependencyObject? current = this;
+    while ((current = VisualTreeHelper.GetParent(current)) is not null)
+    {
+      if (current is not ScrollViewer scrollViewer || _scrollOwners.Contains(scrollViewer)) continue;
+      scrollViewer.ScrollChanged += AncestorScrollViewer_ScrollChanged;
+      _scrollOwners.Add(scrollViewer);
+    }
+  }
+
+  private void DetachScrollHandlers()
+  {
+    foreach (var scrollViewer in _scrollOwners) scrollViewer.ScrollChanged -= AncestorScrollViewer_ScrollChanged;
+    _scrollOwners.Clear();
+  }
+
+  private void DetachOutsideClickHandler()
+  {
+    if (_ownerWindow is null) return;
+    _ownerWindow.RemoveHandler(UIElement.PreviewMouseDownEvent, _outsideClickHandler);
+    _ownerWindow.Deactivated -= OwnerWindow_Deactivated;
+    _ownerWindow.SizeChanged -= OwnerWindow_SizeChanged;
+    _ownerWindow = null;
+  }
+
+  private void RepositionOpenDetails(bool forceNativeReposition = false)
+  {
+    if (!_detailsPopup.IsOpen || _selectedCode is not { } selectedCode) return;
+    var key = Keys.FirstOrDefault(item => item.Code == selectedCode);
+    if (key is not null) PositionDetails(key, forceNativeReposition);
+  }
+
+  private void PositionDetails(KeyLayout key, bool forceNativeReposition = false)
+  {
+    var bounds = (_ownerWindow?.Content as FrameworkElement) ?? _ownerWindow;
+    if (bounds is null || bounds.ActualWidth <= 0 || bounds.ActualHeight <= 0) return;
+
+    _detailsPopup.Child.Measure(new Size(double.PositiveInfinity, double.PositiveInfinity));
+    var popupSize = _detailsPopup.Child.DesiredSize;
+    var (unit, gap, originX) = Geometry();
+    var keyBounds = KeyRect(key, unit, gap, originX);
+    var heatmapOrigin = TranslatePoint(new Point(0, 0), bounds);
+    var keyLeft = heatmapOrigin.X + keyBounds.Left;
+    var keyTop = heatmapOrigin.Y + keyBounds.Top;
+    var keyBottom = heatmapOrigin.Y + keyBounds.Bottom;
+    const double windowMargin = 8;
+    const double popupGap = 7;
+
+    var minX = windowMargin;
+    var maxX = Math.Max(minX, bounds.ActualWidth - popupSize.Width - windowMargin);
+    var popupX = Math.Clamp(keyLeft + (keyBounds.Width - popupSize.Width) / 2, minX, maxX);
+    var belowY = keyBottom + popupGap;
+    var aboveY = keyTop - popupSize.Height - popupGap;
+    var canPlaceBelow = belowY + popupSize.Height <= bounds.ActualHeight - windowMargin;
+    var canPlaceAbove = aboveY >= windowMargin;
+    var preferAbove = keyTop + keyBounds.Height / 2 > bounds.ActualHeight / 2;
+    var popupY = preferAbove && canPlaceAbove
+      ? aboveY
+      : canPlaceBelow
+        ? belowY
+        : canPlaceAbove
+          ? aboveY
+          : Math.Clamp(belowY, windowMargin, Math.Max(windowMargin, bounds.ActualHeight - popupSize.Height - windowMargin));
+
+    var horizontalOffset = popupX - heatmapOrigin.X;
+    var verticalOffset = popupY - heatmapOrigin.Y;
+    if (forceNativeReposition)
+    {
+      // Popup content lives in a separate native window. Nudging an offset forces WPF
+      // to follow a placement target that moved because an ancestor scrolled.
+      _detailsPopup.HorizontalOffset = horizontalOffset + 0.01;
+      _detailsPopup.VerticalOffset = verticalOffset + 0.01;
+    }
+    _detailsPopup.HorizontalOffset = horizontalOffset;
+    _detailsPopup.VerticalOffset = verticalOffset;
+  }
 
   private (double Unit, double Gap, double OriginX) Geometry()
   {

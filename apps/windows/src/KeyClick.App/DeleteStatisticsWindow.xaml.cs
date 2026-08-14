@@ -18,7 +18,8 @@ public partial class DeleteStatisticsWindow : Window
       if (KeyboardCategory.IsChecked == true) categories.Add(StatisticsCategory.Keyboard);
       if (PointerCategory.IsChecked == true) categories.Add(StatisticsCategory.Pointer);
       if (ScrollingCategory.IsChecked == true) categories.Add(StatisticsCategory.Scrolling);
-      return new(start, end, categories, AchievementsCategory.IsChecked == true, SafetyBackup.IsChecked == true);
+      return new(start, end, categories, AchievementsCategory.IsChecked == true, SafetyBackup.IsChecked == true,
+        ChallengeResultsCategory.IsChecked == true, ChallengeAchievementsCategory.IsChecked == true);
     }
   }
 
@@ -31,7 +32,8 @@ public partial class DeleteStatisticsWindow : Window
 
   private void Delete_Click(object sender, RoutedEventArgs e)
   {
-    if (KeyboardCategory.IsChecked != true && PointerCategory.IsChecked != true && ScrollingCategory.IsChecked != true && AchievementsCategory.IsChecked != true)
+    if (KeyboardCategory.IsChecked != true && PointerCategory.IsChecked != true && ScrollingCategory.IsChecked != true && AchievementsCategory.IsChecked != true
+      && ChallengeResultsCategory.IsChecked != true && ChallengeAchievementsCategory.IsChecked != true)
     {
       MessageBox.Show(this, LocalizationService.Current.Get("SelectDeleteCategory"), LocalizationService.Current.Get("DeleteStatistics"), MessageBoxButton.OK, MessageBoxImage.Information);
       return;
