@@ -17,6 +17,7 @@ internal static class Program
   [STAThread]
   private static int Main(string[] args)
   {
+    var uninstalling = args.Contains("--uninstall", StringComparer.OrdinalIgnoreCase);
     try
     {
       var portable = IsPortableBuild;
@@ -25,7 +26,7 @@ internal static class Program
       var shortcutSelection = firstSetup ? PromptForShortcuts() : null;
       if (firstSetup && shortcutSelection is null) return 0;
       Directory.CreateDirectory(root);
-      if (args.Contains("--uninstall", StringComparer.OrdinalIgnoreCase)) return Uninstall(root);
+      if (uninstalling) return Uninstall(root);
 
       using var payload = Assembly.GetExecutingAssembly().GetManifestResourceStream(PayloadResource)
         ?? throw new InvalidOperationException("This KeyClick launcher does not contain an application payload. Use a packaged release build.");
@@ -68,7 +69,8 @@ internal static class Program
     }
     catch (Exception exception)
     {
-      Forms.MessageBox.Show($"KeyClick could not be installed or started.\n\n{exception.Message}", "KeyClick", Forms.MessageBoxButtons.OK, Forms.MessageBoxIcon.Error);
+      var action = uninstalling ? "uninstalled" : "installed or started";
+      Forms.MessageBox.Show($"KeyClick could not be {action}.\n\n{exception.Message}", "KeyClick", Forms.MessageBoxButtons.OK, Forms.MessageBoxIcon.Error);
       return 1;
     }
   }
@@ -282,16 +284,7 @@ internal static class Program
       "Uninstall KeyClick", Forms.MessageBoxButtons.YesNoCancel, Forms.MessageBoxIcon.Question);
     if (choice == Forms.DialogResult.Cancel) return 0;
 
-    foreach (var process in Process.GetProcessesByName("KeyClick.App"))
-    {
-      try
-      {
-        var path = process.MainModule?.FileName;
-        if (path is not null && IsChild(root, path)) { process.CloseMainWindow(); if (!process.WaitForExit(1500)) process.Kill(); }
-      }
-      catch { }
-      finally { process.Dispose(); }
-    }
+    StopRunningApp(root);
 
     using (var key = Registry.CurrentUser.OpenSubKey(@"Software\Microsoft\Windows\CurrentVersion\Run", true)) key?.DeleteValue("KeyClick", false);
     Registry.CurrentUser.DeleteSubKeyTree(@"Software\Microsoft\Windows\CurrentVersion\Uninstall\KeyClick", false);
@@ -303,12 +296,14 @@ internal static class Program
       foreach (var entry in Directory.EnumerateFileSystemEntries(root))
       {
         if (Path.GetFullPath(entry).Equals(Path.GetFullPath(Environment.ProcessPath!), StringComparison.OrdinalIgnoreCase)) continue;
-        if (Directory.Exists(entry)) DeleteValidatedDirectory(root, entry); else File.Delete(entry);
+        if (Directory.Exists(entry)) DeleteValidatedDirectory(root, entry); else DeleteFile(entry);
       }
     }
     else
     {
       foreach (var directory in Directory.EnumerateDirectories(root, "app-v*")) DeleteValidatedDirectory(root, directory);
+      var updates = Path.Combine(root, "updates");
+      if (Directory.Exists(updates)) DeleteValidatedDirectory(root, updates);
     }
 
     var current = Environment.ProcessPath!;
@@ -320,7 +315,13 @@ internal static class Program
 
   private static void WaitForAppExit(string root)
   {
-    var deadline = DateTime.UtcNow.AddSeconds(12);
+    if (WaitForAppExit(root, TimeSpan.FromSeconds(12))) return;
+    throw new InvalidOperationException("The current KeyClick process did not close in time. Try the update again.");
+  }
+
+  private static bool WaitForAppExit(string root, TimeSpan timeout)
+  {
+    var deadline = DateTime.UtcNow.Add(timeout);
     while (DateTime.UtcNow < deadline)
     {
       var running = Process.GetProcessesByName("KeyClick.App").Any(process =>
@@ -331,10 +332,38 @@ internal static class Program
           catch { return false; }
         }
       });
-      if (!running) return;
+      if (!running) return true;
       Thread.Sleep(150);
     }
-    throw new InvalidOperationException("The current KeyClick process did not close in time. Try the update again.");
+    return false;
+  }
+
+  internal static void StopRunningApp(string root)
+  {
+    var instanceId = Convert.ToHexString(SHA256.HashData(System.Text.Encoding.UTF8.GetBytes(root)).AsSpan(0, 8));
+    if (EventWaitHandle.TryOpenExisting($@"Local\KeyClick.Shutdown.{instanceId}", out var shutdownEvent))
+    {
+      using (shutdownEvent) shutdownEvent.Set();
+      if (WaitForAppExit(root, TimeSpan.FromSeconds(8))) return;
+    }
+
+    foreach (var process in Process.GetProcessesByName("KeyClick.App"))
+    {
+      try
+      {
+        var path = process.MainModule?.FileName;
+        if (path is null || !IsChild(root, path)) continue;
+        process.CloseMainWindow();
+        if (process.WaitForExit(3000)) continue;
+        process.Kill(entireProcessTree: true);
+        if (!process.WaitForExit(5000)) throw new InvalidOperationException("KeyClick is still running. Close it and try uninstalling again.");
+      }
+      catch (InvalidOperationException) when (process.HasExited) { }
+      finally { process.Dispose(); }
+    }
+
+    if (!WaitForAppExit(root, TimeSpan.FromSeconds(2)))
+      throw new InvalidOperationException("KeyClick is still running. Close it and try uninstalling again.");
   }
 
   private static void ApplyRestore(string root, string archivePath)
@@ -381,13 +410,27 @@ internal static class Program
     }
   }
 
-  private static void DeleteShortcut(string path) { if (File.Exists(path)) File.Delete(path); }
+  private static void DeleteShortcut(string path) { if (File.Exists(path)) DeleteFile(path); }
+
+  private static void DeleteFile(string path) => DeleteWithRetry(() => File.Delete(path));
 
   private static void DeleteValidatedDirectory(string root, string directory)
   {
     var full = Path.GetFullPath(directory);
     EnsureChild(root, full);
-    Directory.Delete(full, true);
+    DeleteWithRetry(() => Directory.Delete(full, true));
+  }
+
+  private static void DeleteWithRetry(Action delete)
+  {
+    for (var attempt = 0; ; attempt++)
+    {
+      try { delete(); return; }
+      catch (Exception exception) when (attempt < 5 && exception is IOException or UnauthorizedAccessException)
+      {
+        Thread.Sleep(250);
+      }
+    }
   }
 
   private static void EnsureChild(string root, string candidate)

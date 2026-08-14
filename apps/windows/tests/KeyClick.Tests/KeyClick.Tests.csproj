@@ -22,6 +22,7 @@
     <ProjectReference Include="..\..\src\KeyClick.Core\KeyClick.Core.csproj" />
     <ProjectReference Include="..\..\src\KeyClick.Infrastructure.Windows\KeyClick.Infrastructure.Windows.csproj" />
     <ProjectReference Include="..\..\src\KeyClick.Updater\KeyClick.Updater.csproj" />
+    <ProjectReference Include="..\..\src\KeyClick.Bootstrap\KeyClick.Bootstrap.csproj" />
   </ItemGroup>
 
 </Project>

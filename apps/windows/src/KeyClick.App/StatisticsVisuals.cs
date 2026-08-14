@@ -1,5 +1,7 @@
 using System.Globalization;
 using System.Windows;
+using System.Windows.Controls;
+using System.Windows.Controls.Primitives;
 using System.Windows.Input;
 using System.Windows.Media;
 using KeyClick.Core;
@@ -10,6 +12,7 @@ using FlowDirection = System.Windows.FlowDirection;
 using MouseEventArgs = System.Windows.Input.MouseEventArgs;
 using Pen = System.Windows.Media.Pen;
 using Point = System.Windows.Point;
+using WpfCursors = System.Windows.Input.Cursors;
 
 namespace KeyClick.App;
 
@@ -83,7 +86,10 @@ public sealed class ActivityChart : FrameworkElement
 public sealed class KeyboardHeatmap : FrameworkElement
 {
   public static readonly DependencyProperty SnapshotProperty = DependencyProperty.Register(
-    nameof(Snapshot), typeof(StatisticsSnapshot), typeof(KeyboardHeatmap), new FrameworkPropertyMetadata(null, FrameworkPropertyMetadataOptions.AffectsRender));
+    nameof(Snapshot), typeof(StatisticsSnapshot), typeof(KeyboardHeatmap),
+    new FrameworkPropertyMetadata(null, FrameworkPropertyMetadataOptions.AffectsRender, OnSnapshotChanged));
+  public static readonly DependencyProperty TooltipsEnabledProperty = DependencyProperty.Register(
+    nameof(TooltipsEnabled), typeof(bool), typeof(KeyboardHeatmap), new FrameworkPropertyMetadata(true, OnTooltipsEnabledChanged));
   private static readonly KeyLayout[] Keys =
   [
     new(0x01,0,0), new(0x3B,2,0), new(0x3C,3,0), new(0x3D,4,0), new(0x3E,5,0),
@@ -118,29 +124,126 @@ public sealed class KeyboardHeatmap : FrameworkElement
     new(0xE038,10,5.35,1.4), new(0xE05C,11.4,5.35,1.4), new(0xE05D,12.8,5.35,1.4), new(0xE01D,14.2,5.35,1.4),
     new(0xE04B,16,5.35), new(0xE050,17,5.35), new(0xE04D,18,5.35), new(0x52,19.5,5.35,2), new(0x53,21.5,5.35)
   ];
+  private readonly Popup _detailsPopup;
+  private readonly TextBlock _detailsTitle;
+  private readonly TextBlock _detailsBody;
+  private int? _selectedCode;
+
+  public KeyboardHeatmap()
+  {
+    Cursor = WpfCursors.Hand;
+    _detailsTitle = new TextBlock { FontSize = 14, FontWeight = FontWeights.SemiBold, Margin = new Thickness(0, 0, 0, 7) };
+    _detailsTitle.SetResourceReference(TextBlock.ForegroundProperty, "TextBrush");
+    _detailsBody = new TextBlock { TextWrapping = TextWrapping.Wrap, MaxWidth = 270 };
+    _detailsBody.SetResourceReference(TextBlock.ForegroundProperty, "MutedTextBrush");
+    var content = new StackPanel();
+    content.Children.Add(_detailsTitle);
+    content.Children.Add(_detailsBody);
+    var card = new Border { BorderThickness = new Thickness(1), CornerRadius = new CornerRadius(9), Padding = new Thickness(13) };
+    card.SetResourceReference(Border.BackgroundProperty, "CardBackgroundBrush");
+    card.SetResourceReference(Border.BorderBrushProperty, "AccentBrush");
+    card.Child = content;
+    _detailsPopup = new Popup
+    {
+      AllowsTransparency = true,
+      Child = card,
+      Placement = PlacementMode.Relative,
+      PlacementTarget = this,
+      StaysOpen = false
+    };
+  }
 
   public StatisticsSnapshot? Snapshot { get => (StatisticsSnapshot?)GetValue(SnapshotProperty); set => SetValue(SnapshotProperty, value); }
+  public bool TooltipsEnabled { get => (bool)GetValue(TooltipsEnabledProperty); set => SetValue(TooltipsEnabledProperty, value); }
 
   protected override void OnRender(DrawingContext context)
   {
     base.OnRender(context);
     var counts = Snapshot?.Breakdown.Where(item => item.Kind == InputKind.KeyboardKey).GroupBy(item => item.PhysicalCode).ToDictionary(group => group.Key, group => group.Sum(item => item.Count)) ?? [];
     var max = Math.Max(1, counts.Values.DefaultIfEmpty().Max());
-    var unit = Math.Max(16, Math.Min(ActualWidth / 23.6, ActualHeight / 6.55));
-    var gap = Math.Clamp(unit * .08, 2, 4);
-    var originX = Math.Max(0, (ActualWidth - unit * 23.5) / 2);
+    var (unit, gap, originX) = Geometry();
     foreach (var key in Keys)
     {
       counts.TryGetValue(key.Code, out var count);
       var intensity = Math.Sqrt(count / (double)max);
       var color = Color.FromRgb((byte)(42 - intensity * 16), (byte)(58 + intensity * 122), (byte)(53 + intensity * 42));
-      var rect = new Rect(originX + key.X * unit + gap / 2, key.Y * unit + gap / 2, key.Width * unit - gap, key.Height * unit - gap);
+      var rect = KeyRect(key, unit, gap, originX);
       context.DrawRoundedRectangle(new SolidColorBrush(color), new Pen(new SolidColorBrush(Color.FromArgb(90, 128, 128, 128)), 1), rect, 4, 4);
       var label = LocalizationService.Current.KeyNameFromScanCode(key.Code, key.Code > 0xFF);
       var text = new FormattedText(label, CultureInfo.CurrentUICulture, FlowDirection.LeftToRight, new Typeface("Segoe UI"), Math.Clamp(unit * .22, 7, 9), Brushes.White, 1.0)
       { MaxTextWidth = Math.Max(4, rect.Width - 5), Trimming = TextTrimming.CharacterEllipsis };
       context.DrawText(text, new(rect.Left + 3, rect.Top + (rect.Height - text.Height) / 2));
     }
+  }
+
+  protected override void OnMouseLeftButtonUp(MouseButtonEventArgs e)
+  {
+    base.OnMouseLeftButtonUp(e);
+    if (!TooltipsEnabled || Snapshot is null)
+    {
+      CloseDetails();
+      return;
+    }
+
+    var point = e.GetPosition(this);
+    var (unit, gap, originX) = Geometry();
+    var key = Keys.FirstOrDefault(item => KeyRect(item, unit, gap, originX).Contains(point));
+    if (key is null)
+    {
+      CloseDetails();
+      return;
+    }
+    if (_selectedCode == key.Code && _detailsPopup.IsOpen)
+    {
+      CloseDetails();
+      e.Handled = true;
+      return;
+    }
+
+    _selectedCode = key.Code;
+    var rows = Snapshot.Breakdown.Where(item => item.Kind == InputKind.KeyboardKey && item.PhysicalCode == key.Code).ToArray();
+    var count = rows.Sum(item => item.Count);
+    var group = rows.OrderByDescending(item => item.Count).FirstOrDefault()?.Group;
+    var share = Snapshot.KeyboardPresses <= 0 ? 0 : count * 100d / Snapshot.KeyboardPresses;
+    var start = Snapshot.Query.StartUtc.ToLocalTime().Date;
+    var end = Snapshot.Query.EndUtc.ToLocalTime().AddTicks(-1).Date;
+    var period = start == end ? start.ToString("d", CultureInfo.CurrentUICulture) : $"{start.ToString("d", CultureInfo.CurrentUICulture)} – {end.ToString("d", CultureInfo.CurrentUICulture)}";
+    var localization = LocalizationService.Current;
+    var label = localization.KeyNameFromScanCode(key.Code, key.Code > 0xFF);
+    var groupLabel = group is null ? "—" : localization.EnumName(group.Value);
+    _detailsTitle.Text = label;
+    _detailsBody.Text = $"{localization.Get("HeatmapTooltipPresses")}: {count.ToString("N0", CultureInfo.CurrentUICulture)}\n{localization.Get("HeatmapTooltipShare")}: {share:0.0}%\n{localization.Get("HeatmapTooltipGroup")}: {groupLabel}\n{localization.Get("HeatmapTooltipPeriod")}: {period}";
+    var rect = KeyRect(key, unit, gap, originX);
+    _detailsPopup.HorizontalOffset = Math.Min(rect.Left, Math.Max(0, ActualWidth - 290));
+    _detailsPopup.VerticalOffset = rect.Bottom + 7;
+    _detailsPopup.IsOpen = false;
+    _detailsPopup.IsOpen = true;
+    e.Handled = true;
+  }
+
+  private static void OnTooltipsEnabledChanged(DependencyObject sender, DependencyPropertyChangedEventArgs e)
+  {
+    if (sender is not KeyboardHeatmap heatmap) return;
+    heatmap.Cursor = e.NewValue is true ? WpfCursors.Hand : WpfCursors.Arrow;
+    if (e.NewValue is false) heatmap.CloseDetails();
+  }
+
+  private static void OnSnapshotChanged(DependencyObject sender, DependencyPropertyChangedEventArgs e) =>
+    ((KeyboardHeatmap)sender).CloseDetails();
+
+  private (double Unit, double Gap, double OriginX) Geometry()
+  {
+    var unit = Math.Max(16, Math.Min(ActualWidth / 23.6, ActualHeight / 6.55));
+    return (unit, Math.Clamp(unit * .08, 2, 4), Math.Max(0, (ActualWidth - unit * 23.5) / 2));
+  }
+
+  private static Rect KeyRect(KeyLayout key, double unit, double gap, double originX) =>
+    new(originX + key.X * unit + gap / 2, key.Y * unit + gap / 2, key.Width * unit - gap, key.Height * unit - gap);
+
+  private void CloseDetails()
+  {
+    _selectedCode = null;
+    _detailsPopup.IsOpen = false;
   }
 
   private sealed record KeyLayout(int Code, double X, double Y, double Width = 1, double Height = 1);

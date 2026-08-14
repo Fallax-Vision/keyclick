@@ -24,7 +24,9 @@ public partial class DeleteStatisticsWindow : Window
 
   private void Period_SelectionChanged(object sender, SelectionChangedEventArgs e)
   {
-    if (CustomDates is not null) CustomDates.Visibility = Period.SelectedIndex == 4 ? Visibility.Visible : Visibility.Collapsed;
+    var visibility = Period.SelectedIndex == 4 ? Visibility.Visible : Visibility.Collapsed;
+    if (CustomDates is not null) CustomDates.Visibility = visibility;
+    if (CustomRangeHelp is not null) CustomRangeHelp.Visibility = visibility;
   }
 
   private void Delete_Click(object sender, RoutedEventArgs e)
@@ -32,6 +34,16 @@ public partial class DeleteStatisticsWindow : Window
     if (KeyboardCategory.IsChecked != true && PointerCategory.IsChecked != true && ScrollingCategory.IsChecked != true && AchievementsCategory.IsChecked != true)
     {
       MessageBox.Show(this, LocalizationService.Current.Get("SelectDeleteCategory"), LocalizationService.Current.Get("DeleteStatistics"), MessageBoxButton.OK, MessageBoxImage.Information);
+      return;
+    }
+    if (Period.SelectedIndex == 4 && (StartDate.SelectedDate is null || EndDate.SelectedDate is null))
+    {
+      MessageBox.Show(this, LocalizationService.Current.Get("DeleteDateRangeRequired"), LocalizationService.Current.Get("DeleteStatistics"), MessageBoxButton.OK, MessageBoxImage.Information);
+      return;
+    }
+    if (Period.SelectedIndex == 4 && StartDate.SelectedDate!.Value.Date > EndDate.SelectedDate!.Value.Date)
+    {
+      MessageBox.Show(this, LocalizationService.Current.Get("DeleteDateRangeInvalid"), LocalizationService.Current.Get("DeleteStatistics"), MessageBoxButton.OK, MessageBoxImage.Information);
       return;
     }
     DialogResult = true;
@@ -45,7 +57,7 @@ public partial class DeleteStatisticsWindow : Window
       1 => (ToUtc(today), ToUtc(today.AddDays(1))),
       2 => (ToUtc(today.AddDays(-6)), ToUtc(today.AddDays(1))),
       3 => (ToUtc(today.AddDays(-29)), ToUtc(today.AddDays(1))),
-      4 => (ToUtc((StartDate.SelectedDate ?? today).Date), ToUtc((EndDate.SelectedDate ?? today).Date.AddDays(1))),
+      4 => (ToUtc(StartDate.SelectedDate!.Value.Date), ToUtc(EndDate.SelectedDate!.Value.Date.AddDays(1))),
       _ => (null, null)
     };
   }

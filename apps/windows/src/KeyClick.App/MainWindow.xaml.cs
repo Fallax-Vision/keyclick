@@ -27,9 +27,10 @@ public partial class MainWindow : Window
     InitializeComponent();
   }
 
-  private void Navigation_Click(object sender, RoutedEventArgs e)
+  private void Navigation_Checked(object sender, RoutedEventArgs e)
   {
-    if (sender is Button { Tag: string tag } && int.TryParse(tag, out var page)) PageTabs.SelectedIndex = page;
+    if (sender is System.Windows.Controls.RadioButton { Tag: string tag } && int.TryParse(tag, out var page) && PageTabs is not null)
+      PageTabs.SelectedIndex = page;
   }
 
   private async void ImportSound_Click(object sender, RoutedEventArgs e)
@@ -99,7 +100,16 @@ public partial class MainWindow : Window
   private void PageTabs_SelectionChanged(object sender, SelectionChangedEventArgs e)
   {
     if (!ReferenceEquals(e.Source, PageTabs)) return;
-    _viewModel.Statistics?.SetVisible(PageTabs.SelectedIndex == 1);
+    var statisticsVisible = PageTabs.SelectedIndex == 1;
+    var homeVisible = PageTabs.SelectedIndex == 0;
+    _viewModel.Statistics?.SetVisible(homeVisible || statisticsVisible);
+    _viewModel.Statistics?.SetHeatmapVisible(homeVisible || statisticsVisible && StatisticsSectionTabs?.SelectedIndex == 2);
+  }
+
+  private void StatisticsSectionTabs_SelectionChanged(object sender, SelectionChangedEventArgs e)
+  {
+    if (!ReferenceEquals(e.Source, StatisticsSectionTabs)) return;
+    _viewModel.Statistics?.SetHeatmapVisible(PageTabs?.SelectedIndex == 1 && StatisticsSectionTabs.SelectedIndex == 2);
   }
 
   private async void RefreshStatistics_Click(object sender, RoutedEventArgs e)
@@ -222,11 +232,34 @@ public partial class MainWindow : Window
         MessageBox.Show(this, L.Get("UpToDate"), L.Get("UpdatesTitle"), MessageBoxButton.OK, MessageBoxImage.Information);
         return;
       }
-      var confirmation = MessageBox.Show(this,
-        L.Format("UpdateQuestionFormat", update.Version),
+      if (_viewModel.IsPortable)
+      {
+        var confirmation = MessageBox.Show(this, L.Format("PortableInstallUpdateQuestionFormat", update.Version),
+          L.Get("UpdateAvailableTitle"), MessageBoxButton.YesNo, MessageBoxImage.Question);
+        if (confirmation != MessageBoxResult.Yes) return;
+        var path = await _viewModel.PrepareUpdateAsync(update);
+        Process.Start(new ProcessStartInfo(path, "--update") { UseShellExecute = true });
+        ((App)Application.Current).ExitApplication();
+        return;
+      }
+      MessageBox.Show(this, L.Format("UpdateDetectedFormat", update.Version), L.Get("UpdateAvailableTitle"),
+        MessageBoxButton.OK, MessageBoxImage.Information);
+    }
+    catch (Exception exception)
+    {
+      MessageBox.Show(this, exception.Message, L.Get("UpdateFailed"), MessageBoxButton.OK, MessageBoxImage.Warning);
+    }
+  }
+
+  private async void UpdateNow_Click(object sender, RoutedEventArgs e)
+  {
+    if (_viewModel.IsPortable || _viewModel.AvailableUpdate is not { } update) return;
+    try
+    {
+      var confirmation = MessageBox.Show(this, L.Format("InstallUpdateQuestionFormat", update.Version),
         L.Get("UpdateAvailableTitle"), MessageBoxButton.YesNo, MessageBoxImage.Question);
       if (confirmation != MessageBoxResult.Yes) return;
-      var path = await _viewModel.DownloadUpdateAsync(update);
+      var path = await _viewModel.PrepareUpdateAsync(update);
       Process.Start(new ProcessStartInfo(path, "--update") { UseShellExecute = true });
       ((App)Application.Current).ExitApplication();
     }

@@ -4,6 +4,7 @@ using System.Diagnostics;
 using System.IO;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
+using System.Security.Cryptography;
 using System.Windows;
 using System.Windows.Input;
 using KeyClick.Core;
@@ -48,6 +49,7 @@ public sealed class MainViewModel : INotifyPropertyChanged, IDisposable
   private string _mappingSound = string.Empty;
   private bool _applyToGroup;
   private ShortcutBinding? _selectedShortcut;
+  private UpdateInfo? _availableUpdate;
   private volatile bool _appFocused;
 
   public MainViewModel(
@@ -142,6 +144,19 @@ public sealed class MainViewModel : INotifyPropertyChanged, IDisposable
   public string VersionText => _localization.Format("VersionFormat", GetVersion());
   public string DataLocation { get; set; } = string.Empty;
   public bool IsPortable { get; private set; }
+  public UpdateInfo? AvailableUpdate
+  {
+    get => _availableUpdate;
+    private set
+    {
+      if (Equals(_availableUpdate, value)) return;
+      _availableUpdate = value;
+      Notify(nameof(AvailableUpdate), nameof(HasAvailableUpdate), nameof(AvailableUpdateText));
+    }
+  }
+  public bool HasAvailableUpdate => !IsPortable && AvailableUpdate is not null;
+  public string AvailableUpdateText => AvailableUpdate is null ? string.Empty : _localization.Format(
+    AvailableUpdate.IsLocal ? "LocalUpdateAvailableFormat" : "UpdateReadyFormat", AvailableUpdate.Version);
   public StatisticsViewModel? Statistics { get; private set; }
   public WellnessSnapshot? WellnessSnapshot { get; private set; }
   public string WellnessTodaySummary => WellnessSnapshot is null ? _localization.Get("NoStatisticsYet") :
@@ -444,7 +459,7 @@ public sealed class MainViewModel : INotifyPropertyChanged, IDisposable
       _groupMappings.TryGetValue((input.Group, input.Variant, null), out groupMapping);
     var resolved = _resolver.Resolve(_settings, _activePack, input, groupMapping, inputOverride);
     if (!resolved.Enabled) return;
-    var sample = _resolver.SelectWithoutImmediateRepeat(resolved, $"{_activePack.Id}:{input.Input.StableId}:{input.Variant}");
+    var sample = _resolver.SelectStable(resolved, $"{_activePack.Id}:{input.Input.StableId}");
     _audio.TryPlay(new SoundTrigger(sample, resolved.Gain, input.Timestamp));
   }
 
@@ -458,7 +473,7 @@ public sealed class MainViewModel : INotifyPropertyChanged, IDisposable
     var variant = request.Outcome is SoundOutcome.Success or SoundOutcome.Authorized ? KeyVariant.Enabled : KeyVariant.Disabled;
     var samples = _activePack.SamplesFor(InputGroup.Outcomes, variant);
     var resolved = new ResolvedSound(true, _settings.MasterVolume * _settings.ResultVolume, samples, false);
-    var sample = _resolver.SelectWithoutImmediateRepeat(resolved, $"{_activePack.Id}:outcome:{variant}");
+    var sample = _resolver.SelectStable(resolved, $"{_activePack.Id}:outcome:{variant}");
     _audio.TryPlay(new SoundTrigger(sample, resolved.Gain, Stopwatch.GetTimestamp(), request.Outcome));
   }
 
@@ -522,21 +537,46 @@ public sealed class MainViewModel : INotifyPropertyChanged, IDisposable
   {
     StatusMessage = _localization.Get("CheckingReleases");
     var architecture = RuntimeInformation.ProcessArchitecture == Architecture.Arm64 ? "arm64" : "x64";
-    var update = await _updates.CheckAsync(architecture);
+    var packageKind = IsPortable ? UpdatePackageKind.Portable : UpdatePackageKind.Setup;
+    var update = await _updates.CheckAsync(architecture, packageKind);
     var current = GetVersion();
-    if (update is not null && string.Equals(update.Version.TrimStart('v'), current, StringComparison.OrdinalIgnoreCase)) update = null;
-    StatusMessage = update is null
+    if (update is not null && !UpdateService.IsNewer(update.Version, current)) update = null;
+    if (!IsPortable && update is not null && (AvailableUpdate is null || UpdateService.IsNewer(update.Version, AvailableUpdate.Version))) AvailableUpdate = update;
+    var result = IsPortable ? update : AvailableUpdate;
+    StatusMessage = result is null
       ? _localization.Get("UpToDate")
-      : _localization.Format("UpdateAvailableFormat", update.Version, update.Size / 1024d / 1024d);
-    return update;
+      : _localization.Format("UpdateAvailableFormat", result.Version, result.Size / 1024d / 1024d);
+    return result;
   }
 
-  public async Task<string> DownloadUpdateAsync(UpdateInfo update)
+  public async Task<string> PrepareUpdateAsync(UpdateInfo update)
   {
-    StatusMessage = _localization.Format("DownloadingUpdateFormat", update.Version);
-    var path = await _updates.DownloadVerifiedAsync(update, ((App)Application.Current).Paths.Updates);
+    StatusMessage = _localization.Format(update.IsLocal ? "PreparingLocalUpdateFormat" : "DownloadingUpdateFormat", update.Version);
+    await CreateBackupNowAsync();
+    var paths = ((App)Application.Current).Paths;
+    var destination = IsPortable
+      ? Path.GetDirectoryName(paths.Launcher) ?? throw new InvalidOperationException("The portable launcher folder is unavailable.")
+      : paths.Updates;
+    var path = await _updates.DownloadVerifiedAsync(update, destination);
     StatusMessage = _localization.Get("UpdateVerified");
     return path;
+  }
+
+  public async Task DiscoverLocalUpdateAsync(string artifactsDirectory)
+  {
+    if (IsPortable) return;
+    try
+    {
+      var architecture = RuntimeInformation.ProcessArchitecture == Architecture.Arm64 ? "arm64" : "x64";
+      var update = await _updates.FindLocalAsync(artifactsDirectory, architecture, GetVersion(), UpdatePackageKind.Setup);
+      if (update is null || (AvailableUpdate is not null && !UpdateService.IsNewer(update.Version, AvailableUpdate.Version))) return;
+      AvailableUpdate = update;
+      StatusMessage = _localization.Format("LocalUpdateAvailableFormat", update.Version);
+    }
+    catch (Exception exception) when (exception is IOException or UnauthorizedAccessException or CryptographicException)
+    {
+      Debug.WriteLine($"Local update discovery skipped: {exception.Message}");
+    }
   }
 
   public async Task<string> CreateBackupNowAsync()
@@ -707,7 +747,8 @@ public sealed class MainViewModel : INotifyPropertyChanged, IDisposable
   public void SetDistributionMode(DistributionMode mode)
   {
     IsPortable = mode == DistributionMode.Portable;
-    Notify(nameof(IsPortable));
+    if (IsPortable) AvailableUpdate = null;
+    Notify(nameof(IsPortable), nameof(HasAvailableUpdate));
   }
 
   public void HandleDeviceChanged(InputDeviceDescriptor device)
@@ -880,7 +921,7 @@ public sealed class MainViewModel : INotifyPropertyChanged, IDisposable
     var previewEvent = input with { Variant = MappingVariant };
     var resolved = _resolver.Resolve(_settings, _activePack, previewEvent, previewGroup, previewOverride);
     if (!resolved.Enabled) { StatusMessage = _localization.Get("InputMuted"); return; }
-    _audio.TryPlay(new SoundTrigger(_resolver.SelectWithoutImmediateRepeat(resolved, $"preview:{input.Input.StableId}:{MappingVariant}"), resolved.Gain, Stopwatch.GetTimestamp()));
+    _audio.TryPlay(new SoundTrigger(_resolver.SelectStable(resolved, $"preview:{_activePack.Id}:{input.Input.StableId}"), resolved.Gain, Stopwatch.GetTimestamp()));
   }
 
   private async Task SaveMappingAsync()
@@ -1039,12 +1080,13 @@ public sealed class MainViewModel : INotifyPropertyChanged, IDisposable
     CapturedInputLabel = _capturedInput is { } input ? DisplayInput(input) : _localization.Get("NoInputSelected");
     if (_capturedInput is not null) LoadMappingEditor();
     else MappingSound = _localization.Get("BuiltInSoundPool");
+    Statistics?.RefreshLocalization();
 
     Notify(
       nameof(DisplayLanguage), nameof(DisplayLanguageIndex), nameof(DisplayLanguages), nameof(Theme), nameof(ThemeIndex),
       nameof(ThemeModes), nameof(MappingVariant), nameof(MappingVariantIndex), nameof(MappingVariants),
       nameof(SelectedPack), nameof(ActivePackName), nameof(ActivePackDescription), nameof(SoundStateText),
-      nameof(SoundStateDescription), nameof(VersionText), nameof(CapturedInputLabel), nameof(CapturedInputDetail),
+      nameof(SoundStateDescription), nameof(VersionText), nameof(AvailableUpdateText), nameof(CapturedInputLabel), nameof(CapturedInputDetail),
       nameof(MappingScopeLabel), nameof(OutputDevices));
   }
 

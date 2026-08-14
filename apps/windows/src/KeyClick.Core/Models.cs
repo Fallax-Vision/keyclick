@@ -313,7 +313,7 @@ public sealed class AppSettings
   public KeyboardSoundTiming KeyboardSoundTiming { get; set; } = KeyboardSoundTiming.KeyDown;
   public string ActivePackId { get; set; } = BuiltInCatalog.DefaultPackId;
   public string OutputDeviceId { get; set; } = "default";
-  public float MasterVolume { get; set; } = 0.70f;
+  public float MasterVolume { get; set; } = 0.35f;
   public float KeyboardVolume { get; set; } = 1.0f;
   public float PointerVolume { get; set; } = 0.80f;
   public float ResultVolume { get; set; } = 1.0f;

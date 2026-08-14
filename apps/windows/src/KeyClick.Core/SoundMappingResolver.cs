@@ -2,8 +2,6 @@ namespace KeyClick.Core;
 
 public sealed class SoundMappingResolver
 {
-  private readonly Dictionary<string, int> _shuffleIndexes = new(StringComparer.Ordinal);
-
   public ResolvedSound Resolve(
     AppSettings settings,
     SoundPackDefinition pack,
@@ -52,23 +50,19 @@ public sealed class SoundMappingResolver
     return new(samples.Count > 0 && gain > 0, gain, samples, inputOverride is not null);
   }
 
-  public string SelectWithoutImmediateRepeat(ResolvedSound sound, string poolId)
+  public string SelectStable(ResolvedSound sound, string identity)
   {
     if (sound.SampleIds.Count == 0)
     {
       throw new InvalidOperationException("The sound pool is empty.");
     }
 
-    if (!_shuffleIndexes.TryGetValue(poolId, out var index))
+    uint hash = 2166136261;
+    foreach (var character in identity)
     {
-      index = Random.Shared.Next(sound.SampleIds.Count);
+      hash ^= character;
+      hash *= 16777619;
     }
-    else
-    {
-      index = (index + 1 + Random.Shared.Next(Math.Max(1, sound.SampleIds.Count - 1))) % sound.SampleIds.Count;
-    }
-
-    _shuffleIndexes[poolId] = index;
-    return sound.SampleIds[index];
+    return sound.SampleIds[(int)(hash % (uint)sound.SampleIds.Count)];
   }
 }

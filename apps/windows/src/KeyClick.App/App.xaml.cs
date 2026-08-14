@@ -18,6 +18,7 @@ public partial class App : Application
 {
   private Mutex? _mutex;
   private EventWaitHandle? _activateEvent;
+  private EventWaitHandle? _shutdownEvent;
   private CancellationTokenSource? _activateStop;
   private SqliteAppStore? _store;
   private XAudio2SoundEngine? _audio;
@@ -47,9 +48,10 @@ public partial class App : Application
   {
     base.OnStartup(e);
     Paths = ResolvePaths(e.Args);
-    var instanceId = Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(Paths.Root)).AsSpan(0, 8));
+    var instanceId = GetInstanceId(Paths.Root);
     _mutex = new Mutex(true, $@"Local\KeyClick.Instance.{instanceId}", out var firstInstance);
     _activateEvent = new EventWaitHandle(false, EventResetMode.AutoReset, $@"Local\KeyClick.Activate.{instanceId}");
+    _shutdownEvent = new EventWaitHandle(false, EventResetMode.AutoReset, $@"Local\KeyClick.Shutdown.{instanceId}");
     if (!firstInstance)
     {
       _activateEvent.Set();
@@ -84,6 +86,12 @@ public partial class App : Application
       };
       await _viewModel.InitializeAsync();
       _viewModel.SetDistributionMode(Paths.Mode);
+      if (Paths.Mode == DistributionMode.Installed)
+      {
+        var localArtifacts = Environment.GetEnvironmentVariable("KEYCLICK_LOCAL_UPDATE_DIRECTORY")
+          ?? @"C:\wamp64\www\fallax_projects\lab\keyclick\artifacts";
+        _ = _viewModel.DiscoverLocalUpdateAsync(localArtifacts);
+      }
       _viewModel.AttachProfiles(new ProfileTransferService(Paths, _store, _store));
 
       if (!_viewModel.StatisticsDisclosureConfirmed)
@@ -216,6 +224,7 @@ public partial class App : Application
     _store = null;
     _themes?.Dispose();
     _activateEvent?.Dispose();
+    _shutdownEvent?.Dispose();
     _activateStop?.Dispose();
     if (_mutex is not null)
     {
@@ -317,14 +326,35 @@ public partial class App : Application
   {
     _activateStop = new CancellationTokenSource();
     var token = _activateStop.Token;
+    var activateEvent = _activateEvent;
+    var shutdownEvent = _shutdownEvent;
+    if (activateEvent is null || shutdownEvent is null) return;
     _ = Task.Run(() =>
     {
-      while (!token.IsCancellationRequested)
+      try
       {
-        if (_activateEvent?.WaitOne(500) == true) Dispatcher.BeginInvoke(ShowWindow);
+        var handles = new WaitHandle[] { activateEvent, shutdownEvent, token.WaitHandle };
+        while (true)
+        {
+          switch (WaitHandle.WaitAny(handles))
+          {
+            case 0:
+              Dispatcher.BeginInvoke(ShowWindow);
+              break;
+            case 1:
+              Dispatcher.BeginInvoke(ExitApplication);
+              return;
+            default:
+              return;
+          }
+        }
       }
+      catch (ObjectDisposedException) { }
     }, token);
   }
+
+  private static string GetInstanceId(string root) =>
+    Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(root)).AsSpan(0, 8));
 
   private static string TrimTrayText(string value) => value.Length <= 63 ? value : value[..63];
 

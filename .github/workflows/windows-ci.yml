@@ -43,9 +43,9 @@ jobs:
         with:
           name: KeyClick-${{ matrix.architecture }}
           path: |
-            artifacts/portable/KeyClick-Setup-Windows-${{ matrix.architecture }}.exe
-            artifacts/portable/KeyClick-Portable-Windows-${{ matrix.architecture }}.exe
-            artifacts/portable/checksums.txt
+            artifacts/KeyClick-Setup-Windows-${{ matrix.architecture }}-1.0.0-ci.exe
+            artifacts/KeyClick-Portable-Windows-${{ matrix.architecture }}-1.0.0-ci.exe
+            artifacts/checksums-1.0.0-ci.txt
           if-no-files-found: error
       - uses: actions/upload-artifact@v4
         if: always()

@@ -13,6 +13,7 @@ public sealed class StatisticsPrivacyAndProfileTests
   {
     var settings = new AppSettings();
     Assert.Equal(BuiltInCatalog.DefaultPackId, settings.ActivePackId);
+    Assert.Equal(0.35f, settings.MasterVolume);
     Assert.Equal(KeyboardSoundTiming.KeyDown, settings.KeyboardSoundTiming);
     Assert.True(settings.KeyboardStatisticsEnabled);
     Assert.True(settings.PointerStatisticsEnabled);
@@ -54,7 +55,8 @@ public sealed class StatisticsPrivacyAndProfileTests
     await store.MergeStatisticsAsync([
       new(new(bucket, InputKind.KeyboardKey, DeviceFamily.Keyboard, 0x1E, false, InputGroup.Letters), 10, 900, 900, 0, 10, 0, 1),
       new(new(bucket, InputKind.PointerButton, DeviceFamily.ExternalMouse, 1, false, InputGroup.PointerPrimary), 4, 400, 0, 400, 0, 4, 1),
-      new(new(bucket, InputKind.Wheel, DeviceFamily.Trackpad, 6, false, InputGroup.Wheel), 3, 100, 0, 100, 0, 0, 1)
+      new(new(bucket, InputKind.Wheel, DeviceFamily.Trackpad, 6, false, InputGroup.Wheel), 3, 100, 0, 100, 0, 0, 1),
+      new(new(bucket.AddDays(1), InputKind.PointerButton, DeviceFamily.Trackpad, 1, false, InputGroup.PointerPrimary), 7, 700, 0, 700, 0, 5, 1)
     ]);
     var query = new StatisticsQuery(bucket, bucket.AddHours(1));
     var snapshot = await store.QueryStatisticsAsync(query);
@@ -67,10 +69,16 @@ public sealed class StatisticsPrivacyAndProfileTests
     await store.ImportStatisticsAsync(transfer, false);
     Assert.Equal(10, (await store.QueryStatisticsAsync(query)).KeyboardPresses);
 
+    await store.DeleteStatisticsAsync(new(bucket, bucket.AddHours(1), new HashSet<StatisticsCategory> { StatisticsCategory.Pointer }, false));
+    var afterPointerDelete = await store.QueryStatisticsAsync(query);
+    Assert.Equal(10, afterPointerDelete.KeyboardPresses);
+    Assert.Equal(0, afterPointerDelete.PointerClicks);
+    Assert.Equal(7, (await store.QueryStatisticsAsync(new(bucket.AddDays(1), bucket.AddDays(1).AddHours(1)))).PointerClicks);
+
     await store.DeleteStatisticsAsync(new(bucket, bucket.AddHours(1), new HashSet<StatisticsCategory> { StatisticsCategory.Keyboard }, false));
     var afterDelete = await store.QueryStatisticsAsync(query);
     Assert.Equal(0, afterDelete.KeyboardPresses);
-    Assert.Equal(4, afterDelete.PointerClicks);
+    Assert.Equal(0, afterDelete.PointerClicks);
   }
 
   [Fact]

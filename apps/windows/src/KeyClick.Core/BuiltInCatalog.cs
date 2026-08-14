@@ -7,11 +7,11 @@ public static class BuiltInCatalog
   public static IReadOnlyList<SoundPackDefinition> Packs { get; } =
   [
     new("cream-keys", "Cream Keys", "Keyboard focused", "Soft, polished cream-switch taps captured from Cloudflare Pay's name field.", 0, 0, 0, 0, "#F6821F", false,
-      AssetPools("cream-keys-1", "cream-keys-2", "cream-keys-3", "cream-keys-4", "cream-keys-5", "cream-keys-401")),
+      CategoryAssetPools("cream-keys-1", "cream-keys-2", "cream-keys-3", "cream-keys-4", "cream-keys-5", "cream-keys-401")),
     new("bright-mechanical", "Bright Mechanical", "Keyboard focused", "A lively mechanical keyboard recording with six short key variants.", 0, 0, 0, 0, "#5C7CFA", false,
-      AssetPools("pixabay-mechanical-1", "pixabay-mechanical-2", "pixabay-mechanical-3", "pixabay-mechanical-4", "pixabay-mechanical-5", "pixabay-mechanical-6")),
+      CategoryAssetPools("pixabay-mechanical-1", "pixabay-mechanical-2", "pixabay-mechanical-3", "pixabay-mechanical-4", "pixabay-mechanical-5", "pixabay-mechanical-6")),
     new("compact-mech-tap", "Compact Mech Tap", "Keyboard focused", "A short, dry mechanical tap in three subtle tonal variants.", 0, 0, 0, 0, "#9B7EDE", false,
-      AssetPools("pixabay-mech-tap-1", "pixabay-mech-tap-2", "pixabay-mech-tap-3")),
+      CategoryAssetPools("pixabay-mech-tap-1", "pixabay-mech-tap-1", "pixabay-mech-tap-2", "pixabay-mech-tap-2", "pixabay-mech-tap-3", "pixabay-mech-tap-3")),
     new("clicky-switch", "Clicky Switch", "Keyboard focused", "Bright, precise switch clicks.", 2480, 0.34f, 0.026f, 0.94f, "#35E04B"),
     new("tactile-switch", "Tactile Switch", "Keyboard focused", "Rounded tactile bumps with a firm return.", 1760, 0.28f, 0.036f, 0.74f, "#64D978"),
     new("linear-switch", "Linear Switch", "Keyboard focused", "Clean linear clacks with minimal grit.", 1280, 0.18f, 0.030f, 0.62f, "#E05555"),
@@ -34,15 +34,37 @@ public static class BuiltInCatalog
 
   public static IEnumerable<string> SamplesFor(string packId, InputGroup group, KeyVariant variant)
   {
-    var suffix = variant.ToString().ToLowerInvariant();
     var groupId = group.ToString().ToLowerInvariant();
-    yield return $"{packId}/{groupId}-{suffix}-1";
-    yield return $"{packId}/{groupId}-{suffix}-2";
-    yield return $"{packId}/{groupId}-{suffix}-3";
+    yield return $"{packId}/{groupId}-base-1";
+    yield return $"{packId}/{groupId}-base-2";
+    yield return $"{packId}/{groupId}-base-3";
   }
 
-  private static Dictionary<string, string[]> AssetPools(params string[] sampleIds) =>
-    Enum.GetValues<InputGroup>()
-      .SelectMany(group => Enum.GetValues<KeyVariant>().Select(variant => SoundPackDefinition.PoolKey(group, variant)))
-      .ToDictionary(key => key, _ => sampleIds, StringComparer.Ordinal);
+  private static Dictionary<string, string[]> CategoryAssetPools(
+    string letter, string number, string punctuation, string modifier, string navigation, string action)
+  {
+    var pools = new Dictionary<InputGroup, string[]>
+    {
+      [InputGroup.Letters] = [letter, number, punctuation],
+      [InputGroup.Numbers] = [number],
+      [InputGroup.Punctuation] = [punctuation],
+      [InputGroup.Modifiers] = [modifier],
+      [InputGroup.Navigation] = [navigation],
+      [InputGroup.FunctionAndMedia] = [modifier],
+      [InputGroup.Numpad] = [number],
+      [InputGroup.Locks] = [modifier],
+      [InputGroup.Space] = [action],
+      [InputGroup.Enter] = [action],
+      [InputGroup.Editing] = [navigation],
+      [InputGroup.PointerPrimary] = [letter],
+      [InputGroup.PointerSecondary] = [number],
+      [InputGroup.PointerAuxiliary] = [punctuation],
+      [InputGroup.Wheel] = [navigation],
+      [InputGroup.Outcomes] = [action]
+    };
+    return Enum.GetValues<InputGroup>()
+      .SelectMany(group => Enum.GetValues<KeyVariant>().Select(variant => (Key: SoundPackDefinition.PoolKey(group, variant), Pool: pools[group])))
+      .ToDictionary(item => item.Key, item => item.Pool, StringComparer.Ordinal);
+  }
+
 }

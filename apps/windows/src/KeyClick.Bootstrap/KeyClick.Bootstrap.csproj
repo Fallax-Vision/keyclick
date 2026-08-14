@@ -9,7 +9,6 @@
     <ApplicationManifest>app.manifest</ApplicationManifest>
     <ApplicationIcon>..\..\assets\keyclick.ico</ApplicationIcon>
     <AssemblyName>KeyClick</AssemblyName>
-    <Version>1.0.0</Version>
   </PropertyGroup>
 
   <ItemGroup Condition="'$(PayloadPath)' != '' and Exists('$(PayloadPath)')">

@@ -41,14 +41,30 @@
         </Border>
 
         <StackPanel Grid.Row="2">
-          <Button Style="{StaticResource NavButton}" Tag="0" Click="Navigation_Click" Content="{DynamicResource NavHome}" />
-          <Button Style="{StaticResource NavButton}" Tag="2" Click="Navigation_Click" Content="{DynamicResource NavSoundPacks}" />
-          <Button Style="{StaticResource NavButton}" Tag="3" Click="Navigation_Click" Content="{DynamicResource NavMappings}" />
-          <Button Style="{StaticResource NavButton}" Tag="4" Click="Navigation_Click" Content="{DynamicResource NavShortcuts}" />
-          <Button Style="{StaticResource NavButton}" Tag="1" Click="Navigation_Click" Content="{DynamicResource NavStatistics}" />
-          <Button Style="{StaticResource NavButton}" Tag="5" Click="Navigation_Click" Content="{DynamicResource NavSettings}" />
-          <Button Style="{StaticResource NavButton}" Tag="6" Click="Navigation_Click" Content="{DynamicResource NavIntegrations}" />
-          <Button Style="{StaticResource NavButton}" Tag="7" Click="Navigation_Click" Content="{DynamicResource NavAbout}" />
+          <RadioButton Style="{StaticResource NavButton}" GroupName="PrimaryNavigation" Tag="0" Checked="Navigation_Checked" IsChecked="True" AutomationProperties.Name="{DynamicResource NavHome}">
+            <StackPanel Orientation="Horizontal"><TextBlock Text="&#xE80F;" Style="{StaticResource NavigationIcon}" Foreground="{Binding Foreground, RelativeSource={RelativeSource AncestorType=RadioButton}}" /><TextBlock Text="{DynamicResource NavHome}" VerticalAlignment="Center" Foreground="{Binding Foreground, RelativeSource={RelativeSource AncestorType=RadioButton}}" /></StackPanel>
+          </RadioButton>
+          <RadioButton Style="{StaticResource NavButton}" GroupName="PrimaryNavigation" Tag="2" Checked="Navigation_Checked" AutomationProperties.Name="{DynamicResource NavSoundPacks}">
+            <StackPanel Orientation="Horizontal"><TextBlock Text="&#xE8D6;" Style="{StaticResource NavigationIcon}" Foreground="{Binding Foreground, RelativeSource={RelativeSource AncestorType=RadioButton}}" /><TextBlock Text="{DynamicResource NavSoundPacks}" VerticalAlignment="Center" Foreground="{Binding Foreground, RelativeSource={RelativeSource AncestorType=RadioButton}}" /></StackPanel>
+          </RadioButton>
+          <RadioButton Style="{StaticResource NavButton}" GroupName="PrimaryNavigation" Tag="3" Checked="Navigation_Checked" AutomationProperties.Name="{DynamicResource NavMappings}">
+            <StackPanel Orientation="Horizontal"><TextBlock Text="&#xE92E;" Style="{StaticResource NavigationIcon}" Foreground="{Binding Foreground, RelativeSource={RelativeSource AncestorType=RadioButton}}" /><TextBlock Text="{DynamicResource NavMappings}" VerticalAlignment="Center" Foreground="{Binding Foreground, RelativeSource={RelativeSource AncestorType=RadioButton}}" /></StackPanel>
+          </RadioButton>
+          <RadioButton Style="{StaticResource NavButton}" GroupName="PrimaryNavigation" Tag="4" Checked="Navigation_Checked" AutomationProperties.Name="{DynamicResource NavShortcuts}">
+            <StackPanel Orientation="Horizontal"><TextBlock Text="&#xE765;" Style="{StaticResource NavigationIcon}" Foreground="{Binding Foreground, RelativeSource={RelativeSource AncestorType=RadioButton}}" /><TextBlock Text="{DynamicResource NavShortcuts}" VerticalAlignment="Center" Foreground="{Binding Foreground, RelativeSource={RelativeSource AncestorType=RadioButton}}" /></StackPanel>
+          </RadioButton>
+          <RadioButton Style="{StaticResource NavButton}" GroupName="PrimaryNavigation" Tag="1" Checked="Navigation_Checked" AutomationProperties.Name="{DynamicResource NavStatistics}">
+            <StackPanel Orientation="Horizontal"><TextBlock Text="&#xE9D2;" Style="{StaticResource NavigationIcon}" Foreground="{Binding Foreground, RelativeSource={RelativeSource AncestorType=RadioButton}}" /><TextBlock Text="{DynamicResource NavStatistics}" VerticalAlignment="Center" Foreground="{Binding Foreground, RelativeSource={RelativeSource AncestorType=RadioButton}}" /></StackPanel>
+          </RadioButton>
+          <RadioButton Style="{StaticResource NavButton}" GroupName="PrimaryNavigation" Tag="5" Checked="Navigation_Checked" AutomationProperties.Name="{DynamicResource NavSettings}">
+            <StackPanel Orientation="Horizontal"><TextBlock Text="&#xE713;" Style="{StaticResource NavigationIcon}" Foreground="{Binding Foreground, RelativeSource={RelativeSource AncestorType=RadioButton}}" /><TextBlock Text="{DynamicResource NavSettings}" VerticalAlignment="Center" Foreground="{Binding Foreground, RelativeSource={RelativeSource AncestorType=RadioButton}}" /></StackPanel>
+          </RadioButton>
+          <RadioButton Style="{StaticResource NavButton}" GroupName="PrimaryNavigation" Tag="6" Checked="Navigation_Checked" AutomationProperties.Name="{DynamicResource NavIntegrations}">
+            <StackPanel Orientation="Horizontal"><TextBlock Text="&#xE774;" Style="{StaticResource NavigationIcon}" Foreground="{Binding Foreground, RelativeSource={RelativeSource AncestorType=RadioButton}}" /><TextBlock Text="{DynamicResource NavIntegrations}" VerticalAlignment="Center" Foreground="{Binding Foreground, RelativeSource={RelativeSource AncestorType=RadioButton}}" /></StackPanel>
+          </RadioButton>
+          <RadioButton Style="{StaticResource NavButton}" GroupName="PrimaryNavigation" Tag="7" Checked="Navigation_Checked" AutomationProperties.Name="{DynamicResource NavAbout}">
+            <StackPanel Orientation="Horizontal"><TextBlock Text="&#xE946;" Style="{StaticResource NavigationIcon}" Foreground="{Binding Foreground, RelativeSource={RelativeSource AncestorType=RadioButton}}" /><TextBlock Text="{DynamicResource NavAbout}" VerticalAlignment="Center" Foreground="{Binding Foreground, RelativeSource={RelativeSource AncestorType=RadioButton}}" /></StackPanel>
+          </RadioButton>
         </StackPanel>
 
         <StackPanel Grid.Row="3">
@@ -109,6 +125,30 @@
               </Border>
             </Grid>
 
+            <Border Style="{StaticResource Card}" DataContext="{Binding Statistics}">
+              <StackPanel>
+                <Grid Margin="0,0,0,6">
+                  <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
+                  <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                    <TextBlock Text="{DynamicResource KeyboardHeatmap}" Style="{StaticResource SectionTitle}" VerticalAlignment="Center" Margin="0" />
+                    <Button Content="?" Style="{StaticResource HelpIconButton}" Margin="10,0,0,0" AutomationProperties.Name="{DynamicResource KeyboardHeatmapInformation}">
+                      <Button.ToolTip>
+                        <ToolTip><TextBlock Text="{DynamicResource KeyboardHeatmapHelp}" TextWrapping="Wrap" MaxWidth="360" /></ToolTip>
+                      </Button.ToolTip>
+                    </Button>
+                  </StackPanel>
+                  <StackPanel Grid.Column="1" Orientation="Horizontal">
+                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                      <TextBlock Text="{DynamicResource HeatmapDuration}" Style="{StaticResource FieldLabel}" VerticalAlignment="Center" Margin="0,0,8,0" />
+                      <ComboBox ItemsSource="{Binding HeatmapPeriodOptions}" SelectedIndex="{Binding HeatmapPeriodIndex}" Width="150" AutomationProperties.Name="{DynamicResource HeatmapDuration}" />
+                    </StackPanel>
+                    <ToggleButton Content="{DynamicResource HeatmapTooltips}" IsChecked="{Binding HeatmapTooltipsEnabled}" Style="{StaticResource PillToggle}" Margin="10,0,0,0" AutomationProperties.Name="{DynamicResource HeatmapTooltips}" />
+                  </StackPanel>
+                </Grid>
+                <local:KeyboardHeatmap Snapshot="{Binding HeatmapSnapshot}" TooltipsEnabled="{Binding HeatmapTooltipsEnabled}" Height="218" Margin="0,18,0,0" AutomationProperties.Name="{DynamicResource KeyboardHeatmap}" />
+              </StackPanel>
+            </Border>
+
             <Border Style="{StaticResource Card}">
               <StackPanel>
                 <TextBlock Text="{DynamicResource AudioOutput}" Style="{StaticResource SectionTitle}" />
@@ -143,7 +183,7 @@
               </StackPanel>
             </Border>
 
-            <TabControl Background="Transparent" BorderThickness="0" Margin="0,0,0,8">
+            <TabControl x:Name="StatisticsSectionTabs" Background="Transparent" BorderThickness="0" Margin="0,0,0,8" SelectionChanged="StatisticsSectionTabs_SelectionChanged">
               <TabControl.ItemContainerStyle>
                 <Style TargetType="TabItem" BasedOn="{StaticResource SectionTabItem}"><Setter Property="Visibility" Value="Visible" /></Style>
               </TabControl.ItemContainerStyle>
@@ -178,7 +218,29 @@
               </TabItem>
               <TabItem Header="{DynamicResource StatisticsKeyboard}">
                 <StackPanel Margin="0,14,0,0">
-                  <Border Style="{StaticResource Card}"><StackPanel><TextBlock Text="{DynamicResource KeyboardHeatmap}" Style="{StaticResource SectionTitle}" /><TextBlock Text="{DynamicResource KeyboardHeatmapHelp}" Style="{StaticResource MutedText}" Margin="0,0,0,10" /><local:KeyboardHeatmap Snapshot="{Binding Snapshot}" Height="270" AutomationProperties.Name="{DynamicResource KeyboardHeatmap}" /></StackPanel></Border>
+                  <Border Style="{StaticResource Card}">
+                    <StackPanel>
+                      <Grid Margin="0,0,0,6">
+                        <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
+                        <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                          <TextBlock Text="{DynamicResource KeyboardHeatmap}" Style="{StaticResource SectionTitle}" VerticalAlignment="Center" Margin="0" />
+                          <Button Content="?" Style="{StaticResource HelpIconButton}" Margin="10,0,0,0" AutomationProperties.Name="{DynamicResource KeyboardHeatmapInformation}">
+                            <Button.ToolTip>
+                              <ToolTip><TextBlock Text="{DynamicResource KeyboardHeatmapHelp}" TextWrapping="Wrap" MaxWidth="360" /></ToolTip>
+                            </Button.ToolTip>
+                          </Button>
+                        </StackPanel>
+                        <StackPanel Grid.Column="1" Orientation="Horizontal">
+                          <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                            <TextBlock Text="{DynamicResource HeatmapDuration}" Style="{StaticResource FieldLabel}" VerticalAlignment="Center" Margin="0,0,8,0" />
+                            <ComboBox ItemsSource="{Binding HeatmapPeriodOptions}" SelectedIndex="{Binding HeatmapPeriodIndex}" Width="150" AutomationProperties.Name="{DynamicResource HeatmapDuration}" />
+                          </StackPanel>
+                          <ToggleButton Content="{DynamicResource HeatmapTooltips}" IsChecked="{Binding HeatmapTooltipsEnabled}" Style="{StaticResource PillToggle}" Margin="10,0,0,0" AutomationProperties.Name="{DynamicResource HeatmapTooltips}" />
+                        </StackPanel>
+                      </Grid>
+                      <local:KeyboardHeatmap Snapshot="{Binding HeatmapSnapshot}" TooltipsEnabled="{Binding HeatmapTooltipsEnabled}" Height="218" Margin="0,18,0,0" AutomationProperties.Name="{DynamicResource KeyboardHeatmap}" />
+                    </StackPanel>
+                  </Border>
                   <Border Style="{StaticResource Card}"><StackPanel><TextBlock Text="{DynamicResource KeyBreakdown}" Style="{StaticResource SectionTitle}" /><ListView ItemsSource="{Binding KeyboardRows}" Background="Transparent" BorderThickness="0" MaxHeight="240"><ListView.View><GridView><GridViewColumn Header="{DynamicResource Key}" DisplayMemberBinding="{Binding Label}" Width="180" /><GridViewColumn Header="{DynamicResource Group}" DisplayMemberBinding="{Binding Detail}" Width="190" /><GridViewColumn Header="{DynamicResource Count}" DisplayMemberBinding="{Binding Count}" Width="100" /></GridView></ListView.View></ListView></StackPanel></Border>
                 </StackPanel>
               </TabItem>
@@ -224,34 +286,22 @@
                      ItemContainerStyle="{StaticResource CardListBoxItem}" ScrollViewer.VerticalScrollBarVisibility="Disabled">
               <ListBox.ItemTemplate>
                 <DataTemplate>
-                  <Border Margin="0,0,0,12" MinHeight="98">
-                    <Border.Style>
-                      <Style TargetType="Border" BasedOn="{StaticResource Card}">
-                        <Style.Triggers>
-                          <DataTrigger Binding="{Binding IsSelected, RelativeSource={RelativeSource AncestorType=ListBoxItem}}" Value="True">
-                            <Setter Property="Background" Value="{DynamicResource SelectionBrush}" />
-                            <Setter Property="BorderBrush" Value="{DynamicResource AccentBrush}" />
-                          </DataTrigger>
-                        </Style.Triggers>
-                      </Style>
-                    </Border.Style>
-                    <Grid>
-                      <Grid.ColumnDefinitions><ColumnDefinition Width="8" /><ColumnDefinition Width="20" /><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
-                      <Border Grid.Column="0" CornerRadius="4" Background="{Binding AccentHex}" />
-                      <StackPanel Grid.Column="2">
-                        <TextBlock Text="{Binding Name}" FontSize="17" FontWeight="SemiBold" />
-                        <StackPanel Orientation="Horizontal" Margin="0,3,0,3">
-                          <TextBlock Text="{Binding Family}" Foreground="{DynamicResource AccentBrush}" FontSize="12" VerticalAlignment="Center" />
-                          <Border Background="{DynamicResource AccentBrush}" CornerRadius="4" Padding="6,2" Margin="8,0,0,0"
-                                  Visibility="{Binding IsCustom, Converter={StaticResource BooleanToVisibilityConverter}}">
-                            <TextBlock Text="{DynamicResource CustomPackBadge}" Foreground="{DynamicResource AccentTextBrush}" FontSize="10" FontWeight="SemiBold" />
-                          </Border>
-                        </StackPanel>
-                        <TextBlock Text="{Binding Description}" Style="{StaticResource MutedText}" />
+                  <Grid>
+                    <Grid.ColumnDefinitions><ColumnDefinition Width="8" /><ColumnDefinition Width="20" /><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
+                    <Border Grid.Column="0" CornerRadius="4" Background="{Binding AccentHex}" />
+                    <StackPanel Grid.Column="2">
+                      <TextBlock Text="{Binding Name}" FontSize="17" FontWeight="SemiBold" />
+                      <StackPanel Orientation="Horizontal" Margin="0,3,0,3">
+                        <TextBlock Text="{Binding Family}" Foreground="{DynamicResource AccentBrush}" FontSize="12" VerticalAlignment="Center" />
+                        <Border Background="{DynamicResource AccentBrush}" CornerRadius="4" Padding="6,2" Margin="8,0,0,0"
+                                Visibility="{Binding IsCustom, Converter={StaticResource BooleanToVisibilityConverter}}">
+                          <TextBlock Text="{DynamicResource CustomPackBadge}" Foreground="{DynamicResource AccentTextBrush}" FontSize="10" FontWeight="SemiBold" />
+                        </Border>
                       </StackPanel>
-                      <TextBlock Grid.Column="3" Text="{DynamicResource SelectToActivate}" Style="{StaticResource MutedText}" VerticalAlignment="Center" Margin="20,0,0,0" />
-                    </Grid>
-                  </Border>
+                      <TextBlock Text="{Binding Description}" Style="{StaticResource MutedText}" />
+                    </StackPanel>
+                    <TextBlock Grid.Column="3" Text="{DynamicResource SelectToActivate}" Style="{StaticResource MutedText}" VerticalAlignment="Center" Margin="20,0,0,0" />
+                  </Grid>
                 </DataTemplate>
               </ListBox.ItemTemplate>
             </ListBox>
@@ -521,7 +571,13 @@
               <StackPanel>
                 <TextBlock Text="{DynamicResource Updates}" Style="{StaticResource SectionTitle}" />
                 <TextBlock Text="{DynamicResource UpdatesHelp}" Style="{StaticResource MutedText}" Margin="0,0,0,12" />
-                <Button Content="{DynamicResource CheckUpdates}" Click="CheckUpdates_Click" Style="{StaticResource AccentButton}" HorizontalAlignment="Left" />
+                <TextBlock Text="{Binding AvailableUpdateText}" Foreground="{DynamicResource AccentBrush}" FontWeight="SemiBold" Margin="0,0,0,10"
+                           Visibility="{Binding HasAvailableUpdate, Converter={StaticResource BooleanToVisibilityConverter}}" />
+                <WrapPanel>
+                  <Button Content="{DynamicResource CheckUpdates}" Click="CheckUpdates_Click" Margin="0,0,8,0" />
+                  <Button Content="{DynamicResource UpdateNow}" Click="UpdateNow_Click" Style="{StaticResource AccentButton}"
+                          Visibility="{Binding HasAvailableUpdate, Converter={StaticResource BooleanToVisibilityConverter}}" />
+                </WrapPanel>
               </StackPanel>
             </Border>
             <Border Style="{StaticResource Card}">

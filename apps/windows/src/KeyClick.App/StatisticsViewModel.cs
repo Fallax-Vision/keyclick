@@ -15,12 +15,18 @@ public sealed class StatisticsViewModel : INotifyPropertyChanged, IDisposable
   private readonly LocalizationService _localization;
   private CancellationTokenSource? _visibleRefresh;
   private StatisticsSnapshot? _snapshot;
+  private StatisticsSnapshot? _heatmapSnapshot;
   private int _periodIndex;
+  private int _heatmapPeriodIndex;
   private int _comparisonIndex;
   private int _pointerDeviceFilterIndex;
   private DateTime? _customStart = DateTime.Today.AddDays(-6);
   private DateTime? _customEnd = DateTime.Today;
   private bool _loading;
+  private bool _heatmapLoading;
+  private bool _heatmapRefreshPending;
+  private bool _heatmapVisible;
+  private bool _heatmapTooltipsEnabled = true;
 
   public StatisticsViewModel(StatisticsService service, LocalizationService localization)
   {
@@ -38,6 +44,11 @@ public sealed class StatisticsViewModel : INotifyPropertyChanged, IDisposable
   [
     _localization.Get("ComparisonNone"), _localization.Get("ComparisonPrevious"), _localization.Get("ComparisonLastYear")
   ];
+  public IReadOnlyList<string> HeatmapPeriodOptions =>
+  [
+    _localization.Get("PeriodToday"), _localization.Get("PeriodSevenDays"), _localization.Get("PeriodThirtyDays"),
+    _localization.Get("PeriodThisMonth"), _localization.Get("PeriodThisYear"), _localization.Get("PeriodAllTime")
+  ];
   public IReadOnlyList<string> PointerDeviceFilterOptions =>
   [
     _localization.Get("AllPointerDevices"), _localization.Get("DeviceExternalMouse"),
@@ -46,6 +57,7 @@ public sealed class StatisticsViewModel : INotifyPropertyChanged, IDisposable
   public ObservableCollection<StatisticRow> PointerRows { get; } = [];
   public ObservableCollection<StatisticRow> KeyboardRows { get; } = [];
   public StatisticsSnapshot? Snapshot { get => _snapshot; private set { _snapshot = value; Notify(); NotifyMetrics(); } }
+  public StatisticsSnapshot? HeatmapSnapshot { get => _heatmapSnapshot; private set { _heatmapSnapshot = value; Notify(); } }
   public bool IsLoading { get => _loading; private set { _loading = value; Notify(); } }
   public string QueueDiagnostics => _localization.Format("StatisticsQueueDiagnosticsFormat", _service.OverflowCount);
 
@@ -77,6 +89,23 @@ public sealed class StatisticsViewModel : INotifyPropertyChanged, IDisposable
   }
 
   public bool ComparisonEnabled => PeriodIndex != (int)StatisticsPeriod.AllTime;
+  public int HeatmapPeriodIndex
+  {
+    get => _heatmapPeriodIndex;
+    set
+    {
+      var next = Math.Clamp(value, 0, 5);
+      if (_heatmapPeriodIndex == next) return;
+      _heatmapPeriodIndex = next;
+      Notify();
+      if (_heatmapVisible) _ = RefreshHeatmapAsync();
+    }
+  }
+  public bool HeatmapTooltipsEnabled
+  {
+    get => _heatmapTooltipsEnabled;
+    set { if (_heatmapTooltipsEnabled == value) return; _heatmapTooltipsEnabled = value; Notify(); }
+  }
   public int PointerDeviceFilterIndex
   {
     get => _pointerDeviceFilterIndex;
@@ -117,6 +146,13 @@ public sealed class StatisticsViewModel : INotifyPropertyChanged, IDisposable
     _ = RefreshWhileVisibleAsync(_visibleRefresh.Token);
   }
 
+  public void SetHeatmapVisible(bool visible)
+  {
+    if (_heatmapVisible == visible) return;
+    _heatmapVisible = visible;
+    if (visible) _ = RefreshHeatmapAsync();
+  }
+
   public async Task RefreshAsync(CancellationToken cancellationToken = default)
   {
     if (IsLoading) return;
@@ -125,6 +161,7 @@ public sealed class StatisticsViewModel : INotifyPropertyChanged, IDisposable
     {
       Snapshot = await _service.QueryAsync(CreateQuery(), cancellationToken);
       RebuildBreakdowns();
+      if (_heatmapVisible) await RefreshHeatmapAsync(cancellationToken);
       Notify(nameof(QueueDiagnostics));
     }
     catch (OperationCanceledException) { }
@@ -136,6 +173,34 @@ public sealed class StatisticsViewModel : INotifyPropertyChanged, IDisposable
     : _service.ExportCsvAsync(Snapshot, path, cancellationToken);
 
   public Task DeleteAsync(StatisticsDeleteRequest request, CancellationToken cancellationToken = default) => _service.DeleteAsync(request, cancellationToken);
+
+  public async Task RefreshHeatmapAsync(CancellationToken cancellationToken = default)
+  {
+    if (_heatmapLoading)
+    {
+      _heatmapRefreshPending = true;
+      return;
+    }
+    _heatmapLoading = true;
+    try
+    {
+      do
+      {
+        _heatmapRefreshPending = false;
+        HeatmapSnapshot = await _service.QueryAsync(CreateHeatmapQuery(), cancellationToken);
+      }
+      while (_heatmapVisible && _heatmapRefreshPending && !cancellationToken.IsCancellationRequested);
+    }
+    catch (OperationCanceledException) { }
+    finally { _heatmapLoading = false; }
+  }
+
+  public void RefreshLocalization()
+  {
+    Notify(nameof(PeriodOptions), nameof(ComparisonOptions), nameof(HeatmapPeriodOptions), nameof(PointerDeviceFilterOptions), nameof(QueueDiagnostics));
+    RebuildBreakdowns();
+    NotifyMetrics();
+  }
 
   public void Dispose()
   {
@@ -158,8 +223,21 @@ public sealed class StatisticsViewModel : INotifyPropertyChanged, IDisposable
 
   private StatisticsQuery CreateQuery()
   {
+    var (start, end) = CreateRange((StatisticsPeriod)PeriodIndex);
+    var comparison = ComparisonEnabled ? (StatisticsComparison)ComparisonIndex : StatisticsComparison.None;
+    return new(ToUtc(start), ToUtc(end), comparison);
+  }
+
+  private StatisticsQuery CreateHeatmapQuery()
+  {
+    var (start, end) = CreateRange((StatisticsPeriod)HeatmapPeriodIndex);
+    return new(ToUtc(start), ToUtc(end));
+  }
+
+  private (DateTime Start, DateTime End) CreateRange(StatisticsPeriod period)
+  {
     var today = DateTime.Today;
-    var (start, end) = (StatisticsPeriod)PeriodIndex switch
+    var (start, end) = period switch
     {
       StatisticsPeriod.Today => (today, today.AddDays(1)),
       StatisticsPeriod.SevenDays => (today.AddDays(-6), today.AddDays(1)),
@@ -170,8 +248,7 @@ public sealed class StatisticsViewModel : INotifyPropertyChanged, IDisposable
       _ => ((_customStart ?? today).Date, (_customEnd ?? today).Date.AddDays(1))
     };
     if (end <= start) end = start.AddDays(1);
-    var comparison = ComparisonEnabled ? (StatisticsComparison)ComparisonIndex : StatisticsComparison.None;
-    return new(ToUtc(start), ToUtc(end), comparison);
+    return (start, end);
   }
 
   private void RebuildBreakdowns()

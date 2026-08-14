@@ -42,6 +42,69 @@ public sealed class UiConsistencyTests
     Assert.DoesNotContain("Foreground=\"#", appXaml);
   }
 
+  [Fact]
+  public void Navigation_and_statistics_controls_have_icons_clear_selection_and_heatmap_filters()
+  {
+    var repositoryRoot = FindRepositoryRoot();
+    var appXaml = File.ReadAllText(Path.Combine(repositoryRoot, "apps", "windows", "src", "KeyClick.App", "App.xaml"));
+    var mainXaml = File.ReadAllText(Path.Combine(repositoryRoot, "apps", "windows", "src", "KeyClick.App", "MainWindow.xaml"));
+
+    Assert.Equal(8, Count(mainXaml, "Style=\"{StaticResource NavButton}\""));
+    Assert.Equal(8, Count(mainXaml, "Style=\"{StaticResource NavigationIcon}\""));
+    Assert.Contains("GroupName=\"PrimaryNavigation\"", mainXaml);
+    Assert.DoesNotContain("ActiveMarker", appXaml);
+    Assert.Contains("<Setter Property=\"Margin\" Value=\"0,0,15,0\" />", appXaml);
+    Assert.Contains("Property=\"IsChecked\" Value=\"True\"", appXaml);
+    Assert.Contains("Value=\"{DynamicResource SelectionBrush}\"", appXaml);
+    Assert.Contains("x:Name=\"StatisticsSectionTabs\"", mainXaml);
+    Assert.Contains("CornerRadius=\"11\"", appXaml);
+    Assert.Contains("<Setter Property=\"Margin\" Value=\"0,0,10,0\" />", appXaml);
+    Assert.Contains("<Color x:Key=\"AccentTextColor\">#000000</Color>", appXaml);
+    Assert.Contains("ItemsSource=\"{Binding HeatmapPeriodOptions}\"", mainXaml);
+    Assert.Contains("TooltipsEnabled=\"{Binding HeatmapTooltipsEnabled}\"", mainXaml);
+    Assert.Contains("Snapshot=\"{Binding HeatmapSnapshot}\"", mainXaml);
+    Assert.Equal(2, Count(mainXaml, "<local:KeyboardHeatmap Snapshot=\"{Binding HeatmapSnapshot}\""));
+    Assert.Contains("DataContext=\"{Binding Statistics}\"", mainXaml);
+    Assert.Contains("Style=\"{StaticResource HelpIconButton}\"", mainXaml);
+    Assert.Contains("Height=\"218\" Margin=\"0,18,0,0\"", mainXaml);
+    Assert.DoesNotContain("Text=\"{DynamicResource KeyboardHeatmapHelp}\" Style=\"{StaticResource MutedText}\"", mainXaml);
+
+    var visuals = File.ReadAllText(Path.Combine(repositoryRoot, "apps", "windows", "src", "KeyClick.App", "StatisticsVisuals.cs"));
+    Assert.Contains("OnMouseLeftButtonUp", visuals);
+    Assert.DoesNotContain("_hoveredCode", visuals);
+  }
+
+  [Fact]
+  public void Sound_pack_items_use_one_hoverable_card_container()
+  {
+    var repositoryRoot = FindRepositoryRoot();
+    var appXaml = File.ReadAllText(Path.Combine(repositoryRoot, "apps", "windows", "src", "KeyClick.App", "App.xaml"));
+    var mainXaml = File.ReadAllText(Path.Combine(repositoryRoot, "apps", "windows", "src", "KeyClick.App", "MainWindow.xaml"));
+
+    Assert.Contains("x:Key=\"CardListBoxItem\"", appXaml);
+    Assert.Contains("x:Name=\"PackContainer\"", appXaml);
+    Assert.Contains("TargetName=\"PackContainer\" Property=\"Background\" Value=\"{DynamicResource SurfaceHoverBrush}\"", appXaml);
+    Assert.Contains("ItemContainerStyle=\"{StaticResource CardListBoxItem}\"", mainXaml);
+    Assert.DoesNotContain("<Border Margin=\"0,0,0,12\" MinHeight=\"98\">", mainXaml);
+    Assert.DoesNotContain("Binding=\"{Binding IsSelected, RelativeSource={RelativeSource AncestorType=ListBoxItem}}\"", mainXaml);
+  }
+
+  [Fact]
+  public void Uninstaller_waits_for_graceful_or_forced_app_exit_before_deleting_payloads()
+  {
+    var repositoryRoot = FindRepositoryRoot();
+    var app = File.ReadAllText(Path.Combine(repositoryRoot, "apps", "windows", "src", "KeyClick.App", "App.xaml.cs"));
+    var bootstrap = File.ReadAllText(Path.Combine(repositoryRoot, "apps", "windows", "src", "KeyClick.Bootstrap", "Program.cs"));
+
+    Assert.Contains("Local\\KeyClick.Shutdown.", app);
+    Assert.Contains("Local\\KeyClick.Shutdown.", bootstrap);
+    Assert.Contains("StopRunningApp(root);", bootstrap);
+    Assert.Contains("process.Kill(entireProcessTree: true);", bootstrap);
+    Assert.Contains("process.WaitForExit(5000)", bootstrap);
+    Assert.Contains("DeleteWithRetry", bootstrap);
+    Assert.DoesNotContain("if (!process.WaitForExit(1500)) process.Kill();", bootstrap);
+  }
+
   private static int Count(string value, string fragment)
   {
     var count = 0;

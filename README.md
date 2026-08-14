@@ -10,11 +10,11 @@ Windows v1 is implemented in C#, WPF, .NET 10 LTS, SQLite, Win32 Raw Input, and 
 
 ## Highlights
 
-- Thirteen built-in packs with no immediate sample repetition: ten original synthesized packs, the Cloudflare Pay-inspired Cream Keys pack, and two Pixabay-licensed mechanical packs.
+- Thirteen built-in packs with deterministic per-key sound identities: each physical key consistently uses its assigned category recording, including the Cloudflare Pay-inspired Cream Keys pack, two Pixabay-licensed mechanical packs, and ten original synthesized packs.
 - New installations and settings resets default to **Cream Keys**; existing installations keep their selected pack.
 - Base, Shift, AltGr, and lock enabled/disabled variants.
 - Reversible per-pack overrides for individual keys, pointer buttons, wheels, and device families.
-- Independent master, category, and input volumes with immediate preview and debounced persistence.
+- Independent master, category, and input volumes with immediate preview and debounced persistence; new installs and settings resets start at 35% master volume.
 - WAV, MP3, and OGG importing with decoded-content validation, five-second/20 MB limits, 48 kHz PCM normalization, and SHA-256 deduplication.
 - Configurable first-key-down/key-up keyboard audio with typematic suppression; pointer movement never plays sounds.
 - Separate trackpad/external-mouse identities when Windows drivers expose them reliably.
@@ -23,7 +23,7 @@ Windows v1 is implemented in C#, WPF, .NET 10 LTS, SQLite, Win32 Raw Input, and 
 - Light, Dark, and live System themes; tray lifecycle; startup support; app exclusions; backup; and manual-only updates.
 - Closing the KeyClick window or choosing **Exit** from the tray fully stops audio and input capture. Minimizing can keep the still-running app in the tray when that setting is enabled.
 - English and French UI with Windows display-language detection plus a persistent manual app-language override.
-- Independent, default-on keyboard and pointer aggregate statistics with native charts, physical-key heatmaps, speed metrics, comparisons, local CSV export, and category/range deletion.
+- Independent, default-on keyboard and pointer aggregate statistics with native charts, a Home and Statistics physical-key heatmap with click-open key details, speed metrics, comparisons, local CSV export, and category/range deletion.
 - Optional local wellness goals and 60/10 break reminders, automatic random pack rotation, and password-protected `.keyclickprofile` transfer.
 
 ## Architecture
@@ -76,17 +76,20 @@ dotnet test KeyClick.sln -c Release
 Create setup and portable executables for both architectures:
 
 ```powershell
-./scripts/Build-Portable.ps1 -Version 1.0.0
+./scripts/Build-Portable.ps1 -Version 1.1.2
 ```
 
-The script writes these canonical artifacts plus SHA-256 checksums under `artifacts/portable`:
+The script writes these canonical, versioned artifacts plus SHA-256 checksums directly under `artifacts/`:
 
-- `KeyClick-Portable-Windows-x64.exe`
-- `KeyClick-Portable-Windows-arm64.exe`
-- `KeyClick-Setup-Windows-x64.exe`
-- `KeyClick-Setup-Windows-arm64.exe`
+- `KeyClick-Portable-Windows-x64-1.1.2.exe`
+- `KeyClick-Portable-Windows-arm64-1.1.2.exe`
+- `KeyClick-Setup-Windows-x64-1.1.2.exe`
+- `KeyClick-Setup-Windows-arm64-1.1.2.exe`
+- `checksums-1.1.2.txt`
 
-`KeyClick-Setup-Windows-<architecture>.exe` is the installable edition. Setup is per-user and non-elevated, installs versioned code under `%LOCALAPPDATA%\KeyClick`, creates shortcuts, and registers HKCU uninstall metadata while preserving user data during upgrades. `KeyClick-Portable-Windows-<architecture>.exe` is the portable edition. It creates no shortcuts or registry entries and keeps code, SQLite data/statistics, media, logs, and backups under `KeyClickData` beside the launcher. If that directory is not writable, the user can explicitly use the installed AppData store or exit. No legacy duplicate executables are produced.
+`KeyClick-Setup-Windows-<architecture>-<version>.exe` is the installable edition. Setup is per-user and non-elevated, installs versioned code under `%LOCALAPPDATA%\KeyClick`, creates shortcuts, and registers HKCU uninstall metadata while preserving user data during upgrades. `KeyClick-Portable-Windows-<architecture>-<version>.exe` is the portable edition. It creates no shortcuts or registry entries and keeps code, SQLite data/statistics, media, logs, and backups under `KeyClickData` beside the launcher. If that directory is not writable, the user can explicitly use the installed AppData store or exit. No legacy duplicate executables are produced. Packaging follows SemVer and retains only the current and immediately preceding artifact versions.
+
+Installed builds can discover the newest compatible, checksum-verified setup in the local `artifacts/` release folder and expose an **Update** action in About & Updates. GitHub remains manual-only: it is contacted only after **Check for updates** is pressed. Installed builds select setup assets; portable builds select portable assets and save the verified newer launcher beside the current copy. Applying either kind of update creates a safety backup and preserves the separate statistics, custom packs, settings, mappings, and configuration data store.
 
 ## Custom sound packs
 

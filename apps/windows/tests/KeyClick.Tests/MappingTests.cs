@@ -58,17 +58,38 @@ public sealed class MappingTests
   }
 
   [Fact]
-  public void Shuffle_pool_does_not_repeat_immediately()
+  public void Physical_input_always_selects_the_same_sample()
   {
     var resolver = new SoundMappingResolver();
     var sound = new ResolvedSound(true, 1, ["one", "two", "three"], false);
-    var previous = resolver.SelectWithoutImmediateRepeat(sound, "pool");
-    for (var index = 0; index < 100; index++)
+    var selected = resolver.SelectStable(sound, Letter.Input.StableId);
+
+    for (var index = 0; index < 100; index++) Assert.Equal(selected, resolver.SelectStable(sound, Letter.Input.StableId));
+    Assert.True(Enumerable.Range(0, 32).Select(index => resolver.SelectStable(sound, $"key-{index}")).Distinct().Count() > 1);
+  }
+
+  [Fact]
+  public void Every_builtin_group_uses_the_same_pool_for_every_modifier_variant()
+  {
+    foreach (var pack in BuiltInCatalog.Packs)
+    foreach (var group in Enum.GetValues<InputGroup>())
     {
-      var current = resolver.SelectWithoutImmediateRepeat(sound, "pool");
-      Assert.NotEqual(previous, current);
-      previous = current;
+      var expected = pack.SamplesFor(group, KeyVariant.Base);
+      Assert.NotEmpty(expected);
+      foreach (var variant in Enum.GetValues<KeyVariant>()) Assert.Equal(expected, pack.SamplesFor(group, variant));
     }
+  }
+
+  [Fact]
+  public void Cream_keys_assigns_specific_recordings_to_key_categories()
+  {
+    var cream = Assert.Single(BuiltInCatalog.Packs, pack => pack.Id == BuiltInCatalog.DefaultPackId);
+
+    Assert.Single(cream.SamplesFor(InputGroup.Numbers, KeyVariant.Base));
+    Assert.Single(cream.SamplesFor(InputGroup.Punctuation, KeyVariant.Base));
+    Assert.Single(cream.SamplesFor(InputGroup.Modifiers, KeyVariant.Base));
+    Assert.False(cream.SamplesFor(InputGroup.Numbers, KeyVariant.Base).SequenceEqual(cream.SamplesFor(InputGroup.Punctuation, KeyVariant.Base)));
+    Assert.False(cream.SamplesFor(InputGroup.Modifiers, KeyVariant.Base).SequenceEqual(cream.SamplesFor(InputGroup.Navigation, KeyVariant.Base)));
   }
 
   [Fact]

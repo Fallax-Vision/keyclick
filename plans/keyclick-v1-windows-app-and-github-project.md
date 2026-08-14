@@ -4,7 +4,7 @@
 
 Build KeyClick as a native Windows 11 application using C#, WPF, [.NET 10 LTS](https://learn.microsoft.com/en-us/dotnet/core/whats-new/dotnet-10/overview), SQLite, Win32 Raw Input, and XAudio2. This avoids Electron/WebView overhead while supporting modern Windows UI, low-latency sound effects, system tray operation, and global input.
 
-Publish architecture-specific single-file setup and portable distributions—`KeyClick-Setup-Windows-x64.exe`, `KeyClick-Portable-Windows-x64.exe`, `KeyClick-Setup-Windows-arm64.exe`, and `KeyClick-Portable-Windows-arm64.exe`—because [.NET single-file applications are architecture-specific](https://learn.microsoft.com/en-us/dotnet/core/deploying/single-file/overview). Do not publish duplicate legacy aliases. Linux and macOS implementations are deferred, but the repository will reserve native-platform app folders and share protocols, pack specifications, assets, and fixtures.
+Publish architecture-specific, SemVer-stamped single-file setup and portable distributions—`KeyClick-Setup-Windows-x64-<version>.exe`, `KeyClick-Portable-Windows-x64-<version>.exe`, `KeyClick-Setup-Windows-arm64-<version>.exe`, and `KeyClick-Portable-Windows-arm64-<version>.exe`—because [.NET single-file applications are architecture-specific](https://learn.microsoft.com/en-us/dotnet/core/deploying/single-file/overview). Keep only the current and immediately preceding artifact versions and do not publish duplicate legacy aliases. Linux and macOS implementations are deferred, but the repository will reserve native-platform app folders and share protocols, pack specifications, assets, and fixtures.
 
 ## Product and UX
 
@@ -16,7 +16,7 @@ Publish architecture-specific single-file setup and portable distributions—`Ke
   - Keyboard-focused: Clicky Switch, Tactile Switch, Linear Switch, Buckling Spring, Silent Switch.
   - Recorded: Cream Keys, Bright Mechanical, Compact Mech Tap.
   - Balanced: Crisp Mechanical, Soft Thock, Classic Typewriter, Minimal Tap, Digital Pulse.
-- Each pack contains sample pools with no immediate repetition for letters, numbers/symbols, punctuation, modifiers, navigation, functions/media, numpad, locks, Space, Enter, editing/destructive keys, pointer buttons, wheels, and result cues.
+- Each pack contains category-specific sample pools for letters, numbers/symbols, punctuation, modifiers, navigation, functions/media, numpad, locks, Space, Enter, editing/destructive keys, pointer buttons, wheels, and result cues. A physical key deterministically keeps the same sound instead of changing recordings between presses.
 - Built-in mappings remain immutable. A key-specific override is stored as a separate per-pack layer; disabling or removing it restores the built-in mapping and volume.
 - Support Base, Shift, and AltGr variants using the active Windows keyboard layout. NumLock, CapsLock, and ScrollLock receive separate enabled/disabled samples.
 - Enter may use a positive role cue and Delete/Backspace a negative role cue, but KeyClick will not claim to know another app’s outcome.
@@ -30,7 +30,7 @@ Publish architecture-specific single-file setup and portable distributions—`Ke
   - Launch at startup, start minimized, minimize/close to tray, and fullscreen pause.
   - Theme, output device, all volume layers, active pack, app exclusions, input-device classification, and shortcut sequence timeout.
   - Integration API permissions, manual update check, backup/restore, reset options, reduced motion, diagnostics, and log cleanup.
-- Defaults: sounds enabled, System theme, 70% master volume, launch at startup off, close to tray on, startup runs hidden only when enabled, system-default audio output, no app exclusions, and no background update checks.
+- Defaults: sounds enabled, System theme, 35% master volume, launch at startup off, close to tray on, startup runs hidden only when enabled, system-default audio output, no app exclusions, and no background update checks.
 
 ## Technical Implementation and Interfaces
 

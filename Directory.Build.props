@@ -1,6 +1,6 @@
 <Project>
   <PropertyGroup>
-    <VersionPrefix>1.0.0</VersionPrefix>
+    <VersionPrefix>1.1.2</VersionPrefix>
     <Company>Fallax Vision</Company>
     <Authors>Fallax Vision</Authors>
     <Product>KeyClick</Product>
