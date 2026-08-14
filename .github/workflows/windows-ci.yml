@@ -39,7 +39,7 @@ jobs:
       - name: Package setup and portable executables
         shell: pwsh
         run: ./scripts/Build-Portable.ps1 -Version 1.0.0-ci -Runtime ${{ matrix.runtime }}
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: KeyClick-${{ matrix.architecture }}
           path: |
@@ -47,7 +47,7 @@ jobs:
             artifacts/KeyClick-Portable-Windows-${{ matrix.architecture }}-1.0.0-ci.exe
             artifacts/checksums-1.0.0-ci.txt
           if-no-files-found: error
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         if: always()
         with:
           name: test-results-${{ matrix.architecture }}
