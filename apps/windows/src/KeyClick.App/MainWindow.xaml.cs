@@ -21,6 +21,7 @@ namespace KeyClick.App;
 public partial class MainWindow : Window
 {
   private readonly MainViewModel _viewModel;
+  private readonly FunStatsShareService _funStatsShare = new();
   private bool _spaceEnteredOnKeyDown;
   private static LocalizationService L => LocalizationService.Current;
   internal bool AllowClose { get; set; }
@@ -271,6 +272,7 @@ public partial class MainWindow : Window
     var statisticsVisible = PageTabs.SelectedIndex == 1;
     var homeVisible = PageTabs.SelectedIndex == 0;
     _viewModel.Statistics?.SetVisible(homeVisible || statisticsVisible);
+    _viewModel.Statistics?.SetHomeVisible(homeVisible);
     _viewModel.Statistics?.SetHeatmapVisible(homeVisible || statisticsVisible && StatisticsSectionTabs?.SelectedIndex == 2);
     _viewModel.Statistics?.SetApplicationsVisible(statisticsVisible && StatisticsSectionTabs?.SelectedIndex == 3);
   }
@@ -280,6 +282,48 @@ public partial class MainWindow : Window
     if (!ReferenceEquals(e.Source, StatisticsSectionTabs)) return;
     _viewModel.Statistics?.SetHeatmapVisible(PageTabs?.SelectedIndex == 1 && StatisticsSectionTabs.SelectedIndex == 2);
     _viewModel.Statistics?.SetApplicationsVisible(PageTabs?.SelectedIndex == 1 && StatisticsSectionTabs.SelectedIndex == 3);
+  }
+
+  private void MetricCard_Click(object sender, RoutedEventArgs e)
+  {
+    if (_viewModel.Statistics is not { } statistics || sender is not FrameworkElement { Tag: string cardId }) return;
+    var details = statistics.CardDetails(cardId);
+    var dialog = new FunStatDetailWindow(details.Title, details.Value, details.Facts) { Owner = this };
+    dialog.SourceInitialized += (_, _) => _viewModel.ApplyTheme(dialog);
+    dialog.ShowDialog();
+    statistics.CardWasClicked(cardId);
+  }
+
+  private void ManageFunStats_Click(object sender, RoutedEventArgs e)
+  {
+    if (_viewModel.Statistics is not { } statistics) return;
+    var dialog = new FunStatsManageWindow(statistics) { Owner = this };
+    dialog.SourceInitialized += (_, _) => _viewModel.ApplyTheme(dialog);
+    dialog.ShowDialog();
+  }
+
+  private void CustomizeChart_Click(object sender, RoutedEventArgs e) => ManageFunStats_Click(sender, e);
+
+  private void ShuffleFunStats_Click(object sender, RoutedEventArgs e) => _viewModel.Statistics?.ShuffleFunFacts();
+
+  private void CopyFunStats_Click(object sender, RoutedEventArgs e)
+  {
+    if (_viewModel.Statistics is not { } statistics || sender is not FrameworkElement { Tag: string location }) return;
+    var home = location == "home";
+    var tiles = home ? statistics.HomeFunStatsTiles : statistics.FunStatsTiles;
+    try
+    {
+      var background = FindResource("WindowBackgroundBrush") as SolidColorBrush;
+      var color = background?.Color ?? Colors.Black;
+      var dark = color.R + color.G + color.B < 384;
+      _funStatsShare.Copy(tiles, home ? statistics.HomeFunStatsPeriodLabel : statistics.CurrentPeriodLabel,
+        statistics.BuildShareCaption(home), statistics.FunStatsCopyMode, this, dark);
+      _viewModel.ReportStatus(L.Get("FunCopied"));
+    }
+    catch (Exception exception)
+    {
+      MessageBox.Show(this, L.Format("FunCopyFailedFormat", exception.Message), L.Get("Copy"), MessageBoxButton.OK, MessageBoxImage.Warning);
+    }
   }
 
   private async void ExportStatistics_Click(object sender, RoutedEventArgs e)

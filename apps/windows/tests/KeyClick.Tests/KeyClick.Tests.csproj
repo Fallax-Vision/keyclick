@@ -5,6 +5,7 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <IsPackable>false</IsPackable>
+    <UseWPF>true</UseWPF>
   </PropertyGroup>
 
   <ItemGroup>
@@ -15,10 +16,12 @@
   </ItemGroup>
 
   <ItemGroup>
+    <Using Include="System.IO" />
     <Using Include="Xunit" />
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\..\src\KeyClick.App\KeyClick.App.csproj" />
     <ProjectReference Include="..\..\src\KeyClick.Core\KeyClick.Core.csproj" />
     <ProjectReference Include="..\..\src\KeyClick.Infrastructure.Windows\KeyClick.Infrastructure.Windows.csproj" />
     <ProjectReference Include="..\..\src\KeyClick.Updater\KeyClick.Updater.csproj" />

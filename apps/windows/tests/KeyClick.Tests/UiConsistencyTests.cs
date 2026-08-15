@@ -38,7 +38,8 @@ public sealed class UiConsistencyTests
     Assert.Contains("x:Key=\"MetricCard\"", appXaml);
     Assert.Contains("x:Key=\"PageContent\"", appXaml);
     Assert.Equal(9, Count(mainXaml, "Style=\"{StaticResource PageContent}\""));
-    Assert.Equal(16, Count(mainXaml, "Style=\"{StaticResource MetricCard}\""));
+    Assert.Equal(8, Count(mainXaml, "Style=\"{StaticResource MetricCard}\""));
+    Assert.Equal(8, Count(mainXaml, "Style=\"{StaticResource MetricCardButton}\""));
     Assert.DoesNotContain("Foreground=\"#", appXaml);
   }
 
@@ -79,7 +80,8 @@ public sealed class UiConsistencyTests
     Assert.Equal(2, Count(mainXaml, "<local:KeyboardHeatmap Snapshot=\"{Binding HeatmapSnapshot}\""));
     Assert.Contains("DataContext=\"{Binding Statistics}\"", mainXaml);
     Assert.Contains("Style=\"{StaticResource HelpIconButton}\"", mainXaml);
-    Assert.Contains("Height=\"218\" Margin=\"0,18,0,0\"", mainXaml);
+    Assert.Equal(2, Count(mainXaml, "HorizontalAlignment=\"Stretch\" Margin=\"0,18,0,0\" AutomationProperties.Name=\"{DynamicResource KeyboardHeatmap}\""));
+    Assert.DoesNotContain("Height=\"218\"", mainXaml);
     Assert.DoesNotContain("Text=\"{DynamicResource KeyboardHeatmapHelp}\" Style=\"{StaticResource MutedText}\"", mainXaml);
     Assert.Contains("Text=\"{DynamicResource StatisticsApplications}\"", mainXaml);
     Assert.Contains("ItemsSource=\"{Binding ApplicationRows}\"", mainXaml);
@@ -107,6 +109,10 @@ public sealed class UiConsistencyTests
     Assert.Contains("var preferAbove =", visuals);
     Assert.Contains("var popupX = Math.Clamp", visuals);
     Assert.DoesNotContain("_selectedCode == key.Code", visuals);
+    Assert.Contains("protected override Size MeasureOverride(Size availableSize)", visuals);
+    Assert.Contains("width * LayoutHeight / LayoutWidth", visuals);
+    Assert.Contains("ActualWidth / LayoutWidth, ActualHeight / LayoutHeight", visuals);
+    Assert.DoesNotContain("Math.Max(16, Math.Min", visuals);
     Assert.DoesNotContain("_hoveredCode", visuals);
 
     var codeBehind = File.ReadAllText(Path.Combine(repositoryRoot, "apps", "windows", "src", "KeyClick.App", "MainWindow.xaml.cs"));
@@ -130,6 +136,18 @@ public sealed class UiConsistencyTests
     Assert.Contains("Text=\"&#x2192;\"", mainXaml);
     Assert.Contains("Text=\"{Binding Name}\" FontSize=\"17\"", mainXaml);
     Assert.Contains("ItemContainerStyle=\"{StaticResource InsetListBoxItem}\"", mainXaml);
+  }
+
+  [Fact]
+  public void Physical_key_breakdown_uses_clear_labels_and_proportional_activity_fill()
+  {
+    var mainXaml = File.ReadAllText(Path.Combine(FindRepositoryRoot(), "apps", "windows", "src", "KeyClick.App", "MainWindow.xaml"));
+
+    Assert.Contains("ItemsSource=\"{Binding KeyboardRows}\"", mainXaml);
+    Assert.Contains("Text=\"{Binding Label}\" FontSize=\"21\"", mainXaml);
+    Assert.Contains("Maximum=\"{Binding ProgressMaximum}\" Value=\"{Binding Count}\" Opacity=\"{Binding ProgressOpacity}\"", mainXaml);
+    Assert.Contains("x:Name=\"PART_Indicator\" Background=\"{DynamicResource AccentBrush}\"", mainXaml);
+    Assert.DoesNotContain("<ListView ItemsSource=\"{Binding KeyboardRows}\"", mainXaml);
   }
 
   [Fact]
@@ -182,6 +200,57 @@ public sealed class UiConsistencyTests
     Assert.Contains("SetApplicationsVisible", codeBehind);
     Assert.DoesNotContain("RefreshStatistics_Click", codeBehind);
     Assert.DoesNotContain("Content=\"{DynamicResource Refresh}\"", mainXaml);
+  }
+
+  [Fact]
+  public void Fun_stats_and_activity_charts_follow_the_layout_sharing_and_accessibility_contracts()
+  {
+    var root = FindRepositoryRoot();
+    var main = File.ReadAllText(Path.Combine(root, "apps", "windows", "src", "KeyClick.App", "MainWindow.xaml"));
+    var visuals = File.ReadAllText(Path.Combine(root, "apps", "windows", "src", "KeyClick.App", "StatisticsVisuals.cs"));
+    var appStyles = File.ReadAllText(Path.Combine(root, "apps", "windows", "src", "KeyClick.App", "App.xaml"));
+    var manage = File.ReadAllText(Path.Combine(root, "apps", "windows", "src", "KeyClick.App", "FunStatsManageWindow.xaml"));
+    var share = File.ReadAllText(Path.Combine(root, "apps", "windows", "src", "KeyClick.App", "FunStatsShareService.cs"));
+
+    var sounds = main.IndexOf("SoundStateDescription", StringComparison.Ordinal);
+    var keyboard = main.IndexOf("x:Name=\"HomeFunStatsPanel\"", StringComparison.Ordinal) > 0
+      ? main.LastIndexOf("KeyboardHeatmap", main.IndexOf("x:Name=\"HomeFunStatsPanel\"", StringComparison.Ordinal), StringComparison.Ordinal)
+      : -1;
+    var funStats = main.IndexOf("x:Name=\"HomeFunStatsPanel\"", StringComparison.Ordinal);
+    var soundPack = main.IndexOf("Text=\"{DynamicResource ActiveSoundPack}\"", StringComparison.Ordinal);
+    var audioOutput = main.IndexOf("Text=\"{DynamicResource AudioOutput}\"", StringComparison.Ordinal);
+    Assert.True(sounds < keyboard && keyboard < funStats && funStats < soundPack && soundPack < audioOutput);
+
+    Assert.Equal(8, Count(main, "Click=\"MetricCard_Click\""));
+    Assert.Contains("ToolTipService.InitialShowDelay=\"1000\"", main);
+    Assert.Equal(2, Count(main, "Click=\"CopyFunStats_Click\""));
+    Assert.Contains("ItemsSource=\"{Binding FunStatCategoryOptions}\"", manage);
+    Assert.Contains("ItemsSource=\"{Binding ChartSeriesOptions}\"", manage);
+    Assert.Contains("Model=\"{Binding ChartModel}\"", main);
+    Assert.Contains("AutomationProperties.HelpText=\"{Binding ChartAccessibleSummary}\"", main);
+    Assert.Contains("ChartMetricFamilyOptions", main);
+    Assert.Contains("ChartViewOptions", main);
+    Assert.Contains("ChartGranularityOptions", main);
+
+    Assert.Contains("protected override void OnMouseMove", visuals);
+    Assert.Contains("Math.Clamp(position.X + 14", visuals);
+    Assert.Contains("Key.Left or Key.Right or Key.Home or Key.End", visuals);
+    Assert.Contains("DashStyle = DashStyles.Dash", visuals);
+    Assert.Contains("var comparisonPen = new Pen(comparisonBrush, 1)", visuals);
+    Assert.Contains("ChartComparisonDeltaFormat", visuals);
+    Assert.Contains("SystemParameters.ClientAreaAnimation", visuals);
+    Assert.Contains("x:Key=\"MetricCardButton\"", appStyles);
+    Assert.Contains("x:Key=\"FunStatTileCard\"", appStyles);
+    Assert.Contains("x:Key=\"FunStatRouteProgressTemplate\"", appStyles);
+    Assert.Contains("x:Key=\"FunStatRadialProgressTemplate\"", appStyles);
+    Assert.Contains("x:Key=\"FunStatEquivalenceTemplate\"", appStyles);
+    Assert.Contains("<local:RadialProgress", appStyles);
+
+    Assert.Contains("var height = tiles.Length <= 6 ? 630 : 1200", share);
+    Assert.Contains("var width = 1200", share);
+    Assert.DoesNotContain("HttpClient", share, StringComparison.Ordinal);
+    Assert.DoesNotContain("DropShadow", string.Concat(appStyles, main, manage), StringComparison.OrdinalIgnoreCase);
+    Assert.DoesNotContain("translateY", string.Concat(appStyles, main, manage), StringComparison.OrdinalIgnoreCase);
   }
 
   [Fact]

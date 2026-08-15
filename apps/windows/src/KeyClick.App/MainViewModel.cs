@@ -270,7 +270,17 @@ public sealed class MainViewModel : INotifyPropertyChanged, IDisposable
   public bool StartMinimized { get => _settings.StartMinimized; set { if (_settings.StartMinimized == value) return; _settings.StartMinimized = value; SettingChanged(nameof(StartMinimized)); } }
   public bool CloseToTray { get => _settings.CloseToTray; set { if (_settings.CloseToTray == value) return; _settings.CloseToTray = value; SettingChanged(nameof(CloseToTray)); } }
   public bool PauseInFullscreen { get => _settings.PauseInFullscreen; set { if (_settings.PauseInFullscreen == value) return; _settings.PauseInFullscreen = value; SettingChanged(nameof(PauseInFullscreen)); } }
-  public bool ReducedMotion { get => _settings.ReducedMotion; set { if (_settings.ReducedMotion == value) return; _settings.ReducedMotion = value; SettingChanged(nameof(ReducedMotion)); } }
+  public bool ReducedMotion
+  {
+    get => _settings.ReducedMotion;
+    set
+    {
+      if (_settings.ReducedMotion == value) return;
+      _settings.ReducedMotion = value;
+      Statistics?.NotifyReducedMotion();
+      SettingChanged(nameof(ReducedMotion));
+    }
+  }
   public bool IntegrationApiEnabled { get => _settings.IntegrationApiEnabled; set { if (_settings.IntegrationApiEnabled == value) return; _settings.IntegrationApiEnabled = value; SettingChanged(nameof(IntegrationApiEnabled)); } }
   public bool NormalizeImports { get => _settings.NormalizeImports; set { if (_settings.NormalizeImports == value) return; _settings.NormalizeImports = value; SettingChanged(nameof(NormalizeImports)); } }
   public bool SoundPackListView
@@ -651,6 +661,7 @@ public sealed class MainViewModel : INotifyPropertyChanged, IDisposable
       TypingChallengeDisclosureConfirmed = challengeDisclosureConfirmed
     };
     TypingChallenges?.UpdateSettings(_settings);
+    Statistics?.UpdateSettings(_settings);
     ExcludedExecutables.Clear();
     StatisticsExcludedExecutables.Clear();
     AllowedIntegrationClients.Clear();
@@ -783,9 +794,11 @@ public sealed class MainViewModel : INotifyPropertyChanged, IDisposable
   public void AttachStatistics(StatisticsService service)
   {
     Statistics?.Dispose();
-    Statistics = new StatisticsViewModel(service, _localization);
+    Statistics = new StatisticsViewModel(service, _settings, _localization, SaveSettingsNowAsync);
     Notify(nameof(Statistics));
   }
+
+  public void ReportStatus(string message) => StatusMessage = message;
 
   public void AttachTypingChallenges(TypingChallengeService service, StatisticsService statistics)
   {
@@ -841,6 +854,7 @@ public sealed class MainViewModel : INotifyPropertyChanged, IDisposable
   {
     _settings = await (_profiles ?? throw new InvalidOperationException("Profile transfer is unavailable.")).ImportAsync(path, password, useImportedMedia);
     TypingChallenges?.UpdateSettings(_settings);
+    Statistics?.UpdateSettings(_settings);
     if (TypingChallenges is not null) await TypingChallenges.InitializeAsync();
     ExcludedExecutables.Clear();
     foreach (var executable in _settings.ExcludedExecutables) ExcludedExecutables.Add(executable);

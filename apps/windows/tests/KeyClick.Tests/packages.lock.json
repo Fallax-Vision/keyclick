@@ -35,6 +35,11 @@
         "resolved": "3.1.4",
         "contentHash": "5mj99LvCqrq3CNi06xYdyIAXOEh+5b33F2nErCzI5zWiDdLHXiPXEWFSUAF8zlIv0ZWqjZNCwHTQeAPYbF3pCg=="
       },
+      "CommunityToolkit.Mvvm": {
+        "type": "Transitive",
+        "resolved": "8.4.2",
+        "contentHash": "WadCzGEc2U+3e20avRLng4qNtt4zoOGWrdUISqJWrHe3/FSnrYjuM5Sb4yQb09LhkBXrrI4Zt3dLKgRMbItsrg=="
+      },
       "Microsoft.CodeCoverage": {
         "type": "Transitive",
         "resolved": "17.14.1",
@@ -256,13 +261,22 @@
       "KeyClick": {
         "type": "Project"
       },
+      "keyclick.app": {
+        "type": "Project",
+        "dependencies": {
+          "CommunityToolkit.Mvvm": "[8.4.2, )",
+          "KeyClick.Core": "[1.5.0, )",
+          "KeyClick.Infrastructure.Windows": "[1.5.0, )",
+          "KeyClick.Updater": "[1.5.0, )"
+        }
+      },
       "keyclick.core": {
         "type": "Project"
       },
       "keyclick.infrastructure.windows": {
         "type": "Project",
         "dependencies": {
-          "KeyClick.Core": "[1.3.0, )",
+          "KeyClick.Core": "[1.5.0, )",
           "Microsoft.Data.Sqlite": "[10.0.10, )",
           "NAudio": "[2.3.0, )",
           "NAudio.Vorbis": "[1.5.0, )",

@@ -1,0 +1,33 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/Fallax-Vision/keyclick/shared/specs/fun-stats.v1.schema.json",
+  "title": "KeyClick built-in fun statistics catalog v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["version", "facts"],
+  "properties": {
+    "version": { "const": 1 },
+    "facts": {
+      "type": "array",
+      "minItems": 36,
+      "maxItems": 200,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "metric", "category", "kind", "target", "titleKey", "sourceKey", "approximate"],
+        "properties": {
+          "id": { "type": "string", "pattern": "^[a-z0-9][a-z0-9-]{0,99}$" },
+          "metric": { "enum": ["KeyboardPresses", "PointerClicks", "TotalActions", "ScrollingDetents", "ScrollDistanceCentimeters", "ActiveMinutes", "TypingWords", "AverageWordsPerMinute", "PeakWordsPerMinute", "AverageClicksPerSecond", "PeakClicksPerSecond", "BusiestHour"] },
+          "category": { "enum": ["quantity", "biology", "population", "food", "distance", "time", "typing", "tempo", "daypart"] },
+          "kind": { "enum": ["milestone", "equivalence", "classification"] },
+          "target": { "type": "number", "exclusiveMinimum": 0, "maximum": 1000000000000000 },
+          "titleKey": { "type": "string", "pattern": "^FunFact[A-Za-z0-9]+$" },
+          "sourceKey": { "type": "string", "pattern": "^FunSource[A-Za-z0-9]+$" },
+          "approximate": { "type": "boolean" },
+          "ladder": { "type": "string", "maxLength": 60 },
+          "order": { "type": "integer", "minimum": 0, "maximum": 1000 }
+        }
+      }
+    }
+  }
+}

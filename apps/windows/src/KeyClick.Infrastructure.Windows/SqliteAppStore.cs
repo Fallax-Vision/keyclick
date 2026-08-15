@@ -236,6 +236,7 @@ public sealed class SqliteAppStore(AppPaths paths) : IAppStore, IStatisticsStore
     var settings = JsonSerializer.Deserialize<AppSettings>(result, _json) ?? new AppSettings();
     using var document = JsonDocument.Parse(result);
     if (!document.RootElement.TryGetProperty("keyboardSoundTiming", out _)) settings.KeyboardSoundTiming = KeyboardSoundTiming.KeyUp;
+    settings.NormalizeFunStats();
     return settings;
   }
 
@@ -1055,24 +1056,33 @@ public sealed class SqliteAppStore(AppPaths paths) : IAppStore, IStatisticsStore
       {
         var bucket = DateTimeOffset.Parse(reader.GetString(0));
         var bucketKeyboard = reader.GetInt64(1);
+        var bucketTyping = reader.GetInt64(2);
         var bucketPointer = reader.GetInt64(3);
+        var bucketVertical = reader.GetInt64(4);
+        var bucketHorizontal = reader.GetInt64(5);
+        var bucketActive = reader.GetInt64(6);
+        var bucketKeyboardActive = reader.GetInt64(7);
+        var bucketPointerActive = reader.GetInt64(8);
+        var bucketPeakTyping = reader.GetInt32(9);
+        var bucketPeakClicks = reader.GetInt32(10);
         keyboard += bucketKeyboard;
-        typing += reader.GetInt64(2);
+        typing += bucketTyping;
         pointer += bucketPointer;
-        vertical += reader.GetInt64(4);
-        horizontal += reader.GetInt64(5);
-        active += reader.GetInt64(6);
-        keyboardActive += reader.GetInt64(7);
-        pointerActive += reader.GetInt64(8);
-        peakTyping = Math.Max(peakTyping, reader.GetInt32(9));
-        peakClicks = Math.Max(peakClicks, reader.GetInt32(10));
+        vertical += bucketVertical;
+        horizontal += bucketHorizontal;
+        active += bucketActive;
+        keyboardActive += bucketKeyboardActive;
+        pointerActive += bucketPointerActive;
+        peakTyping = Math.Max(peakTyping, bucketPeakTyping);
+        peakClicks = Math.Max(peakClicks, bucketPeakClicks);
         var bucketCount = bucketKeyboard + bucketPointer;
         if (bucketCount > busiestCount)
         {
           busiestCount = bucketCount;
           busiestHour = bucket.ToLocalTime().Hour;
         }
-        trend.Add(new(bucket, bucketKeyboard, bucketPointer, reader.GetInt64(4), reader.GetInt64(5), reader.GetInt64(6)));
+        trend.Add(new(bucket, bucketKeyboard, bucketTyping, bucketPointer, bucketVertical, bucketHorizontal, bucketActive,
+          bucketKeyboardActive, bucketPointerActive, bucketPeakTyping, bucketPeakClicks));
       }
     }
 

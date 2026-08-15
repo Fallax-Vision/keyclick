@@ -28,6 +28,26 @@ public enum StatisticsPeriod
 }
 public enum StatisticsComparison { None, PreviousPeriod, PreviousYear }
 public enum StatisticsCategory { Keyboard, Pointer, Scrolling }
+public enum FunStatMetric
+{
+  KeyboardPresses,
+  PointerClicks,
+  TotalActions,
+  ScrollingDetents,
+  ScrollDistanceCentimeters,
+  ActiveMinutes,
+  TypingWords,
+  AverageWordsPerMinute,
+  PeakWordsPerMinute,
+  AverageClicksPerSecond,
+  PeakClicksPerSecond,
+  BusiestHour
+}
+public enum FunFactRotation { TenMinutes, OneHour, Daily, AppLaunch, CardClick, Manual }
+public enum FunStatsCopyMode { ImageOnly, ImageAndCaption, WholeAppView }
+public enum StatisticsChartMetricFamily { Counts, Rates, ActiveTime }
+public enum StatisticsChartViewType { Line, Bar, Donut }
+public enum StatisticsTrendGranularity { Auto, Hourly, Daily, Weekly, Monthly }
 public enum PackRotationInterval { OneMinute, TenMinutes, ThirtyMinutes, OneHour, OneDay, OneWeek, WindowsBoot, Custom }
 public enum PackRotationPoolMode { AllPacks, SelectedPacks }
 public enum SoundPackViewMode { List, Grid }
@@ -87,10 +107,15 @@ public sealed record StatisticsQuery(
 public sealed record StatisticsTrendPoint(
   DateTimeOffset BucketUtc,
   long KeyboardPresses,
+  long TypingKeyPresses,
   long PointerClicks,
   long VerticalScroll,
   long HorizontalScroll,
-  long ActiveMilliseconds);
+  long ActiveMilliseconds,
+  long KeyboardActiveMilliseconds,
+  long PointerActiveMilliseconds,
+  int PeakTypingKeysPerMinute,
+  int PeakClicksPerFiveSeconds);
 
 public sealed record StatisticsBreakdown(
   InputKind Kind,
@@ -431,9 +456,18 @@ public sealed record ShortcutBinding(
   public string Gesture => string.Join(", then ", Steps.Select(step => step.Display));
 }
 
+public sealed class CustomFunStatDefinition
+{
+  public string Id { get; set; } = Guid.NewGuid().ToString("N");
+  public string Label { get; set; } = string.Empty;
+  public FunStatMetric Metric { get; set; } = FunStatMetric.KeyboardPresses;
+  public double Target { get; set; } = 1000;
+}
+
 public sealed class AppSettings
 {
   public const int CurrentStatisticsDisclosureVersion = 2;
+  public const int CurrentFunStatsPreferencesVersion = 1;
   public string DisplayName { get; set; } = "KeyClick";
   public bool SoundsEnabled { get; set; } = true;
   public bool KeyboardEnabled { get; set; } = true;
@@ -453,6 +487,23 @@ public sealed class AppSettings
   public bool PointerStatisticsEnabled { get; set; } = true;
   public bool ScrollingStatisticsEnabled { get; set; } = true;
   public bool IncludeChallengeTypingInStatistics { get; set; }
+  public bool FunStatsEnabled { get; set; } = true;
+  public bool MetricCardFunFactsEnabled { get; set; } = true;
+  public int FunStatsPreferencesVersion { get; set; }
+  public FunFactRotation FunFactRotation { get; set; } = FunFactRotation.OneHour;
+  public FunStatsCopyMode FunStatsCopyMode { get; set; } = FunStatsCopyMode.ImageOnly;
+  public double ScrollCentimetersPerDetent { get; set; } = 1.27;
+  public StatisticsPeriod HomeFunStatsPeriod { get; set; } = StatisticsPeriod.AllTime;
+  public List<string> SelectedFunStatIds { get; set; } =
+  [
+    "typing-novel", "clicks-worm-cells", "scroll-eiffel", "active-movie", "total-bee-colony", "average-wpm-casual"
+  ];
+  public List<string> DisabledFunFactIds { get; set; } = [];
+  public List<CustomFunStatDefinition> CustomFunStats { get; set; } = [];
+  public StatisticsChartMetricFamily StatisticsChartMetricFamily { get; set; } = StatisticsChartMetricFamily.Counts;
+  public StatisticsChartViewType StatisticsChartViewType { get; set; } = StatisticsChartViewType.Line;
+  public StatisticsTrendGranularity StatisticsTrendGranularity { get; set; } = StatisticsTrendGranularity.Auto;
+  public List<string> EnabledStatisticsChartSeries { get; set; } = ["keyboard", "pointer", "vertical-scroll", "horizontal-scroll"];
   public bool TypingChallengeDisclosureConfirmed { get; set; }
   public double TypingChallengeGoalWordsPerMinute { get; set; } = 40;
   public double TypingChallengeGoalAccuracy { get; set; } = 95;
@@ -483,6 +534,77 @@ public sealed class AppSettings
   public List<string> AllowedIntegrationClients { get; set; } = [];
   public Dictionary<string, DeviceFamily> DeviceClassifications { get; set; } = [];
   public PackRotationPolicy PackRotation { get; set; } = new();
+
+  public void NormalizeFunStats()
+  {
+    SelectedFunStatIds ??= [];
+    DisabledFunFactIds ??= [];
+    CustomFunStats ??= [];
+    EnabledStatisticsChartSeries ??= [];
+    if (FunStatsPreferencesVersion < CurrentFunStatsPreferencesVersion)
+    {
+      FunStatsEnabled = true;
+      MetricCardFunFactsEnabled = true;
+      if (SelectedFunStatIds.Count == 0)
+      {
+        SelectedFunStatIds =
+        [
+          "typing-novel", "clicks-worm-cells", "scroll-eiffel", "active-movie", "total-bee-colony", "average-wpm-casual"
+        ];
+      }
+      FunStatsPreferencesVersion = CurrentFunStatsPreferencesVersion;
+    }
+    if (!Enum.IsDefined(FunFactRotation)) FunFactRotation = FunFactRotation.OneHour;
+    if (!Enum.IsDefined(FunStatsCopyMode)) FunStatsCopyMode = FunStatsCopyMode.ImageOnly;
+    if (!Enum.IsDefined(HomeFunStatsPeriod) || HomeFunStatsPeriod == StatisticsPeriod.Custom)
+      HomeFunStatsPeriod = StatisticsPeriod.AllTime;
+    if (!Enum.IsDefined(StatisticsChartMetricFamily)) StatisticsChartMetricFamily = StatisticsChartMetricFamily.Counts;
+    if (!Enum.IsDefined(StatisticsChartViewType)) StatisticsChartViewType = StatisticsChartViewType.Line;
+    if (!Enum.IsDefined(StatisticsTrendGranularity)) StatisticsTrendGranularity = StatisticsTrendGranularity.Auto;
+    ScrollCentimetersPerDetent = double.IsFinite(ScrollCentimetersPerDetent)
+      ? Math.Clamp(ScrollCentimetersPerDetent, 0.01, 100)
+      : 1.27;
+    SelectedFunStatIds = SelectedFunStatIds
+      .Where(IsSafeFunStatId)
+      .Distinct(StringComparer.Ordinal)
+      .Take(12)
+      .ToList();
+    DisabledFunFactIds = DisabledFunFactIds
+      .Where(IsSafeFunStatId)
+      .Distinct(StringComparer.Ordinal)
+      .Take(200)
+      .ToList();
+    CustomFunStats = CustomFunStats
+      .Where(item => item is not null && IsSafeFunStatId(item.Id) && !string.IsNullOrWhiteSpace(item.Label)
+        && item.Label.Trim().Length <= 80 && double.IsFinite(item.Target) && item.Target > 0 && item.Target <= 1e15
+        && Enum.IsDefined(item.Metric))
+      .GroupBy(item => item.Id, StringComparer.Ordinal)
+      .Select(group => group.First())
+      .Take(50)
+      .Select(item => new CustomFunStatDefinition
+      {
+        Id = item.Id,
+        Label = item.Label.Trim(),
+        Metric = item.Metric,
+        Target = item.Target
+      })
+      .ToList();
+    var allowedSeries = new HashSet<string>(
+      ["keyboard", "pointer", "vertical-scroll", "horizontal-scroll", "average-wpm", "peak-wpm", "average-cps", "peak-cps", "active", "keyboard-active", "pointer-active"],
+      StringComparer.Ordinal);
+    EnabledStatisticsChartSeries = EnabledStatisticsChartSeries
+      .Where(allowedSeries.Contains)
+      .Distinct(StringComparer.Ordinal)
+      .ToList();
+    if (EnabledStatisticsChartSeries.Count == 0)
+      EnabledStatisticsChartSeries = ["keyboard", "pointer", "vertical-scroll", "horizontal-scroll"];
+    if (StatisticsChartMetricFamily == KeyClick.Core.StatisticsChartMetricFamily.Rates
+      && StatisticsChartViewType == KeyClick.Core.StatisticsChartViewType.Donut)
+      StatisticsChartViewType = KeyClick.Core.StatisticsChartViewType.Line;
+  }
+
+  private static bool IsSafeFunStatId(string? value) => value is { Length: >= 1 and <= 100 }
+    && value.All(character => char.IsAsciiLetterOrDigit(character) || character is '-' or '_');
 }
 
 public static class DisplayLanguageResolver

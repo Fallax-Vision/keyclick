@@ -101,6 +101,67 @@
               </Grid>
             </Border>
 
+            <Border Style="{StaticResource Card}" DataContext="{Binding Statistics}">
+              <StackPanel>
+                <Grid Margin="0,0,0,6">
+                  <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
+                  <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                    <TextBlock Text="{DynamicResource KeyboardHeatmap}" Style="{StaticResource SectionTitle}" VerticalAlignment="Center" Margin="0" />
+                    <Button Content="?" Style="{StaticResource HelpIconButton}" Margin="10,0,0,0" AutomationProperties.Name="{DynamicResource KeyboardHeatmapInformation}">
+                      <Button.ToolTip>
+                        <ToolTip><TextBlock Text="{DynamicResource KeyboardHeatmapHelp}" TextWrapping="Wrap" MaxWidth="360" /></ToolTip>
+                      </Button.ToolTip>
+                    </Button>
+                  </StackPanel>
+                  <StackPanel Grid.Column="1" Orientation="Horizontal">
+                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                      <TextBlock Text="{DynamicResource HeatmapDuration}" Style="{StaticResource FieldLabel}" VerticalAlignment="Center" Margin="0,0,8,0" />
+                      <ComboBox ItemsSource="{Binding HeatmapPeriodOptions}" SelectedIndex="{Binding HeatmapPeriodIndex}" Width="150" AutomationProperties.Name="{DynamicResource HeatmapDuration}" />
+                    </StackPanel>
+                    <ToggleButton Content="{DynamicResource HeatmapTooltips}" IsChecked="{Binding HeatmapTooltipsEnabled}" Style="{StaticResource PillToggle}" Margin="10,0,0,0" AutomationProperties.Name="{DynamicResource HeatmapTooltips}" />
+                  </StackPanel>
+                </Grid>
+                <local:KeyboardHeatmap Snapshot="{Binding HeatmapSnapshot}" TooltipsEnabled="{Binding HeatmapTooltipsEnabled}" HorizontalAlignment="Stretch" Margin="0,18,0,0" AutomationProperties.Name="{DynamicResource KeyboardHeatmap}" />
+              </StackPanel>
+            </Border>
+
+            <Border x:Name="HomeFunStatsPanel" Style="{StaticResource Card}" DataContext="{Binding Statistics}"
+                    Visibility="{Binding FunStatsVisible, Converter={StaticResource BooleanToVisibilityConverter}}">
+              <StackPanel>
+                <Grid Margin="0,0,0,10">
+                  <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
+                  <StackPanel>
+                    <TextBlock Text="{DynamicResource FunStats}" Style="{StaticResource SectionTitle}" />
+                    <TextBlock Text="{DynamicResource FunStatsIntro}" Style="{StaticResource MutedText}" Margin="0,2,0,0" />
+                  </StackPanel>
+                  <WrapPanel Grid.Column="1" HorizontalAlignment="Right" VerticalAlignment="Top">
+                    <ComboBox ItemsSource="{Binding HomeFunStatsPeriodOptions}" SelectedIndex="{Binding HomeFunStatsPeriodIndex}" Width="145" Margin="0,0,8,0" />
+                    <Button Content="{DynamicResource Shuffle}" Click="ShuffleFunStats_Click" Margin="0,0,8,0" />
+                    <Button Content="{DynamicResource FunManage}" Click="ManageFunStats_Click" Margin="0,0,8,0" />
+                    <Button Content="{DynamicResource Copy}" Tag="home" Click="CopyFunStats_Click" Style="{StaticResource AccentButton}"
+                            ToolTipService.InitialShowDelay="1000" AutomationProperties.HelpText="{DynamicResource FunCopyTooltip}">
+                      <Button.ToolTip><ToolTip><TextBlock Text="{DynamicResource FunCopyTooltip}" TextWrapping="Wrap" MaxWidth="330" /></ToolTip></Button.ToolTip>
+                    </Button>
+                  </WrapPanel>
+                </Grid>
+                <ItemsControl ItemsSource="{Binding HomeFunStatsTiles}" AutomationProperties.Name="{DynamicResource FunStats}">
+                  <ItemsControl.ItemsPanel><ItemsPanelTemplate><UniformGrid Columns="3" /></ItemsPanelTemplate></ItemsControl.ItemsPanel>
+                  <ItemsControl.ItemTemplate>
+                    <DataTemplate>
+                      <Border Style="{StaticResource FunStatTileCard}">
+                        <StackPanel>
+                          <TextBlock Text="{Binding Title}" Style="{StaticResource MutedText}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
+                          <TextBlock Text="{Binding Value}" FontSize="23" FontWeight="SemiBold" Margin="0,4,0,0" />
+                          <TextBlock Text="{Binding Detail}" FontSize="12" TextWrapping="Wrap" Margin="0,5,0,0" MinHeight="32" />
+                          <ContentControl Content="{Binding}" Style="{StaticResource FunStatProgressVisual}" Margin="0,9,0,0" />
+                        </StackPanel>
+                      </Border>
+                    </DataTemplate>
+                  </ItemsControl.ItemTemplate>
+                </ItemsControl>
+              </StackPanel>
+            </Border>
+
             <Grid>
               <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="16" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
               <Border Style="{StaticResource Card}" Grid.Column="0">
@@ -128,30 +189,6 @@
                 </StackPanel>
               </Border>
             </Grid>
-
-            <Border Style="{StaticResource Card}" DataContext="{Binding Statistics}">
-              <StackPanel>
-                <Grid Margin="0,0,0,6">
-                  <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
-                  <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                    <TextBlock Text="{DynamicResource KeyboardHeatmap}" Style="{StaticResource SectionTitle}" VerticalAlignment="Center" Margin="0" />
-                    <Button Content="?" Style="{StaticResource HelpIconButton}" Margin="10,0,0,0" AutomationProperties.Name="{DynamicResource KeyboardHeatmapInformation}">
-                      <Button.ToolTip>
-                        <ToolTip><TextBlock Text="{DynamicResource KeyboardHeatmapHelp}" TextWrapping="Wrap" MaxWidth="360" /></ToolTip>
-                      </Button.ToolTip>
-                    </Button>
-                  </StackPanel>
-                  <StackPanel Grid.Column="1" Orientation="Horizontal">
-                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                      <TextBlock Text="{DynamicResource HeatmapDuration}" Style="{StaticResource FieldLabel}" VerticalAlignment="Center" Margin="0,0,8,0" />
-                      <ComboBox ItemsSource="{Binding HeatmapPeriodOptions}" SelectedIndex="{Binding HeatmapPeriodIndex}" Width="150" AutomationProperties.Name="{DynamicResource HeatmapDuration}" />
-                    </StackPanel>
-                    <ToggleButton Content="{DynamicResource HeatmapTooltips}" IsChecked="{Binding HeatmapTooltipsEnabled}" Style="{StaticResource PillToggle}" Margin="10,0,0,0" AutomationProperties.Name="{DynamicResource HeatmapTooltips}" />
-                  </StackPanel>
-                </Grid>
-                <local:KeyboardHeatmap Snapshot="{Binding HeatmapSnapshot}" TooltipsEnabled="{Binding HeatmapTooltipsEnabled}" Height="218" Margin="0,18,0,0" AutomationProperties.Name="{DynamicResource KeyboardHeatmap}" />
-              </StackPanel>
-            </Border>
 
             <Border Style="{StaticResource Card}">
               <StackPanel>
@@ -195,17 +232,69 @@
                 <TabItem.Header><StackPanel Orientation="Horizontal"><TextBlock Text="&#xE9D2;" Style="{StaticResource StatisticsTabIcon}" /><TextBlock Text="{DynamicResource StatisticsOverview}" Foreground="{Binding Foreground, RelativeSource={RelativeSource AncestorType=TabItem}}" VerticalAlignment="Center" /></StackPanel></TabItem.Header>
                 <StackPanel Margin="0,14,0,0">
                   <UniformGrid Columns="4" Margin="-5,-5,-5,11">
-                    <Border Style="{StaticResource MetricCard}"><StackPanel><TextBlock Text="{DynamicResource KeyboardPresses}" Style="{StaticResource MutedText}" /><TextBlock Text="{Binding KeyboardCount}" FontSize="24" FontWeight="SemiBold" /><TextBlock Text="{Binding KeyboardComparison}" Foreground="{DynamicResource AccentBrush}" /></StackPanel></Border>
-                    <Border Style="{StaticResource MetricCard}"><StackPanel><TextBlock Text="{DynamicResource PointerClicks}" Style="{StaticResource MutedText}" /><TextBlock Text="{Binding PointerCount}" FontSize="24" FontWeight="SemiBold" /><TextBlock Text="{Binding PointerComparison}" Foreground="{DynamicResource AccentBrush}" /></StackPanel></Border>
-                    <Border Style="{StaticResource MetricCard}"><StackPanel><TextBlock Text="{DynamicResource ActiveTime}" Style="{StaticResource MutedText}" /><TextBlock Text="{Binding ActiveTime}" FontSize="24" FontWeight="SemiBold" /></StackPanel></Border>
-                    <Border Style="{StaticResource MetricCard}"><StackPanel><TextBlock Text="{DynamicResource Scrolling}" Style="{StaticResource MutedText}" /><TextBlock Text="{Binding ScrollingCount}" FontSize="24" FontWeight="SemiBold" /></StackPanel></Border>
-                    <Border Style="{StaticResource MetricCard}"><StackPanel><TextBlock Text="{DynamicResource AverageTyping}" Style="{StaticResource MutedText}" /><TextBlock Text="{Binding AverageTypingSpeed}" FontSize="21" FontWeight="SemiBold" /></StackPanel></Border>
-                    <Border Style="{StaticResource MetricCard}"><StackPanel><TextBlock Text="{DynamicResource PeakTyping}" Style="{StaticResource MutedText}" /><TextBlock Text="{Binding PeakTypingSpeed}" FontSize="21" FontWeight="SemiBold" /></StackPanel></Border>
-                    <Border Style="{StaticResource MetricCard}"><StackPanel><TextBlock Text="{DynamicResource AverageClicking}" Style="{StaticResource MutedText}" /><TextBlock Text="{Binding AverageClickingSpeed}" FontSize="21" FontWeight="SemiBold" /></StackPanel></Border>
-                    <Border Style="{StaticResource MetricCard}"><StackPanel><TextBlock Text="{DynamicResource BusiestHour}" Style="{StaticResource MutedText}" /><TextBlock Text="{Binding BusiestHour}" FontSize="21" FontWeight="SemiBold" /></StackPanel></Border>
+                    <Button Style="{StaticResource MetricCardButton}" Tag="keyboard" Click="MetricCard_Click" AutomationProperties.Name="{DynamicResource KeyboardPresses}"><StackPanel><TextBlock Text="{DynamicResource KeyboardPresses}" Style="{StaticResource MutedText}" /><TextBlock Text="{Binding KeyboardCount}" FontSize="24" FontWeight="SemiBold" /><TextBlock Text="{Binding KeyboardComparison}" Foreground="{DynamicResource AccentBrush}" /><TextBlock Text="{Binding KeyboardFunFact}" Style="{StaticResource MutedText}" TextWrapping="Wrap" Margin="0,6,0,0" /></StackPanel></Button>
+                    <Button Style="{StaticResource MetricCardButton}" Tag="pointer" Click="MetricCard_Click" AutomationProperties.Name="{DynamicResource PointerClicks}"><StackPanel><TextBlock Text="{DynamicResource PointerClicks}" Style="{StaticResource MutedText}" /><TextBlock Text="{Binding PointerCount}" FontSize="24" FontWeight="SemiBold" /><TextBlock Text="{Binding PointerComparison}" Foreground="{DynamicResource AccentBrush}" /><TextBlock Text="{Binding PointerFunFact}" Style="{StaticResource MutedText}" TextWrapping="Wrap" Margin="0,6,0,0" /></StackPanel></Button>
+                    <Button Style="{StaticResource MetricCardButton}" Tag="active" Click="MetricCard_Click" AutomationProperties.Name="{DynamicResource ActiveTime}"><StackPanel><TextBlock Text="{DynamicResource ActiveTime}" Style="{StaticResource MutedText}" /><TextBlock Text="{Binding ActiveTime}" FontSize="24" FontWeight="SemiBold" /><TextBlock Text="{Binding ActiveFunFact}" Style="{StaticResource MutedText}" TextWrapping="Wrap" Margin="0,6,0,0" /></StackPanel></Button>
+                    <Button Style="{StaticResource MetricCardButton}" Tag="scrolling" Click="MetricCard_Click" AutomationProperties.Name="{DynamicResource Scrolling}"><StackPanel><TextBlock Text="{DynamicResource Scrolling}" Style="{StaticResource MutedText}" /><TextBlock Text="{Binding ScrollingCount}" FontSize="24" FontWeight="SemiBold" /><TextBlock Text="{Binding ScrollingFunFact}" Style="{StaticResource MutedText}" TextWrapping="Wrap" Margin="0,6,0,0" /></StackPanel></Button>
+                    <Button Style="{StaticResource MetricCardButton}" Tag="average-typing" Click="MetricCard_Click" AutomationProperties.Name="{DynamicResource AverageTyping}"><StackPanel><TextBlock Text="{DynamicResource AverageTyping}" Style="{StaticResource MutedText}" /><TextBlock Text="{Binding AverageTypingSpeed}" FontSize="21" FontWeight="SemiBold" /><TextBlock Text="{Binding AverageTypingFunFact}" Style="{StaticResource MutedText}" TextWrapping="Wrap" Margin="0,6,0,0" /></StackPanel></Button>
+                    <Button Style="{StaticResource MetricCardButton}" Tag="peak-typing" Click="MetricCard_Click" AutomationProperties.Name="{DynamicResource PeakTyping}"><StackPanel><TextBlock Text="{DynamicResource PeakTyping}" Style="{StaticResource MutedText}" /><TextBlock Text="{Binding PeakTypingSpeed}" FontSize="21" FontWeight="SemiBold" /><TextBlock Text="{Binding PeakTypingFunFact}" Style="{StaticResource MutedText}" TextWrapping="Wrap" Margin="0,6,0,0" /></StackPanel></Button>
+                    <Button Style="{StaticResource MetricCardButton}" Tag="average-clicking" Click="MetricCard_Click" AutomationProperties.Name="{DynamicResource AverageClicking}"><StackPanel><TextBlock Text="{DynamicResource AverageClicking}" Style="{StaticResource MutedText}" /><TextBlock Text="{Binding AverageClickingSpeed}" FontSize="21" FontWeight="SemiBold" /><TextBlock Text="{Binding AverageClickingFunFact}" Style="{StaticResource MutedText}" TextWrapping="Wrap" Margin="0,6,0,0" /></StackPanel></Button>
+                    <Button Style="{StaticResource MetricCardButton}" Tag="busiest-hour" Click="MetricCard_Click" AutomationProperties.Name="{DynamicResource BusiestHour}"><StackPanel><TextBlock Text="{DynamicResource BusiestHour}" Style="{StaticResource MutedText}" /><TextBlock Text="{Binding BusiestHour}" FontSize="21" FontWeight="SemiBold" /><TextBlock Text="{Binding BusiestHourFunFact}" Style="{StaticResource MutedText}" TextWrapping="Wrap" Margin="0,6,0,0" /></StackPanel></Button>
                   </UniformGrid>
+                  <Border x:Name="StatisticsFunStatsPanel" Style="{StaticResource Card}"
+                          Visibility="{Binding FunStatsVisible, Converter={StaticResource BooleanToVisibilityConverter}}">
+                    <StackPanel>
+                      <Grid Margin="0,0,0,10">
+                        <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
+                        <StackPanel>
+                          <TextBlock Text="{DynamicResource FunStats}" Style="{StaticResource SectionTitle}" />
+                          <TextBlock Text="{DynamicResource FunStatsIntro}" Style="{StaticResource MutedText}" Margin="0,2,0,0" />
+                        </StackPanel>
+                        <WrapPanel Grid.Column="1" HorizontalAlignment="Right">
+                          <Button Content="{DynamicResource Shuffle}" Click="ShuffleFunStats_Click" Margin="0,0,8,0" />
+                          <Button Content="{DynamicResource FunManage}" Click="ManageFunStats_Click" Margin="0,0,8,0" />
+                          <Button Content="{DynamicResource Copy}" Tag="statistics" Click="CopyFunStats_Click" Style="{StaticResource AccentButton}"
+                                  ToolTipService.InitialShowDelay="1000" AutomationProperties.HelpText="{DynamicResource FunCopyTooltip}">
+                            <Button.ToolTip><ToolTip><TextBlock Text="{DynamicResource FunCopyTooltip}" TextWrapping="Wrap" MaxWidth="330" /></ToolTip></Button.ToolTip>
+                          </Button>
+                        </WrapPanel>
+                      </Grid>
+                      <ItemsControl ItemsSource="{Binding FunStatsTiles}" AutomationProperties.Name="{DynamicResource FunStats}">
+                        <ItemsControl.ItemsPanel><ItemsPanelTemplate><UniformGrid Columns="3" /></ItemsPanelTemplate></ItemsControl.ItemsPanel>
+                        <ItemsControl.ItemTemplate>
+                          <DataTemplate>
+                            <Border Style="{StaticResource FunStatTileCard}">
+                              <StackPanel>
+                                <TextBlock Text="{Binding Title}" Style="{StaticResource MutedText}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
+                                <TextBlock Text="{Binding Value}" FontSize="23" FontWeight="SemiBold" Margin="0,4,0,0" />
+                                <TextBlock Text="{Binding Detail}" FontSize="12" TextWrapping="Wrap" Margin="0,5,0,0" MinHeight="32" />
+                                <ContentControl Content="{Binding}" Style="{StaticResource FunStatProgressVisual}" Margin="0,9,0,0" />
+                              </StackPanel>
+                            </Border>
+                          </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                      </ItemsControl>
+                    </StackPanel>
+                  </Border>
                   <Border Style="{StaticResource Card}">
-                    <StackPanel><TextBlock Text="{DynamicResource ActivityChart}" Style="{StaticResource SectionTitle}" /><local:ActivityChart Snapshot="{Binding Snapshot}" Height="230" AutomationProperties.Name="{DynamicResource ActivityChart}" /></StackPanel>
+                    <StackPanel>
+                      <Grid Margin="0,0,0,10">
+                        <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
+                        <TextBlock Text="{DynamicResource ActivityChart}" Style="{StaticResource SectionTitle}" VerticalAlignment="Center" />
+                        <WrapPanel Grid.Column="1" HorizontalAlignment="Right">
+                          <ComboBox ItemsSource="{Binding ChartMetricFamilyOptions}" SelectedIndex="{Binding ChartMetricFamilyIndex}" Width="125" Margin="0,0,8,0" />
+                          <ComboBox ItemsSource="{Binding ChartViewOptions}" DisplayMemberPath="Label" SelectedIndex="{Binding ChartViewTypeIndex}" Width="105" Margin="0,0,8,0">
+                            <ComboBox.ItemContainerStyle><Style TargetType="ComboBoxItem"><Setter Property="IsEnabled" Value="{Binding IsEnabled}" /></Style></ComboBox.ItemContainerStyle>
+                          </ComboBox>
+                          <ComboBox ItemsSource="{Binding ChartGranularityOptions}" DisplayMemberPath="Label" SelectedIndex="{Binding ChartGranularityIndex}" Width="115" Margin="0,0,8,0">
+                            <ComboBox.ItemContainerStyle><Style TargetType="ComboBoxItem"><Setter Property="IsEnabled" Value="{Binding IsEnabled}" /></Style></ComboBox.ItemContainerStyle>
+                          </ComboBox>
+                          <Button Content="{DynamicResource Customize}" Click="CustomizeChart_Click" />
+                        </WrapPanel>
+                      </Grid>
+                      <local:ActivityChart Model="{Binding ChartModel}" ReducedMotion="{Binding ReducedMotion}" Height="270" AutomationProperties.Name="{DynamicResource ActivityChart}"
+                                           AutomationProperties.HelpText="{Binding ChartAccessibleSummary}" />
+                    </StackPanel>
                   </Border>
                 </StackPanel>
               </TabItem>
@@ -245,10 +334,44 @@
                           <ToggleButton Content="{DynamicResource HeatmapTooltips}" IsChecked="{Binding HeatmapTooltipsEnabled}" Style="{StaticResource PillToggle}" Margin="10,0,0,0" AutomationProperties.Name="{DynamicResource HeatmapTooltips}" />
                         </StackPanel>
                       </Grid>
-                      <local:KeyboardHeatmap Snapshot="{Binding HeatmapSnapshot}" TooltipsEnabled="{Binding HeatmapTooltipsEnabled}" Height="218" Margin="0,18,0,0" AutomationProperties.Name="{DynamicResource KeyboardHeatmap}" />
+                      <local:KeyboardHeatmap Snapshot="{Binding HeatmapSnapshot}" TooltipsEnabled="{Binding HeatmapTooltipsEnabled}" HorizontalAlignment="Stretch" Margin="0,18,0,0" AutomationProperties.Name="{DynamicResource KeyboardHeatmap}" />
                     </StackPanel>
                   </Border>
-                  <Border Style="{StaticResource Card}"><StackPanel><TextBlock Text="{DynamicResource KeyBreakdown}" Style="{StaticResource SectionTitle}" /><ListView ItemsSource="{Binding KeyboardRows}" Background="Transparent" BorderThickness="0" MaxHeight="240"><ListView.View><GridView><GridViewColumn Header="{DynamicResource Key}" DisplayMemberBinding="{Binding Label}" Width="180" /><GridViewColumn Header="{DynamicResource Group}" DisplayMemberBinding="{Binding Detail}" Width="190" /><GridViewColumn Header="{DynamicResource Count}" DisplayMemberBinding="{Binding Count}" Width="100" /></GridView></ListView.View></ListView></StackPanel></Border>
+                  <Border Style="{StaticResource Card}">
+                    <StackPanel>
+                      <TextBlock Text="{DynamicResource KeyBreakdown}" Style="{StaticResource SectionTitle}" />
+                      <ListBox ItemsSource="{Binding KeyboardRows}" Background="Transparent" BorderThickness="0" MaxHeight="420"
+                               ItemContainerStyle="{StaticResource InsetListBoxItem}" ScrollViewer.HorizontalScrollBarVisibility="Disabled">
+                        <ListBox.ItemTemplate>
+                          <DataTemplate>
+                            <Grid MinHeight="68" AutomationProperties.Name="{Binding Label}">
+                              <ProgressBar Minimum="0" Maximum="{Binding ProgressMaximum}" Value="{Binding Count}" Opacity="{Binding ProgressOpacity}"
+                                           Margin="3" IsHitTestVisible="False" Focusable="False" VerticalAlignment="Stretch">
+                                <ProgressBar.Template>
+                                  <ControlTemplate TargetType="ProgressBar">
+                                    <Border x:Name="PART_Track" Background="Transparent" CornerRadius="9" ClipToBounds="True">
+                                      <Border x:Name="PART_Indicator" Background="{DynamicResource AccentBrush}" CornerRadius="9" HorizontalAlignment="Left" />
+                                    </Border>
+                                  </ControlTemplate>
+                                </ProgressBar.Template>
+                              </ProgressBar>
+                              <Grid Margin="18,11">
+                                <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
+                                <StackPanel VerticalAlignment="Center" Margin="0,0,20,0">
+                                  <TextBlock Text="{Binding Label}" FontSize="21" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
+                                  <TextBlock Text="{Binding Detail}" Style="{StaticResource MutedText}" Margin="0,3,0,0" />
+                                </StackPanel>
+                                <StackPanel Grid.Column="1" VerticalAlignment="Center" HorizontalAlignment="Right">
+                                  <TextBlock Text="{Binding Count, StringFormat={}{0:N0}}" FontSize="19" FontWeight="SemiBold" HorizontalAlignment="Right" />
+                                  <TextBlock Text="{DynamicResource HeatmapTooltipPresses}" Style="{StaticResource MutedText}" Margin="0,3,0,0" HorizontalAlignment="Right" />
+                                </StackPanel>
+                              </Grid>
+                            </Grid>
+                          </DataTemplate>
+                        </ListBox.ItemTemplate>
+                      </ListBox>
+                    </StackPanel>
+                  </Border>
                 </StackPanel>
               </TabItem>
               <TabItem>

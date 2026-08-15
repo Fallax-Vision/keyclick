@@ -31,6 +31,7 @@
     <CornerRadius x:Key="CardCornerRadius">16</CornerRadius>
     <Thickness x:Key="ControlPadding">12,8</Thickness>
     <BooleanToVisibilityConverter x:Key="BooleanToVisibilityConverter" />
+    <local:InverseBooleanConverter x:Key="InverseBooleanConverter" />
     <local:LocalizedEnumConverter x:Key="LocalizedEnumConverter" />
     <local:LocalizedGestureConverter x:Key="LocalizedGestureConverter" />
 
@@ -939,6 +940,74 @@
       <Setter Property="Padding" Value="16" />
       <Setter Property="Margin" Value="5" />
       <Setter Property="MinHeight" Value="102" />
+    </Style>
+
+    <Style x:Key="MetricCardButton" TargetType="Button" BasedOn="{StaticResource {x:Type Button}}">
+      <Setter Property="Background" Value="{DynamicResource CardBackgroundBrush}" />
+      <Setter Property="BorderBrush" Value="{DynamicResource BorderBrush}" />
+      <Setter Property="BorderThickness" Value="1" />
+      <Setter Property="Padding" Value="16" />
+      <Setter Property="Margin" Value="5" />
+      <Setter Property="MinHeight" Value="134" />
+      <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+      <Setter Property="VerticalContentAlignment" Value="Stretch" />
+      <Setter Property="Template">
+        <Setter.Value>
+          <ControlTemplate TargetType="Button">
+            <Border x:Name="MetricBorder" Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}"
+                    BorderThickness="{TemplateBinding BorderThickness}" CornerRadius="{StaticResource CardCornerRadius}" Padding="{TemplateBinding Padding}">
+              <ContentPresenter HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}" VerticalAlignment="{TemplateBinding VerticalContentAlignment}" />
+            </Border>
+            <ControlTemplate.Triggers>
+              <Trigger Property="IsMouseOver" Value="True"><Setter TargetName="MetricBorder" Property="Background" Value="{DynamicResource SurfaceHoverBrush}" /></Trigger>
+              <Trigger Property="IsKeyboardFocused" Value="True"><Setter TargetName="MetricBorder" Property="BorderBrush" Value="{DynamicResource AccentBrush}" /><Setter TargetName="MetricBorder" Property="BorderThickness" Value="2" /></Trigger>
+              <Trigger Property="IsEnabled" Value="False"><Setter Property="Opacity" Value="0.55" /></Trigger>
+            </ControlTemplate.Triggers>
+          </ControlTemplate>
+        </Setter.Value>
+      </Setter>
+    </Style>
+
+    <Style x:Key="FunStatTileCard" TargetType="Border" BasedOn="{StaticResource Card}">
+      <Setter Property="Padding" Value="15" />
+      <Setter Property="Margin" Value="5" />
+      <Setter Property="MinHeight" Value="138" />
+    </Style>
+
+    <DataTemplate x:Key="FunStatLinearProgressTemplate">
+      <local:FunStatProgressBar Minimum="0" Maximum="1" TargetValue="{Binding Progress}" Animate="{Binding Animate}"
+                                ReducedMotion="{Binding DataContext.ReducedMotion, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
+                                Height="7" />
+    </DataTemplate>
+    <DataTemplate x:Key="FunStatRouteProgressTemplate">
+      <Grid Height="18">
+        <local:FunStatProgressBar Minimum="0" Maximum="1" TargetValue="{Binding Progress}" Animate="{Binding Animate}"
+                                  ReducedMotion="{Binding DataContext.ReducedMotion, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
+                                  Height="5" Margin="6,0" VerticalAlignment="Center" />
+        <Ellipse Width="12" Height="12" HorizontalAlignment="Left" Fill="{DynamicResource AccentBrush}" />
+        <Ellipse Width="12" Height="12" HorizontalAlignment="Right" Fill="{DynamicResource CardBackgroundBrush}"
+                 Stroke="{DynamicResource AccentBrush}" StrokeThickness="2" />
+      </Grid>
+    </DataTemplate>
+    <DataTemplate x:Key="FunStatRadialProgressTemplate">
+      <local:RadialProgress Progress="{Binding Progress}" Width="50" Height="50" HorizontalAlignment="Left" />
+    </DataTemplate>
+    <DataTemplate x:Key="FunStatEquivalenceTemplate">
+      <Border Background="{DynamicResource SelectionBrush}" BorderBrush="{DynamicResource AccentBrush}" BorderThickness="1"
+              CornerRadius="9" Padding="10,6" HorizontalAlignment="Left">
+        <StackPanel Orientation="Horizontal">
+          <TextBlock Text="≈" FontWeight="SemiBold" Foreground="{DynamicResource AccentBrush}" Margin="0,0,7,0" />
+          <TextBlock Text="{DynamicResource FunEquivalenceLabel}" FontWeight="SemiBold" />
+        </StackPanel>
+      </Border>
+    </DataTemplate>
+    <Style x:Key="FunStatProgressVisual" TargetType="ContentControl">
+      <Setter Property="ContentTemplate" Value="{StaticResource FunStatLinearProgressTemplate}" />
+      <Style.Triggers>
+        <DataTrigger Binding="{Binding VisualType}" Value="Route"><Setter Property="ContentTemplate" Value="{StaticResource FunStatRouteProgressTemplate}" /></DataTrigger>
+        <DataTrigger Binding="{Binding VisualType}" Value="Radial"><Setter Property="ContentTemplate" Value="{StaticResource FunStatRadialProgressTemplate}" /></DataTrigger>
+        <DataTrigger Binding="{Binding VisualType}" Value="Equivalence"><Setter Property="ContentTemplate" Value="{StaticResource FunStatEquivalenceTemplate}" /></DataTrigger>
+      </Style.Triggers>
     </Style>
 
     <Style x:Key="PageContent" TargetType="StackPanel">

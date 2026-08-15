@@ -154,6 +154,7 @@ public sealed class ProfileTransferService(AppPaths paths, IAppStore appStore, I
 
   private static AppSettings Sanitize(AppSettings settings)
   {
+    settings.NormalizeFunStats();
     settings.LaunchAtStartup = false;
     settings.OutputDeviceId = "default";
     settings.ExcludedExecutables = [];
@@ -190,6 +191,26 @@ public sealed class ProfileTransferService(AppPaths paths, IAppStore appStore, I
     local.PointerStatisticsEnabled = imported.PointerStatisticsEnabled;
     local.ScrollingStatisticsEnabled = imported.ScrollingStatisticsEnabled;
     local.IncludeChallengeTypingInStatistics = imported.IncludeChallengeTypingInStatistics;
+    imported.NormalizeFunStats();
+    local.FunStatsEnabled = imported.FunStatsEnabled;
+    local.MetricCardFunFactsEnabled = imported.MetricCardFunFactsEnabled;
+    local.FunFactRotation = imported.FunFactRotation;
+    local.FunStatsCopyMode = imported.FunStatsCopyMode;
+    local.ScrollCentimetersPerDetent = imported.ScrollCentimetersPerDetent;
+    local.HomeFunStatsPeriod = imported.HomeFunStatsPeriod;
+    local.SelectedFunStatIds = [.. imported.SelectedFunStatIds];
+    local.DisabledFunFactIds = [.. imported.DisabledFunFactIds];
+    local.CustomFunStats = imported.CustomFunStats.Select(item => new CustomFunStatDefinition
+    {
+      Id = item.Id,
+      Label = item.Label,
+      Metric = item.Metric,
+      Target = item.Target
+    }).ToList();
+    local.StatisticsChartMetricFamily = imported.StatisticsChartMetricFamily;
+    local.StatisticsChartViewType = imported.StatisticsChartViewType;
+    local.StatisticsTrendGranularity = imported.StatisticsTrendGranularity;
+    local.EnabledStatisticsChartSeries = [.. imported.EnabledStatisticsChartSeries];
     local.TypingChallengeGoalWordsPerMinute = imported.TypingChallengeGoalWordsPerMinute;
     local.TypingChallengeGoalAccuracy = imported.TypingChallengeGoalAccuracy;
     local.FavoriteTypingChallengeIds = [.. imported.FavoriteTypingChallengeIds];

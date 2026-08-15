@@ -1,0 +1,114 @@
+<Window x:Class="KeyClick.App.FunStatsManageWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="{DynamicResource FunManage}" Width="790" Height="720" MinWidth="650" MinHeight="540"
+        WindowStartupLocation="CenterOwner" ShowInTaskbar="False">
+  <Grid Margin="24">
+    <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="*" /><RowDefinition Height="Auto" /></Grid.RowDefinitions>
+    <StackPanel Margin="0,0,0,14">
+      <TextBlock Text="{DynamicResource FunManage}" Style="{StaticResource PageTitle}" />
+      <TextBlock Text="{DynamicResource FunManageHelp}" Style="{StaticResource MutedText}" TextWrapping="Wrap" Margin="0,4,0,0" />
+    </StackPanel>
+    <TabControl Grid.Row="1" Style="{StaticResource StatisticsSectionTabControl}">
+      <TabControl.ItemContainerStyle>
+        <Style TargetType="TabItem" BasedOn="{StaticResource SectionTabItem}" />
+      </TabControl.ItemContainerStyle>
+      <TabItem Header="{DynamicResource FunDashboardTab}">
+        <Grid Margin="12">
+          <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="*" /></Grid.RowDefinitions>
+          <StackPanel Margin="0,0,0,12">
+            <StackPanel Orientation="Horizontal">
+              <CheckBox Content="{DynamicResource FunEnable}" IsChecked="{Binding FunStatsEnabled}" Margin="0,0,20,0" />
+              <CheckBox Content="{DynamicResource FunMetricCardsEnable}" IsChecked="{Binding MetricCardFunFactsEnabled}" />
+            </StackPanel>
+            <TextBlock Text="{DynamicResource FunCategories}" Style="{StaticResource FieldLabel}" Margin="0,12,0,3" />
+            <ItemsControl ItemsSource="{Binding FunStatCategoryOptions}">
+              <ItemsControl.ItemsPanel><ItemsPanelTemplate><WrapPanel /></ItemsPanelTemplate></ItemsControl.ItemsPanel>
+              <ItemsControl.ItemTemplate>
+                <DataTemplate><CheckBox Content="{Binding Title}" IsChecked="{Binding IsEnabled}" Margin="0,0,16,5" /></DataTemplate>
+              </ItemsControl.ItemTemplate>
+            </ItemsControl>
+          </StackPanel>
+          <ListBox Grid.Row="1" ItemsSource="{Binding FunStatOptions}" Background="Transparent" BorderThickness="0"
+                   ItemContainerStyle="{StaticResource InsetListBoxItem}" ScrollViewer.HorizontalScrollBarVisibility="Disabled">
+            <ListBox.ItemTemplate>
+              <DataTemplate>
+                <Grid Margin="14,10">
+                  <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto" /><ColumnDefinition Width="Auto" /><ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" /><ColumnDefinition Width="Auto" /><ColumnDefinition Width="Auto" />
+                  </Grid.ColumnDefinitions>
+                  <CheckBox IsChecked="{Binding IsSelected}" ToolTip="{DynamicResource FunPinDashboard}" VerticalAlignment="Center" />
+                  <CheckBox Grid.Column="1" IsChecked="{Binding IsEnabled}" IsEnabled="{Binding IsCustom, Converter={StaticResource InverseBooleanConverter}}"
+                            ToolTip="{DynamicResource FunEnableFact}" VerticalAlignment="Center" Margin="12,0" />
+                  <StackPanel Grid.Column="2" VerticalAlignment="Center">
+                    <TextBlock Text="{Binding Title}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
+                    <TextBlock Text="{Binding Category}" Style="{StaticResource MutedText}" Margin="0,2,0,0" />
+                  </StackPanel>
+                  <Button Grid.Column="3" Content="↑" IsEnabled="{Binding IsSelected}" Click="MoveUp_Click" MinWidth="38" Margin="8,0,4,0" AutomationProperties.Name="{DynamicResource MoveUp}" />
+                  <Button Grid.Column="4" Content="↓" IsEnabled="{Binding IsSelected}" Click="MoveDown_Click" MinWidth="38" Margin="0,0,4,0" AutomationProperties.Name="{DynamicResource MoveDown}" />
+                  <Button Grid.Column="5" Content="{DynamicResource Remove}" Click="RemoveCustom_Click" Margin="0"
+                          Visibility="{Binding IsCustom, Converter={StaticResource BooleanToVisibilityConverter}}" />
+                </Grid>
+              </DataTemplate>
+            </ListBox.ItemTemplate>
+          </ListBox>
+        </Grid>
+      </TabItem>
+      <TabItem Header="{DynamicResource FunPreferencesTab}">
+        <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+          <StackPanel Margin="12">
+            <TextBlock Text="{DynamicResource FunFactRotation}" Style="{StaticResource FieldLabel}" />
+            <ComboBox ItemsSource="{Binding FunFactRotationOptions}" SelectedIndex="{Binding FunFactRotationIndex}" />
+            <TextBlock Text="{DynamicResource FunCopyMode}" Style="{StaticResource FieldLabel}" Margin="0,14,0,0" />
+            <ComboBox ItemsSource="{Binding FunStatsCopyModeOptions}" SelectedIndex="{Binding FunStatsCopyModeIndex}" />
+            <TextBlock Text="{DynamicResource FunHomePeriod}" Style="{StaticResource FieldLabel}" Margin="0,14,0,0" />
+            <ComboBox ItemsSource="{Binding HomeFunStatsPeriodOptions}" SelectedIndex="{Binding HomeFunStatsPeriodIndex}" />
+
+            <Separator Margin="0,18" />
+            <TextBlock Text="{DynamicResource FunScrollEstimate}" Style="{StaticResource SectionTitle}" />
+            <TextBlock Text="{DynamicResource FunScrollEstimateHelp}" Style="{StaticResource MutedText}" TextWrapping="Wrap" Margin="0,0,0,10" />
+            <Grid>
+              <Grid.ColumnDefinitions><ColumnDefinition Width="180" /><ColumnDefinition Width="12" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
+              <TextBox Text="{Binding ScrollCentimetersPerDetent, UpdateSourceTrigger=LostFocus}" />
+              <StackPanel Grid.Column="2" Orientation="Horizontal">
+                <Button Content="{DynamicResource Reset}" Click="ResetScroll_Click" Margin="0,0,8,0" />
+                <Button Content="{DynamicResource FunCalibrateScroll}" Click="CalibrateScroll_Click" />
+              </StackPanel>
+            </Grid>
+
+            <Separator Margin="0,18" />
+            <TextBlock Text="{DynamicResource ChartVisibleSeries}" Style="{StaticResource SectionTitle}" />
+            <TextBlock Text="{DynamicResource ChartVisibleSeriesHelp}" Style="{StaticResource MutedText}" TextWrapping="Wrap" Margin="0,0,0,8" />
+            <ItemsControl ItemsSource="{Binding ChartSeriesOptions}">
+              <ItemsControl.ItemTemplate>
+                <DataTemplate>
+                  <CheckBox IsChecked="{Binding IsEnabled}" Margin="0,4">
+                    <StackPanel Orientation="Horizontal">
+                      <TextBlock Text="{Binding Title}" />
+                      <TextBlock Text=" · " Style="{StaticResource MutedText}" />
+                      <TextBlock Text="{Binding Category}" Style="{StaticResource MutedText}" />
+                    </StackPanel>
+                  </CheckBox>
+                </DataTemplate>
+              </ItemsControl.ItemTemplate>
+            </ItemsControl>
+          </StackPanel>
+        </ScrollViewer>
+      </TabItem>
+      <TabItem Header="{DynamicResource FunCustomTab}">
+        <StackPanel Margin="12">
+          <TextBlock Text="{DynamicResource FunCustomHelp}" Style="{StaticResource MutedText}" TextWrapping="Wrap" Margin="0,0,0,16" />
+          <TextBlock Text="{DynamicResource Name}" Style="{StaticResource FieldLabel}" />
+          <TextBox x:Name="CustomLabel" MaxLength="80" />
+          <TextBlock Text="{DynamicResource FunMetric}" Style="{StaticResource FieldLabel}" Margin="0,12,0,0" />
+          <ComboBox x:Name="CustomMetric" ItemsSource="{Binding CustomMetricOptions}" SelectedIndex="0" />
+          <TextBlock Text="{DynamicResource FunTarget}" Style="{StaticResource FieldLabel}" Margin="0,12,0,0" />
+          <TextBox x:Name="CustomTarget" Text="1000" />
+          <Button Content="{DynamicResource Add}" Click="AddCustom_Click" Style="{StaticResource AccentButton}" HorizontalAlignment="Left" Margin="0,16,0,0" />
+        </StackPanel>
+      </TabItem>
+    </TabControl>
+    <Button Grid.Row="2" Content="{DynamicResource Close}" IsCancel="True" HorizontalAlignment="Right" Style="{StaticResource DialogButton}" Margin="0,16,0,0" />
+  </Grid>
+</Window>

@@ -369,14 +369,19 @@ public sealed class StatisticsService : IAsyncDisposable
       peakClicks = Math.Max(peakClicks, delta.PeakClicksPerFiveSeconds);
 
       if (!trends.TryGetValue(delta.Key.BucketUtc, out var trend))
-        trend = new(delta.Key.BucketUtc, 0, 0, 0, 0, 0);
+        trend = new(delta.Key.BucketUtc, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
       trends[delta.Key.BucketUtc] = trend with
       {
         KeyboardPresses = trend.KeyboardPresses + (isKeyboard ? delta.Count : 0),
+        TypingKeyPresses = trend.TypingKeyPresses + (isKeyboard && IsTypingGroup(delta.Key.Group) ? delta.Count : 0),
         PointerClicks = trend.PointerClicks + (isPointer ? delta.Count : 0),
         VerticalScroll = trend.VerticalScroll + (isVertical ? delta.Count : 0),
         HorizontalScroll = trend.HorizontalScroll + (isHorizontal ? delta.Count : 0),
-        ActiveMilliseconds = trend.ActiveMilliseconds + delta.ActiveMilliseconds
+        ActiveMilliseconds = trend.ActiveMilliseconds + delta.ActiveMilliseconds,
+        KeyboardActiveMilliseconds = trend.KeyboardActiveMilliseconds + delta.KeyboardActiveMilliseconds,
+        PointerActiveMilliseconds = trend.PointerActiveMilliseconds + delta.PointerActiveMilliseconds,
+        PeakTypingKeysPerMinute = Math.Max(trend.PeakTypingKeysPerMinute, delta.PeakTypingKeysPerMinute),
+        PeakClicksPerFiveSeconds = Math.Max(trend.PeakClicksPerFiveSeconds, delta.PeakClicksPerFiveSeconds)
       };
 
       var breakdownKey = (delta.Key.Kind, delta.Key.DeviceFamily, delta.Key.PhysicalCode, delta.Key.Extended, delta.Key.Group);

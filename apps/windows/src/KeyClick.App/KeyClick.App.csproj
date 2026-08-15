@@ -24,6 +24,7 @@
   <ItemGroup>
     <Resource Include="..\..\assets\keyclick.ico" Link="Assets\keyclick.ico" />
     <Resource Include="..\..\assets\keyclick-icon.png" Link="Assets\keyclick-icon.png" />
+    <EmbeddedResource Include="..\..\..\..\shared\fixtures\fun-stats.v1.json" Link="Shared\fun-stats.v1.json" />
   </ItemGroup>
 
 </Project>

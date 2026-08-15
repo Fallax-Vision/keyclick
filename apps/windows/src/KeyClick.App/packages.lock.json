@@ -168,7 +168,7 @@
       "keyclick.infrastructure.windows": {
         "type": "Project",
         "dependencies": {
-          "KeyClick.Core": "[1.4.4, )",
+          "KeyClick.Core": "[1.5.0, )",
           "Microsoft.Data.Sqlite": "[10.0.10, )",
           "NAudio": "[2.3.0, )",
           "NAudio.Vorbis": "[1.5.0, )",
@@ -178,6 +178,13 @@
       },
       "keyclick.updater": {
         "type": "Project"
+      }
+    },
+    "net10.0-windows10.0.26100/win-arm64": {
+      "SQLitePCLRaw.lib.e_sqlite3": {
+        "type": "Transitive",
+        "resolved": "3.53.3",
+        "contentHash": "ZXiSbBkrlw2Of/dBqny/qtQol7dlThrUD8zH/jkQicCFm2yn2BbhKsQW0+YHAzhANWz4ZJCz7gvo88BwluVhkA=="
       }
     }
   }

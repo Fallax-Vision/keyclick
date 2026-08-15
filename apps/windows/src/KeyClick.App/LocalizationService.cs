@@ -199,3 +199,9 @@ public sealed class LocalizedGestureConverter : IValueConverter
 
   public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture) => WpfBinding.DoNothing;
 }
+
+public sealed class InverseBooleanConverter : IValueConverter
+{
+  public object Convert(object value, Type targetType, object parameter, CultureInfo culture) => value is bool flag && !flag;
+  public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture) => value is bool flag && !flag;
+}

@@ -4,6 +4,7 @@ using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
 using System.Windows.Input;
 using System.Windows.Media;
+using System.Windows.Media.Animation;
 using KeyClick.Core;
 using Brush = System.Windows.Media.Brush;
 using Brushes = System.Windows.Media.Brushes;
@@ -14,70 +15,438 @@ using Pen = System.Windows.Media.Pen;
 using Point = System.Windows.Point;
 using Size = System.Windows.Size;
 using WpfCursors = System.Windows.Input.Cursors;
+using WpfProgressBar = System.Windows.Controls.ProgressBar;
 
 namespace KeyClick.App;
 
+public sealed class FunStatProgressBar : WpfProgressBar
+{
+  public static readonly DependencyProperty TargetValueProperty = DependencyProperty.Register(
+    nameof(TargetValue), typeof(double), typeof(FunStatProgressBar), new PropertyMetadata(0d, OnPresentationChanged));
+  public static readonly DependencyProperty AnimateProperty = DependencyProperty.Register(
+    nameof(Animate), typeof(bool), typeof(FunStatProgressBar), new PropertyMetadata(false, OnPresentationChanged));
+  public static readonly DependencyProperty ReducedMotionProperty = DependencyProperty.Register(
+    nameof(ReducedMotion), typeof(bool), typeof(FunStatProgressBar), new PropertyMetadata(false, OnPresentationChanged));
+  private bool _presented;
+
+  public FunStatProgressBar() => Loaded += (_, _) => Present();
+  public double TargetValue { get => (double)GetValue(TargetValueProperty); set => SetValue(TargetValueProperty, value); }
+  public bool Animate { get => (bool)GetValue(AnimateProperty); set => SetValue(AnimateProperty, value); }
+  public bool ReducedMotion { get => (bool)GetValue(ReducedMotionProperty); set => SetValue(ReducedMotionProperty, value); }
+
+  private static void OnPresentationChanged(DependencyObject target, DependencyPropertyChangedEventArgs _) =>
+    ((FunStatProgressBar)target).Present();
+
+  private void Present()
+  {
+    if (!IsLoaded) return;
+    var target = Math.Clamp(TargetValue, Minimum, Maximum);
+    BeginAnimation(ValueProperty, null);
+    if (!_presented && Animate && !ReducedMotion && SystemParameters.ClientAreaAnimation)
+    {
+      BeginAnimation(ValueProperty, new DoubleAnimation(Minimum, target, TimeSpan.FromMilliseconds(480))
+      {
+        EasingFunction = new CubicEase { EasingMode = EasingMode.EaseOut },
+        FillBehavior = FillBehavior.Stop
+      });
+    }
+    Value = target;
+    _presented = true;
+  }
+}
+
+public sealed class RadialProgress : FrameworkElement
+{
+  public static readonly DependencyProperty ProgressProperty = DependencyProperty.Register(
+    nameof(Progress), typeof(double), typeof(RadialProgress), new FrameworkPropertyMetadata(0d, FrameworkPropertyMetadataOptions.AffectsRender));
+
+  public double Progress { get => (double)GetValue(ProgressProperty); set => SetValue(ProgressProperty, value); }
+
+  protected override Size MeasureOverride(Size availableSize) => new(50, 50);
+
+  protected override void OnRender(DrawingContext context)
+  {
+    base.OnRender(context);
+    var progress = Math.Clamp(Progress, 0, 1);
+    var center = new Point(ActualWidth / 2, ActualHeight / 2);
+    var radius = Math.Max(4, Math.Min(ActualWidth, ActualHeight) / 2 - 5);
+    var accent = TryFindResource("AccentBrush") as Brush ?? Brushes.LimeGreen;
+    var track = TryFindResource("BorderBrush") as Brush ?? Brushes.Gray;
+    var text = TryFindResource("TextBrush") as Brush ?? Brushes.White;
+    context.DrawEllipse(null, new Pen(track, 5), center, radius, radius);
+    DrawProgressArc(context, center, radius, progress, new Pen(accent, 5) { StartLineCap = PenLineCap.Round, EndLineCap = PenLineCap.Round });
+    var formatted = new FormattedText($"{progress:P0}", CultureInfo.CurrentUICulture, FlowDirection.LeftToRight,
+      new Typeface("Segoe UI"), 10, text, VisualTreeHelper.GetDpi(this).PixelsPerDip);
+    context.DrawText(formatted, new Point(center.X - formatted.Width / 2, center.Y - formatted.Height / 2));
+  }
+
+  private static void DrawProgressArc(DrawingContext context, Point center, double radius, double progress, Pen pen)
+  {
+    if (progress <= 0) return;
+    if (progress >= .9999)
+    {
+      context.DrawEllipse(null, pen, center, radius, radius);
+      return;
+    }
+    var start = new Point(center.X, center.Y - radius);
+    var angle = progress * Math.PI * 2 - Math.PI / 2;
+    var end = new Point(center.X + Math.Cos(angle) * radius, center.Y + Math.Sin(angle) * radius);
+    var geometry = new StreamGeometry();
+    using (var stream = geometry.Open())
+    {
+      stream.BeginFigure(start, false, false);
+      stream.ArcTo(end, new Size(radius, radius), 0, progress > .5, SweepDirection.Clockwise, true, false);
+    }
+    context.DrawGeometry(null, pen, geometry);
+  }
+}
+
 public sealed class ActivityChart : FrameworkElement
 {
-  public static readonly DependencyProperty SnapshotProperty = DependencyProperty.Register(
-    nameof(Snapshot), typeof(StatisticsSnapshot), typeof(ActivityChart), new FrameworkPropertyMetadata(null, FrameworkPropertyMetadataOptions.AffectsRender));
-  private static readonly Brush KeyboardBrush = new SolidColorBrush(Color.FromRgb(24, 169, 91));
-  private static readonly Brush PointerBrush = new SolidColorBrush(Color.FromRgb(91, 111, 216));
+  public static readonly DependencyProperty ModelProperty = DependencyProperty.Register(
+    nameof(Model), typeof(StatisticsChartModel), typeof(ActivityChart),
+    new FrameworkPropertyMetadata(null, FrameworkPropertyMetadataOptions.AffectsRender, OnModelChanged));
+  public static readonly DependencyProperty ReducedMotionProperty = DependencyProperty.Register(
+    nameof(ReducedMotion), typeof(bool), typeof(ActivityChart), new PropertyMetadata(false));
+  private static readonly Brush[] SeriesBrushes =
+  [
+    new SolidColorBrush(Color.FromRgb(24, 169, 91)),
+    new SolidColorBrush(Color.FromRgb(91, 111, 216)),
+    new SolidColorBrush(Color.FromRgb(226, 144, 50)),
+    new SolidColorBrush(Color.FromRgb(183, 92, 211))
+  ];
   private static readonly Pen GridPen = new(new SolidColorBrush(Color.FromArgb(60, 128, 128, 128)), 1);
+  private readonly Popup _hoverPopup;
+  private readonly TextBlock _hoverText;
+  private int _hoverIndex = -1;
+  private int _hoverSeries = -1;
+  private bool _presented;
 
-  public StatisticsSnapshot? Snapshot { get => (StatisticsSnapshot?)GetValue(SnapshotProperty); set => SetValue(SnapshotProperty, value); }
+  public ActivityChart()
+  {
+    Focusable = true;
+    Cursor = WpfCursors.Cross;
+    _hoverText = new TextBlock { Margin = new Thickness(10, 7, 10, 7), Foreground = Brushes.White, TextWrapping = TextWrapping.Wrap, MaxWidth = 300 };
+    _hoverPopup = new Popup
+    {
+      PlacementTarget = this,
+      Placement = PlacementMode.Relative,
+      AllowsTransparency = true,
+      StaysOpen = true,
+      Child = new Border
+      {
+        Background = new SolidColorBrush(Color.FromArgb(245, 28, 31, 36)),
+        BorderBrush = new SolidColorBrush(Color.FromArgb(170, 128, 128, 128)),
+        BorderThickness = new Thickness(1),
+        CornerRadius = new CornerRadius(7),
+        Child = _hoverText
+      }
+    };
+    MouseLeave += (_, _) => CloseHover();
+    Unloaded += (_, _) => CloseHover();
+    KeyDown += ActivityChart_KeyDown;
+  }
+
+  public StatisticsChartModel? Model { get => (StatisticsChartModel?)GetValue(ModelProperty); set => SetValue(ModelProperty, value); }
+  public bool ReducedMotion { get => (bool)GetValue(ReducedMotionProperty); set => SetValue(ReducedMotionProperty, value); }
 
   protected override void OnRender(DrawingContext drawingContext)
   {
     base.OnRender(drawingContext);
-    var area = new Rect(38, 12, Math.Max(0, ActualWidth - 50), Math.Max(0, ActualHeight - 38));
-    for (var line = 0; line <= 4; line++)
-    {
-      var y = area.Top + area.Height * line / 4d;
-      drawingContext.DrawLine(GridPen, new(area.Left, y), new(area.Right, y));
-    }
-    var points = Snapshot?.Trend;
-    if (points is null || points.Count == 0)
+    var area = ChartArea();
+    if (Model is not { Points.Count: > 0, Series.Count: > 0 } model)
     {
       DrawText(drawingContext, LocalizationService.Current.Get("NoStatisticsYet"), new(area.Left + 12, area.Top + area.Height / 2 - 8));
       return;
     }
-    var max = Math.Max(1, points.Max(item => Math.Max(item.KeyboardPresses, item.PointerClicks)));
-    DrawSeries(drawingContext, area, points.Select(item => item.KeyboardPresses).ToArray(), max, new Pen(KeyboardBrush, 2));
-    DrawSeries(drawingContext, area, points.Select(item => item.PointerClicks).ToArray(), max, new Pen(PointerBrush, 2));
-    drawingContext.DrawRectangle(KeyboardBrush, null, new(area.Left, area.Bottom + 10, 10, 10));
-    DrawText(drawingContext, LocalizationService.Current.Get("Keyboard"), new(area.Left + 15, area.Bottom + 6));
-    drawingContext.DrawRectangle(PointerBrush, null, new(area.Left + 105, area.Bottom + 10, 10, 10));
-    DrawText(drawingContext, LocalizationService.Current.Get("Pointer"), new(area.Left + 120, area.Bottom + 6));
+    if (model.ViewType == StatisticsChartViewType.Donut)
+      DrawDonut(drawingContext, area, model);
+    else
+      DrawCartesian(drawingContext, area, model);
+    DrawLegend(drawingContext, area, model);
   }
 
   protected override void OnMouseMove(MouseEventArgs e)
   {
     base.OnMouseMove(e);
-    if (Snapshot?.Trend is not { Count: > 0 } points) return;
-    var areaWidth = Math.Max(1, ActualWidth - 50);
-    var index = Math.Clamp((int)Math.Round((e.GetPosition(this).X - 38) / areaWidth * (points.Count - 1)), 0, points.Count - 1);
-    var point = points[index];
-    ToolTip = $"{point.BucketUtc.ToLocalTime():g}\n{LocalizationService.Current.Get("Keyboard")}: {point.KeyboardPresses:N0}\n{LocalizationService.Current.Get("Pointer")}: {point.PointerClicks:N0}";
+    if (Model is not { Points.Count: > 0, Series.Count: > 0 } model) return;
+    Focus();
+    var position = e.GetPosition(this);
+    if (model.ViewType == StatisticsChartViewType.Donut)
+      SelectDonut(position, model);
+    else
+      _hoverIndex = Math.Clamp((int)Math.Round((position.X - ChartArea().Left) / Math.Max(1, ChartArea().Width) * (model.Points.Count - 1)), 0, model.Points.Count - 1);
+    ShowHover(position, model);
+    InvalidateVisual();
   }
 
-  private static void DrawSeries(DrawingContext context, Rect area, long[] values, long max, Pen pen)
+  private void DrawCartesian(DrawingContext context, Rect area, StatisticsChartModel model)
   {
-    if (values.Length == 1)
+    for (var line = 0; line <= 4; line++)
     {
-      context.DrawEllipse(pen.Brush, null, new(area.Left, area.Bottom - area.Height * values[0] / max), 3, 3);
+      var y = area.Top + area.Height * line / 4d;
+      context.DrawLine(GridPen, new(area.Left, y), new(area.Right, y));
+    }
+    var currentMaximum = model.Points.SelectMany(point => model.Series.Select(series => point.Values.GetValueOrDefault(series.Id))).DefaultIfEmpty().Max();
+    var comparisonMaximum = model.ComparisonPoints.SelectMany(point => model.Series.Select(series => point.Values.GetValueOrDefault(series.Id))).DefaultIfEmpty().Max();
+    var max = Math.Max(1, Math.Max(currentMaximum, comparisonMaximum));
+    if (model.ViewType == StatisticsChartViewType.Bar)
+      DrawBars(context, area, model, max);
+    else
+    {
+      for (var seriesIndex = 0; seriesIndex < model.Series.Count; seriesIndex++)
+      {
+        var brush = SeriesBrushes[seriesIndex % SeriesBrushes.Length];
+        DrawLineSeries(context, area, model.Points, model.Series[seriesIndex].Id, max, new Pen(brush, 2));
+        if (model.ComparisonPoints.Count > 0)
+        {
+          var comparisonBrush = brush.Clone();
+          comparisonBrush.Opacity = .55;
+          DrawLineSeries(context, area, model.ComparisonPoints, model.Series[seriesIndex].Id, max,
+            new Pen(comparisonBrush, 1) { DashStyle = DashStyles.Dash });
+        }
+      }
+    }
+    DrawText(context, max.ToString(model.Family == StatisticsChartMetricFamily.Counts ? "N0" : "0.#", CultureInfo.CurrentUICulture), new(0, area.Top));
+    if (_hoverIndex >= 0 && _hoverIndex < model.Points.Count)
+    {
+      var x = model.Points.Count == 1 ? area.Left + area.Width / 2 : area.Left + area.Width * _hoverIndex / (model.Points.Count - 1d);
+      context.DrawLine(new Pen(new SolidColorBrush(Color.FromArgb(120, 190, 190, 190)), 1), new(x, area.Top), new(x, area.Bottom));
+      for (var seriesIndex = 0; seriesIndex < model.Series.Count; seriesIndex++)
+      {
+        var value = model.Points[_hoverIndex].Values.GetValueOrDefault(model.Series[seriesIndex].Id);
+        var y = area.Bottom - area.Height * value / max;
+        context.DrawEllipse(SeriesBrushes[seriesIndex % SeriesBrushes.Length], new Pen(Brushes.White, 1), new(x, y), 4, 4);
+      }
+    }
+  }
+
+  private static void DrawLineSeries(DrawingContext context, Rect area, IReadOnlyList<StatisticsChartPoint> points, string seriesId, double max, Pen pen)
+  {
+    if (points.Count == 1)
+    {
+      var value = points[0].Values.GetValueOrDefault(seriesId);
+      context.DrawEllipse(pen.Brush, null, new(area.Left + area.Width / 2, area.Bottom - area.Height * value / max), 3, 3);
       return;
     }
     var geometry = new StreamGeometry();
     using (var stream = geometry.Open())
     {
-      for (var index = 0; index < values.Length; index++)
+      for (var index = 0; index < points.Count; index++)
       {
-        var point = new Point(area.Left + area.Width * index / (values.Length - 1d), area.Bottom - area.Height * values[index] / max);
+        var value = points[index].Values.GetValueOrDefault(seriesId);
+        var point = new Point(area.Left + area.Width * index / (points.Count - 1d), area.Bottom - area.Height * value / max);
         if (index == 0) stream.BeginFigure(point, false, false); else stream.LineTo(point, true, false);
       }
     }
     context.DrawGeometry(null, pen, geometry);
+  }
+
+  private static void DrawBars(DrawingContext context, Rect area, StatisticsChartModel model, double max)
+  {
+    var groupWidth = area.Width / Math.Max(1, model.Points.Count);
+    var barWidth = Math.Max(1, Math.Min(22, groupWidth * .75 / model.Series.Count));
+    for (var pointIndex = 0; pointIndex < model.Points.Count; pointIndex++)
+    {
+      var center = area.Left + groupWidth * (pointIndex + .5);
+      for (var seriesIndex = 0; seriesIndex < model.Series.Count; seriesIndex++)
+      {
+        var value = model.Points[pointIndex].Values.GetValueOrDefault(model.Series[seriesIndex].Id);
+        var height = area.Height * value / max;
+        var left = center - barWidth * model.Series.Count / 2 + seriesIndex * barWidth;
+        if (pointIndex < model.ComparisonPoints.Count)
+        {
+          var comparisonValue = model.ComparisonPoints[pointIndex].Values.GetValueOrDefault(model.Series[seriesIndex].Id);
+          var comparisonHeight = area.Height * comparisonValue / max;
+          var comparisonBrush = SeriesBrushes[seriesIndex % SeriesBrushes.Length].Clone();
+          comparisonBrush.Opacity = .55;
+          var comparisonPen = new Pen(comparisonBrush, 1) { DashStyle = DashStyles.Dash };
+          context.DrawRoundedRectangle(null, comparisonPen,
+            new Rect(left, area.Bottom - comparisonHeight, Math.Max(1, barWidth - 1), comparisonHeight), 2, 2);
+        }
+        var opacity = pointIndex == model.Points.Count - 1 || pointIndex == 0 ? .95 : .78;
+        context.PushOpacity(opacity);
+        context.DrawRoundedRectangle(SeriesBrushes[seriesIndex % SeriesBrushes.Length], null,
+          new Rect(left, area.Bottom - height, Math.Max(1, barWidth - 1), height), 2, 2);
+        context.Pop();
+      }
+    }
+  }
+
+  private void DrawDonut(DrawingContext context, Rect area, StatisticsChartModel model)
+  {
+    var center = new Point(area.Left + area.Width / 2, area.Top + area.Height / 2);
+    var radius = Math.Max(10, Math.Min(area.Width, area.Height) * .38);
+    var totals = model.Series.Select(series => model.Points.Sum(point => point.Values.GetValueOrDefault(series.Id))).ToArray();
+    var total = Math.Max(1, totals.Sum());
+    var start = -90d;
+    for (var index = 0; index < totals.Length; index++)
+    {
+      var sweep = totals[index] / total * 360;
+      DrawArc(context, center, radius, start, sweep, new Pen(SeriesBrushes[index % SeriesBrushes.Length], Math.Max(12, radius * .28)));
+      start += sweep;
+    }
+    context.DrawEllipse(null, new Pen(new SolidColorBrush(Color.FromArgb(55, 128, 128, 128)), 1), center, radius * .72, radius * .72);
+    DrawCenteredText(context, total.ToString(model.Family == StatisticsChartMetricFamily.Counts ? "N0" : "0.#", CultureInfo.CurrentUICulture), center, 18);
+    if (_hoverSeries >= 0 && _hoverSeries < totals.Length)
+      context.DrawEllipse(null, new Pen(SeriesBrushes[_hoverSeries % SeriesBrushes.Length], 3), center, radius * 1.18, radius * 1.18);
+  }
+
+  private static void DrawArc(DrawingContext context, Point center, double radius, double startDegrees, double sweepDegrees, Pen pen)
+  {
+    if (sweepDegrees <= 0) return;
+    if (sweepDegrees >= 359.999)
+    {
+      context.DrawEllipse(null, pen, center, radius, radius);
+      return;
+    }
+    var start = PointOnCircle(center, radius, startDegrees);
+    var end = PointOnCircle(center, radius, startDegrees + sweepDegrees);
+    var geometry = new StreamGeometry();
+    using (var stream = geometry.Open())
+    {
+      stream.BeginFigure(start, false, false);
+      stream.ArcTo(end, new Size(radius, radius), 0, sweepDegrees > 180, SweepDirection.Clockwise, true, false);
+    }
+    context.DrawGeometry(null, pen, geometry);
+  }
+
+  private void DrawLegend(DrawingContext context, Rect area, StatisticsChartModel model)
+  {
+    var x = area.Left;
+    var y = area.Bottom + 9;
+    for (var index = 0; index < model.Series.Count; index++)
+    {
+      context.DrawRectangle(SeriesBrushes[index % SeriesBrushes.Length], null, new Rect(x, y + 2, 10, 10));
+      var text = Formatted(model.Series[index].Label, 11);
+      context.DrawText(text, new Point(x + 15, y));
+      x += 25 + text.Width;
+      if (x > area.Right - 100) { x = area.Left; y += 18; }
+    }
+  }
+
+  private void SelectDonut(Point position, StatisticsChartModel model)
+  {
+    var area = ChartArea();
+    var center = new Point(area.Left + area.Width / 2, area.Top + area.Height / 2);
+    var angle = Math.Atan2(position.Y - center.Y, position.X - center.X) * 180 / Math.PI + 90;
+    if (angle < 0) angle += 360;
+    var totals = model.Series.Select(series => model.Points.Sum(point => point.Values.GetValueOrDefault(series.Id))).ToArray();
+    var total = Math.Max(1, totals.Sum());
+    var cursor = 0d;
+    _hoverSeries = 0;
+    for (var index = 0; index < totals.Length; index++)
+    {
+      cursor += totals[index] / total * 360;
+      if (angle <= cursor) { _hoverSeries = index; break; }
+    }
+  }
+
+  private void ShowHover(Point position, StatisticsChartModel model)
+  {
+    if (model.ViewType == StatisticsChartViewType.Donut)
+    {
+      var index = Math.Clamp(_hoverSeries, 0, model.Series.Count - 1);
+      var total = model.Points.Sum(point => point.Values.GetValueOrDefault(model.Series[index].Id));
+      var all = Math.Max(1, model.Series.Sum(series => model.Points.Sum(point => point.Values.GetValueOrDefault(series.Id))));
+      _hoverText.Text = $"{model.Series[index].Label}\n{FormatValue(total, model.Family)} · {total / all:P1}";
+      if (model.ComparisonPoints.Count > 0)
+      {
+        var comparison = model.ComparisonPoints.Sum(point => point.Values.GetValueOrDefault(model.Series[index].Id));
+        var delta = comparison == 0 ? (total == 0 ? 0 : 100) : (total - comparison) * 100 / comparison;
+        _hoverText.Text += $"\n{LocalizationService.Current.Format("ChartComparisonDeltaFormat", delta)}";
+      }
+    }
+    else
+    {
+      _hoverIndex = Math.Clamp(_hoverIndex, 0, model.Points.Count - 1);
+      var point = model.Points[_hoverIndex];
+      var lines = new List<string> { FormatRange(point.Start, point.End, model.Granularity) };
+      for (var index = 0; index < model.Series.Count; index++)
+      {
+        var series = model.Series[index];
+        var line = $"{series.Label}: {FormatValue(point.Values.GetValueOrDefault(series.Id), model.Family)}";
+        if (_hoverIndex < model.ComparisonPoints.Count)
+          line += $"  ({LocalizationService.Current.Get("ChartPrevious")}: {FormatValue(model.ComparisonPoints[_hoverIndex].Values.GetValueOrDefault(series.Id), model.Family)})";
+        lines.Add(line);
+      }
+      _hoverText.Text = string.Join(Environment.NewLine, lines);
+    }
+    _hoverPopup.HorizontalOffset = Math.Clamp(position.X + 14, 0, Math.Max(0, ActualWidth - 310));
+    _hoverPopup.VerticalOffset = Math.Clamp(position.Y + 14, 0, Math.Max(0, ActualHeight - 130));
+    _hoverPopup.IsOpen = true;
+  }
+
+  private void ActivityChart_KeyDown(object sender, System.Windows.Input.KeyEventArgs e)
+  {
+    if (Model is not { Points.Count: > 0 } model) return;
+    if (e.Key is not (Key.Left or Key.Right or Key.Home or Key.End)) return;
+    if (model.ViewType == StatisticsChartViewType.Donut)
+    {
+      _hoverSeries = e.Key switch
+      {
+        Key.Home => 0,
+        Key.End => model.Series.Count - 1,
+        Key.Left => Math.Max(0, _hoverSeries < 0 ? model.Series.Count - 1 : _hoverSeries - 1),
+        _ => Math.Min(model.Series.Count - 1, _hoverSeries + 1)
+      };
+      ShowHover(new Point(ActualWidth / 2, ActualHeight / 2), model);
+      InvalidateVisual();
+      e.Handled = true;
+      return;
+    }
+    _hoverIndex = e.Key switch
+    {
+      Key.Home => 0,
+      Key.End => model.Points.Count - 1,
+      Key.Left => Math.Max(0, _hoverIndex < 0 ? model.Points.Count - 1 : _hoverIndex - 1),
+      _ => Math.Min(model.Points.Count - 1, _hoverIndex + 1)
+    };
+    var area = ChartArea();
+    var x = model.Points.Count == 1 ? area.Left + area.Width / 2 : area.Left + area.Width * _hoverIndex / (model.Points.Count - 1d);
+    ShowHover(new Point(x, area.Top + 12), model);
+    InvalidateVisual();
+    e.Handled = true;
+  }
+
+  private void CloseHover()
+  {
+    _hoverPopup.IsOpen = false;
+    _hoverIndex = -1;
+    _hoverSeries = -1;
+    InvalidateVisual();
+  }
+
+  private Rect ChartArea() => new(46, 12, Math.Max(0, ActualWidth - 58), Math.Max(0, ActualHeight - 58));
+  private static Point PointOnCircle(Point center, double radius, double degrees)
+  {
+    var radians = degrees * Math.PI / 180;
+    return new(center.X + Math.Cos(radians) * radius, center.Y + Math.Sin(radians) * radius);
+  }
+  private static string FormatRange(DateTimeOffset start, DateTimeOffset end, StatisticsTrendGranularity granularity) => granularity switch
+  {
+    StatisticsTrendGranularity.Hourly => start.ToString("g", CultureInfo.CurrentUICulture),
+    StatisticsTrendGranularity.Daily => start.ToString("D", CultureInfo.CurrentUICulture),
+    _ => $"{start:d} – {end.AddTicks(-1):d}"
+  };
+  private static string FormatValue(double value, StatisticsChartMetricFamily family) => value.ToString(family == StatisticsChartMetricFamily.Counts ? "N0" : "0.#", CultureInfo.CurrentUICulture);
+  private static FormattedText Formatted(string text, double size) => new(text, CultureInfo.CurrentUICulture, FlowDirection.LeftToRight, new Typeface("Segoe UI"), size, Brushes.Gray, 1.0);
+  private static void DrawCenteredText(DrawingContext context, string text, Point center, double size)
+  {
+    var formatted = Formatted(text, size);
+    context.DrawText(formatted, new(center.X - formatted.Width / 2, center.Y - formatted.Height / 2));
+  }
+  private static void OnModelChanged(DependencyObject sender, DependencyPropertyChangedEventArgs args)
+  {
+    if (sender is not ActivityChart chart) return;
+    chart.CloseHover();
+    if (chart._presented || args.NewValue is not StatisticsChartModel { Points.Count: > 0 }) return;
+    chart._presented = true;
+    if (chart.ReducedMotion || !SystemParameters.ClientAreaAnimation) return;
+    chart.BeginAnimation(OpacityProperty, new DoubleAnimation(0, 1, TimeSpan.FromMilliseconds(280))
+    {
+      EasingFunction = new CubicEase { EasingMode = EasingMode.EaseOut }
+    });
   }
 
   private static void DrawText(DrawingContext context, string text, Point origin) => context.DrawText(
@@ -140,6 +509,8 @@ public sealed class TypingSpeedChart : FrameworkElement
 
 public sealed class KeyboardHeatmap : FrameworkElement
 {
+  private const double LayoutWidth = 23.6;
+  private const double LayoutHeight = 6.55;
   public static readonly DependencyProperty SnapshotProperty = DependencyProperty.Register(
     nameof(Snapshot), typeof(StatisticsSnapshot), typeof(KeyboardHeatmap),
     new FrameworkPropertyMetadata(null, FrameworkPropertyMetadataOptions.AffectsRender, OnSnapshotChanged));
@@ -219,6 +590,12 @@ public sealed class KeyboardHeatmap : FrameworkElement
   public StatisticsSnapshot? Snapshot { get => (StatisticsSnapshot?)GetValue(SnapshotProperty); set => SetValue(SnapshotProperty, value); }
   public bool TooltipsEnabled { get => (bool)GetValue(TooltipsEnabledProperty); set => SetValue(TooltipsEnabledProperty, value); }
 
+  protected override Size MeasureOverride(Size availableSize)
+  {
+    var width = double.IsFinite(availableSize.Width) ? Math.Max(0, availableSize.Width) : LayoutWidth * 36;
+    return new Size(width, width * LayoutHeight / LayoutWidth);
+  }
+
   protected override void OnRender(DrawingContext context)
   {
     base.OnRender(context);
@@ -231,11 +608,13 @@ public sealed class KeyboardHeatmap : FrameworkElement
       var intensity = Math.Sqrt(count / (double)max);
       var color = Color.FromRgb((byte)(42 - intensity * 16), (byte)(58 + intensity * 122), (byte)(53 + intensity * 42));
       var rect = KeyRect(key, unit, gap, originX);
-      context.DrawRoundedRectangle(new SolidColorBrush(color), new Pen(new SolidColorBrush(Color.FromArgb(90, 128, 128, 128)), 1), rect, 4, 4);
+      var cornerRadius = unit * .1;
+      context.DrawRoundedRectangle(new SolidColorBrush(color), new Pen(new SolidColorBrush(Color.FromArgb(90, 128, 128, 128)), unit * .025), rect, cornerRadius, cornerRadius);
       var label = LocalizationService.Current.KeyNameFromScanCode(key.Code, key.Code > 0xFF);
-      var text = new FormattedText(label, CultureInfo.CurrentUICulture, FlowDirection.LeftToRight, new Typeface("Segoe UI"), Math.Clamp(unit * .22, 7, 9), Brushes.White, 1.0)
-      { MaxTextWidth = Math.Max(4, rect.Width - 5), Trimming = TextTrimming.CharacterEllipsis };
-      context.DrawText(text, new(rect.Left + 3, rect.Top + (rect.Height - text.Height) / 2));
+      var textInset = unit * .08;
+      var text = new FormattedText(label, CultureInfo.CurrentUICulture, FlowDirection.LeftToRight, new Typeface("Segoe UI"), unit * .22, Brushes.White, 1.0)
+      { MaxTextWidth = Math.Max(0, rect.Width - textInset * 2), Trimming = TextTrimming.CharacterEllipsis };
+      context.DrawText(text, new(rect.Left + textInset, rect.Top + (rect.Height - text.Height) / 2));
     }
   }
 
@@ -416,8 +795,8 @@ public sealed class KeyboardHeatmap : FrameworkElement
 
   private (double Unit, double Gap, double OriginX) Geometry()
   {
-    var unit = Math.Max(16, Math.Min(ActualWidth / 23.6, ActualHeight / 6.55));
-    return (unit, Math.Clamp(unit * .08, 2, 4), Math.Max(0, (ActualWidth - unit * 23.5) / 2));
+    var unit = Math.Max(0, Math.Min(ActualWidth / LayoutWidth, ActualHeight / LayoutHeight));
+    return (unit, unit * .08, Math.Max(0, (ActualWidth - unit * 23.5) / 2));
   }
 
   private static Rect KeyRect(KeyLayout key, double unit, double gap, double originX) =>

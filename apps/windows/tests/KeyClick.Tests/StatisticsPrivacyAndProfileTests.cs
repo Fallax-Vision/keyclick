@@ -201,6 +201,20 @@ public sealed class StatisticsPrivacyAndProfileTests
       ExcludedExecutables = [@"C:\private\app.exe"],
       StatisticsExcludedExecutables = [@"C:\private\stats.exe"],
       AllowedIntegrationClients = [@"C:\private\client.exe"],
+      FunStatsEnabled = false,
+      MetricCardFunFactsEnabled = false,
+      FunStatsPreferencesVersion = AppSettings.CurrentFunStatsPreferencesVersion,
+      FunFactRotation = FunFactRotation.Daily,
+      FunStatsCopyMode = FunStatsCopyMode.ImageAndCaption,
+      ScrollCentimetersPerDetent = 2.54,
+      HomeFunStatsPeriod = StatisticsPeriod.ThirtyDays,
+      SelectedFunStatIds = ["scroll-moon", "custom-personal"],
+      DisabledFunFactIds = ["keyboard-planets"],
+      CustomFunStats = [new() { Id = "custom-personal", Label = "My clicks", Metric = FunStatMetric.PointerClicks, Target = 500 }],
+      StatisticsChartMetricFamily = StatisticsChartMetricFamily.Rates,
+      StatisticsChartViewType = StatisticsChartViewType.Bar,
+      StatisticsTrendGranularity = StatisticsTrendGranularity.Weekly,
+      EnabledStatisticsChartSeries = ["average-wpm", "peak-wpm"],
       PackRotation = new() { Enabled = true, NextDueUtc = DateTimeOffset.UtcNow.AddHours(1), LastWindowsBootTicks = 12345 }
     });
     var service = new ProfileTransferService(paths, store, store);
@@ -221,6 +235,20 @@ public sealed class StatisticsPrivacyAndProfileTests
     Assert.Empty(imported.ExcludedExecutables);
     Assert.Empty(imported.StatisticsExcludedExecutables);
     Assert.Empty(imported.AllowedIntegrationClients);
+    Assert.False(imported.FunStatsEnabled);
+    Assert.False(imported.MetricCardFunFactsEnabled);
+    Assert.Equal(FunFactRotation.Daily, imported.FunFactRotation);
+    Assert.Equal(FunStatsCopyMode.ImageAndCaption, imported.FunStatsCopyMode);
+    Assert.Equal(2.54, imported.ScrollCentimetersPerDetent, 2);
+    Assert.Equal(StatisticsPeriod.ThirtyDays, imported.HomeFunStatsPeriod);
+    Assert.Equal(new[] { "scroll-moon", "custom-personal" }, imported.SelectedFunStatIds);
+    Assert.Equal(new[] { "keyboard-planets" }, imported.DisabledFunFactIds);
+    var custom = Assert.Single(imported.CustomFunStats);
+    Assert.Equal("My clicks", custom.Label);
+    Assert.Equal(StatisticsChartMetricFamily.Rates, imported.StatisticsChartMetricFamily);
+    Assert.Equal(StatisticsChartViewType.Bar, imported.StatisticsChartViewType);
+    Assert.Equal(StatisticsTrendGranularity.Weekly, imported.StatisticsTrendGranularity);
+    Assert.Equal(new[] { "average-wpm", "peak-wpm" }, imported.EnabledStatisticsChartSeries);
     Assert.True(imported.PackRotation.Enabled);
     Assert.Null(imported.PackRotation.NextDueUtc);
     Assert.Null(imported.PackRotation.LastWindowsBootTicks);

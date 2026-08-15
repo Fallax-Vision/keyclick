@@ -8,7 +8,7 @@ KeyClick is a native Windows 11 sound studio and private activity dashboard. Key
 
 Windows v1 is implemented in C#, WPF, .NET 10 LTS, SQLite, Win32 Raw Input, and XAudio2. The repository reserves native application roots for future Linux and macOS versions while sharing input IDs, sound-pack manifests, integration schemas, and fixtures.
 
-The current release is **1.4.4**, available as per-user Setup and fully portable executables for Windows x64 and ARM64. Both editions are offline-first, preserve user data during verified updates, and contain the same sound packs, statistics, typing challenges, themes, and privacy protections.
+The current release is **1.5.0**, available as per-user Setup and fully portable executables for Windows x64 and ARM64. Both editions are offline-first, preserve user data during verified updates, and contain the same sound packs, statistics, Fun Stats, typing challenges, themes, and privacy protections.
 
 ## Highlights
 
@@ -26,7 +26,11 @@ The current release is **1.4.4**, available as per-user Setup and fully portable
 - Button-based Light, Dark, and live System themes; theme-aware dialogs and inputs; accessible black text on primary buttons; a lower-brightness Dark-mode accent; tray lifecycle; startup support; app exclusions; backup; and manual-only updates.
 - Closing the KeyClick window or choosing **Exit** from the tray fully stops audio and input capture. Minimizing can keep the still-running app in the tray when that setting is enabled.
 - English and French UI with Windows display-language detection plus a persistent manual app-language override.
-- Independent, default-on keyboard and pointer aggregate statistics with once-per-second live visible updates, recent-duration filters, native charts, speed metrics, comparisons, local CSV export, and category/range deletion. The full-width Statistics workspace is organized into compact Overview, Pointer, Keyboard, Applications, and Wellness views.
+- Independent, default-on keyboard and pointer aggregate statistics with once-per-second live visible updates, recent-duration filters, speed metrics, comparisons, local CSV export, and category/range deletion. The full-width Statistics workspace is organized into compact Overview, Pointer, Keyboard, Applications, and Wellness views.
+- Default-on, fully offline **Fun Stats** on Home, every overview metric card, and the Statistics dashboard. A versioned catalog of 50 English/French comparisons turns aggregate activity into milestones such as books, crowds, buildings, travel distances, celestial distances, time equivalents, and typing/clicking rates without fetching or transmitting data.
+- A customizable six-to-twelve-tile Fun Stats dashboard with linear, route, radial, and equivalence visuals; stable fact rotation; category/fact controls; structured personal milestones; calibrated estimated scroll distance; profile transfer; and local milestone advancement.
+- Social-ready Fun Stats images rendered locally at 1200×630 or 1200×1200 with a branded, balanced header, selected period, generation date, and optional localized caption. Clipboard sharing never includes application names, paths, typed content, or other private data.
+- Reusable activity charts with Counts, Rates, and Active-time families; line, grouped-bar, and meaningful donut views; Auto/hourly/daily/weekly/monthly grouping; selectable series; comparison overlays; pointer-following tooltips; keyboard point navigation; and reduced-motion support.
 - A Home and Statistics physical-key heatmap with click-open key details. Key popovers remain open until dismissed, stay within the KeyClick window, follow their selected key while content scrolls, and close when KeyClick loses focus.
 - Privacy-minimized per-application totals displayed as easy-to-scan application cards with friendly names such as Brave, Chrome, and VLC, followed by executable and aggregate activity details.
 - Private offline Typing Challenges with an app-themed first-use disclosure, original English/French passages, custom prompts, free writing, timed/untimed and strict/flow modes, complete whitespace/Unicode input handling, visual results, normal-typing comparisons, personal bests, and two local streak types.
@@ -55,6 +59,14 @@ The Raw Input callback performs no database access, decoding, process discovery,
 The one-time disclosure appears before collection begins, with keyboard and pointer statistics preselected; existing installations receive the revised disclosure once before per-application grouping begins. These controls remain independent from sound playback and from each other. KeyClick stores UTC hourly counts keyed by physical scan code/button, pointer family, and input group, plus compact active-time and peak-rate summaries. A separate application breakdown stores only total keyboard/pointer/scrolling counts under a source-salted app ID and executable filename; it never stores the raw path or app-specific per-key counts. Labels are resolved only for display.
 
 Aggregate statistics remain local forever until the user deletes a selected period/category or all data. Settings reset does not delete statistics. Keyboard, mouse, and per-application statistics are never transmitted over the internet, included in update requests, exposed through the named pipe, or attached to logs. Per-application details are excluded from CSV and `.keyclickprofile` exports. KeyClick never stores typed characters or reconstructable ordered input.
+
+## Fun Stats and activity visualizations
+
+Fun Stats are derived entirely from the same local aggregate counters used by the Statistics workspace. New and upgraded installations enable the dashboard and metric-card facts by default with six curated tiles; users can disable the feature, select and reorder up to twelve tiles, filter fact categories, choose a rotation cadence, and add validated custom milestones without formulas or executable content. Estimated scroll distance defaults to 1.27 cm per wheel detent and can be entered directly or calibrated in a local test surface.
+
+The immutable catalog and schema live under `shared/`, include dated source/year notes, and mark estimates with `≈`. Built-in milestones advance to the next meaningful target after completion, while custom milestones remain complete at 100%. All catalog facts, formatting, customization, and sharing work without network access.
+
+Activity charts re-aggregate the existing hourly trend data in the presentation layer, so selecting different metrics, views, grouping, comparisons, or series does not add database queries per tile or change the Raw Input path. Chart tooltips show bucket ranges and enabled values, remain clamped inside the chart, and have keyboard-accessible summaries and navigation.
 
 ## Private typing challenges
 
@@ -99,16 +111,16 @@ dotnet test KeyClick.sln -c Release
 Create setup and portable executables for both architectures:
 
 ```powershell
-./scripts/Build-Portable.ps1 -Version 1.4.4
+./scripts/Build-Portable.ps1 -Version 1.5.0
 ```
 
 The script writes these canonical, versioned artifacts plus SHA-256 checksums directly under `artifacts/`:
 
-- `KeyClick-Portable-Windows-x64-1.4.4.exe`
-- `KeyClick-Portable-Windows-arm64-1.4.4.exe`
-- `KeyClick-Setup-Windows-x64-1.4.4.exe`
-- `KeyClick-Setup-Windows-arm64-1.4.4.exe`
-- `checksums-1.4.4.txt`
+- `KeyClick-Portable-Windows-x64-1.5.0.exe`
+- `KeyClick-Portable-Windows-arm64-1.5.0.exe`
+- `KeyClick-Setup-Windows-x64-1.5.0.exe`
+- `KeyClick-Setup-Windows-arm64-1.5.0.exe`
+- `checksums-1.5.0.txt`
 
 `KeyClick-Setup-Windows-<architecture>-<version>.exe` is the installable edition. Setup is per-user and non-elevated, installs versioned code under `%LOCALAPPDATA%\KeyClick`, creates shortcuts, and registers HKCU uninstall metadata while preserving user data during upgrades. `KeyClick-Portable-Windows-<architecture>-<version>.exe` is the portable edition. It creates no shortcuts or registry entries and keeps code, SQLite data/statistics, media, logs, and backups under `KeyClickData` beside the launcher. If that directory is not writable, the user can explicitly use the installed AppData store or exit. No legacy duplicate executables are produced. Packaging follows SemVer and retains only the current and immediately preceding artifact versions.
 
@@ -146,7 +158,7 @@ Versioned `.keyclickprofile` files can preview and merge selected transferable s
 
 ## Platform status
 
-- Windows 11 x64/ARM64: current release 1.4.4.
+- Windows 11 x64/ARM64: current release 1.5.0.
 - Linux: contracts reserved; native application deferred.
 - macOS: contracts reserved; native application deferred.
 
