@@ -233,6 +233,11 @@ public sealed class UiConsistencyTests
     Assert.Contains("ChartGranularityOptions", main);
 
     Assert.Contains("protected override void OnMouseMove", visuals);
+    Assert.Contains("UpdatePointerHover(e.GetPosition(this), model)", visuals);
+    Assert.Contains("if (chart._pointerHoverActive)", visuals);
+    Assert.Contains("chart.UpdatePointerHover(Mouse.GetPosition(chart), model)", visuals);
+    Assert.Contains("MouseLeave += (_, _) => CloseHover()", visuals);
+    Assert.DoesNotContain("chart.CloseHover();\n    if (chart._presented", visuals);
     Assert.Contains("Math.Clamp(position.X + 14", visuals);
     Assert.Contains("Key.Left or Key.Right or Key.Home or Key.End", visuals);
     Assert.Contains("DashStyle = DashStyles.Dash", visuals);

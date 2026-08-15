@@ -120,6 +120,8 @@ public sealed class ActivityChart : FrameworkElement
   private readonly TextBlock _hoverText;
   private int _hoverIndex = -1;
   private int _hoverSeries = -1;
+  private Point _hoverPosition;
+  private bool _pointerHoverActive;
   private bool _presented;
 
   public ActivityChart()
@@ -169,9 +171,19 @@ public sealed class ActivityChart : FrameworkElement
   protected override void OnMouseMove(MouseEventArgs e)
   {
     base.OnMouseMove(e);
-    if (Model is not { Points.Count: > 0, Series.Count: > 0 } model) return;
+    if (Model is not { Points.Count: > 0, Series.Count: > 0 } model)
+    {
+      CloseHover();
+      return;
+    }
     Focus();
-    var position = e.GetPosition(this);
+    UpdatePointerHover(e.GetPosition(this), model);
+  }
+
+  private void UpdatePointerHover(Point position, StatisticsChartModel model)
+  {
+    _pointerHoverActive = true;
+    _hoverPosition = position;
     if (model.ViewType == StatisticsChartViewType.Donut)
       SelectDonut(position, model);
     else
@@ -344,6 +356,7 @@ public sealed class ActivityChart : FrameworkElement
 
   private void ShowHover(Point position, StatisticsChartModel model)
   {
+    _hoverPosition = position;
     if (model.ViewType == StatisticsChartViewType.Donut)
     {
       var index = Math.Clamp(_hoverSeries, 0, model.Series.Count - 1);
@@ -383,6 +396,7 @@ public sealed class ActivityChart : FrameworkElement
     if (e.Key is not (Key.Left or Key.Right or Key.Home or Key.End)) return;
     if (model.ViewType == StatisticsChartViewType.Donut)
     {
+      _pointerHoverActive = false;
       _hoverSeries = e.Key switch
       {
         Key.Home => 0,
@@ -395,6 +409,7 @@ public sealed class ActivityChart : FrameworkElement
       e.Handled = true;
       return;
     }
+    _pointerHoverActive = false;
     _hoverIndex = e.Key switch
     {
       Key.Home => 0,
@@ -414,6 +429,7 @@ public sealed class ActivityChart : FrameworkElement
     _hoverPopup.IsOpen = false;
     _hoverIndex = -1;
     _hoverSeries = -1;
+    _pointerHoverActive = false;
     InvalidateVisual();
   }
 
@@ -439,8 +455,24 @@ public sealed class ActivityChart : FrameworkElement
   private static void OnModelChanged(DependencyObject sender, DependencyPropertyChangedEventArgs args)
   {
     if (sender is not ActivityChart chart) return;
-    chart.CloseHover();
-    if (chart._presented || args.NewValue is not StatisticsChartModel { Points.Count: > 0 }) return;
+    if (args.NewValue is not StatisticsChartModel { Points.Count: > 0, Series.Count: > 0 } model)
+    {
+      chart.CloseHover();
+      return;
+    }
+    if (chart._pointerHoverActive)
+    {
+      if (chart.IsMouseOver)
+        chart.UpdatePointerHover(Mouse.GetPosition(chart), model);
+      else
+        chart.CloseHover();
+    }
+    else if (chart._hoverPopup.IsOpen)
+    {
+      chart.ShowHover(chart._hoverPosition, model);
+      chart.InvalidateVisual();
+    }
+    if (chart._presented) return;
     chart._presented = true;
     if (chart.ReducedMotion || !SystemParameters.ClientAreaAnimation) return;
     chart.BeginAnimation(OpacityProperty, new DoubleAnimation(0, 1, TimeSpan.FromMilliseconds(280))
