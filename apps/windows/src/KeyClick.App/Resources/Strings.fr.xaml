@@ -597,6 +597,9 @@
   <sys:String x:Key="FunTarget">Objectif</sys:String>
   <sys:String x:Key="FunPinDashboard">Ajouter ou retirer cet objectif du tableau de bord</sys:String>
   <sys:String x:Key="FunEnableFact">Inclure cette comparaison dans les cartes et les détails</sys:String>
+  <sys:String x:Key="FunDashboardColumn">Tableau</sys:String>
+  <sys:String x:Key="FunCardFactColumn">Fait de carte</sys:String>
+  <sys:String x:Key="FunMilestoneColumn">Jalon</sys:String>
   <sys:String x:Key="FunFactRotation">Rotation des comparaisons</sys:String>
   <sys:String x:Key="FunCopyMode">Contenu copié</sys:String>
   <sys:String x:Key="FunHomePeriod">Période des stats amusantes de l'accueil</sys:String>
@@ -772,4 +775,74 @@
   <sys:String x:Key="FunSourceRateEstimate">Plages de vitesse publiées, arrondies pour comparaison</sys:String>
   <sys:String x:Key="FunSourceLocalAggregate">Vos statistiques agrégées locales</sys:String>
   <sys:String x:Key="FunSourceCustom">Votre objectif local personnalisé</sys:String>
+  <sys:String x:Key="NavPointerStudio">Studio du pointeur</sys:String>
+  <sys:String x:Key="PointerStudioIntro">Curseurs originaux, mouvements, retours visuels des clics, périphériques connectés et actions sûres — entièrement locaux.</sys:String>
+  <sys:String x:Key="PointerStudioEnable">Activer le Studio du pointeur</sys:String>
+  <sys:String x:Key="PointerApplyScope">Portée d'application</sys:String>
+  <sys:String x:Key="PointerApply">Appliquer le design</sys:String>
+  <sys:String x:Key="PointerDesignsTab">Designs</sys:String>
+  <sys:String x:Key="PointerMotionClicksTab">Mouvements et clics</sys:String>
+  <sys:String x:Key="PointerDevicesButtonsTab">Périphériques et boutons</sys:String>
+  <sys:String x:Key="PointerPerformanceSafetyTab">Performances et sécurité</sys:String>
+  <sys:String x:Key="PointerTheme">Famille de curseurs</sys:String>
+  <sys:String x:Key="PointerThemeGridHelp">Choisissez un design dans la galerie visuelle. Chaque aperçu est original et intégré localement.</sys:String>
+  <sys:String x:Key="PointerSize">Taille du curseur</sys:String>
+  <sys:String x:Key="PointerVariant">Variante de couleur</sys:String>
+  <sys:String x:Key="PointerLiveTest">Test des rôles</sys:String>
+  <sys:String x:Key="PointerLiveTestHelp">Prévisualisez l'ensemble complet des rôles assortis au design sélectionné.</sys:String>
+  <sys:String x:Key="PointerRoleArrow">Flèche</sys:String><sys:String x:Key="PointerRoleLink">Lien</sys:String><sys:String x:Key="PointerRoleText">Texte</sys:String><sys:String x:Key="PointerRoleBusy">Occupé</sys:String>
+  <sys:String x:Key="PointerRoleResize">Redimensionner</sys:String><sys:String x:Key="PointerRolePrecision">Précision</sys:String><sys:String x:Key="PointerRoleUnavailable">Indisponible</sys:String><sys:String x:Key="PointerRoleHelp">Aide</sys:String>
+  <sys:String x:Key="PointerRoleWorking">Travail en arrière-plan</sys:String><sys:String x:Key="PointerRoleHandwriting">Écriture manuscrite</sys:String>
+  <sys:String x:Key="PointerRoleResizeVertical">Redimensionnement vertical</sys:String><sys:String x:Key="PointerRoleResizeHorizontal">Redimensionnement horizontal</sys:String>
+  <sys:String x:Key="PointerRoleResizeDiagonalDown">Redimensionnement diagonal ↘</sys:String><sys:String x:Key="PointerRoleResizeDiagonalUp">Redimensionnement diagonal ↗</sys:String>
+  <sys:String x:Key="PointerRoleMove">Déplacer</sys:String><sys:String x:Key="PointerRoleAlternate">Sélection alternative</sys:String>
+  <sys:String x:Key="PointerRestorePrevious">Restaurer le modèle précédent</sys:String>
+  <sys:String x:Key="PointerRestoreDefaults">Valeurs Windows par défaut</sys:String>
+  <sys:String x:Key="PointerAddFavorite">Ajouter aux favoris</sys:String><sys:String x:Key="PointerRemoveFavorite">Retirer des favoris</sys:String>
+  <sys:String x:Key="PointerWindowsFeel">Comportement Windows</sys:String>
+  <sys:String x:Key="PointerSpeed">Vitesse du pointeur</sys:String><sys:String x:Key="PointerEnhancePrecision">Améliorer la précision du pointeur</sys:String>
+  <sys:String x:Key="PointerTrails">Traînées Windows</sys:String><sys:String x:Key="PointerNativeShadow">Ombre Windows du curseur</sys:String>
+  <sys:String x:Key="PointerMotionEffects">Effets de mouvement</sys:String><sys:String x:Key="PointerEnableMotion">Activer la personnalité du mouvement</sys:String>
+  <sys:String x:Key="PointerVisualScale">Échelle visuelle</sys:String><sys:String x:Key="PointerSmoothing">Lissage visuel</sys:String><sys:String x:Key="PointerSpring">Force du ressort</sys:String><sys:String x:Key="PointerDamping">Amortissement</sys:String><sys:String x:Key="PointerTrailLength">Longueur de la traînée</sys:String>
+  <sys:String x:Key="PointerShakeEnlarge">Agrandir lorsque le pointeur est secoué</sys:String><sys:String x:Key="PointerFindNow">Localiser le pointeur</sys:String>
+  <sys:String x:Key="PointerClickIndicators">Indicateurs de clic</sys:String><sys:String x:Key="PointerEnableClickIndicators">Activer le retour visuel des clics</sys:String>
+  <sys:String x:Key="PointerLeftClick">Clic gauche</sys:String><sys:String x:Key="PointerRightClick">Clic droit</sys:String><sys:String x:Key="PointerMiddleClick">Molette / clic central</sys:String><sys:String x:Key="PointerAuxiliaryClick">Boutons supplémentaires</sys:String><sys:String x:Key="Enabled">Activé</sys:String>
+  <sys:String x:Key="PointerConnectedDevices">Périphériques de pointage connectés</sys:String>
+  <sys:String x:Key="PointerConnectedDevicesHelp">Les périphériques sont recensés au démarrage, à l'actualisation ou lors d'un changement matériel. Les chemins HID bruts ne sont jamais enregistrés.</sys:String>
+  <sys:String x:Key="PointerAuxiliaryActions">Actions X1 / X2</sys:String>
+  <sys:String x:Key="PointerNativeSettingsLinks">Paramètres de périphérique Windows</sys:String><sys:String x:Key="PointerNativeSettingsHelp">Le DPI matériel et les gestes propres au fabricant restent contrôlés par Windows ou le fabricant.</sys:String>
+  <sys:String x:Key="PointerOpenMouseSettings">Ouvrir les paramètres de la souris</sys:String><sys:String x:Key="PointerOpenTouchpadSettings">Ouvrir les paramètres du pavé tactile</sys:String>
+  <sys:String x:Key="PointerAdaptivePerformance">Performances adaptatives</sys:String><sys:String x:Key="PointerAdaptiveEnable">Protéger automatiquement les performances et la batterie</sys:String>
+  <sys:String x:Key="PointerPauseBattery">Réduire les effets sur batterie</sys:String><sys:String x:Key="PointerPauseFullscreen">Suspendre en plein écran</sys:String><sys:String x:Key="PointerPauseRemote">Suspendre en session distante</sys:String>
+  <sys:String x:Key="PointerExperimental">Contrôles expérimentaux</sys:String><sys:String x:Key="PointerExperimentalHelp">Le remplacement visuel complet et la suppression des clics utilisent des protections. Ctrl+Alt+Maj+F12 les désactive toujours.</sys:String>
+  <sys:String x:Key="PointerExperimentalReplacement">Autoriser le remplacement visuel complet</sys:String><sys:String x:Key="PointerExperimentalSuppression">Autoriser la suppression globale des boutons</sys:String>
+  <sys:String x:Key="PointerGlobalRemaps">Règles de suppression globales</sys:String><sys:String x:Key="PointerGlobalRemapsHelp">Choisissez Aucun pour conserver un bouton. Les autres actions remplacent ce bouton globalement lorsque ce mode expérimental est activé.</sys:String>
+  <sys:String x:Key="PointerPanicButton">Désactiver les contrôles expérimentaux</sys:String><sys:String x:Key="PointerDisableExperimental">Désactiver les expériences du pointeur</sys:String>
+  <sys:String x:Key="PointerPanicHotkeyUnavailable">La suppression des boutons reste désactivée, car le raccourci d’urgence est déjà utilisé.</sys:String>
+  <sys:String x:Key="PointerExperimentalActive">Protections expérimentales actives</sys:String><sys:String x:Key="PointerExperimentalOff">Contrôles expérimentaux désactivés</sys:String>
+  <sys:String x:Key="PointerPerformanceActive">Les effets ne s'activent que pendant un mouvement ou une animation de clic</sys:String><sys:String x:Key="PointerPerformanceSleeping">Moteur en veille · aucun calque ni interrogation</sys:String>
+  <sys:String x:Key="PointerAppliedStatus">Design du pointeur appliqué.</sys:String><sys:String x:Key="PointerApplyFailedFormat">Le Studio du pointeur n'a pas pu appliquer la modification : {0}</sys:String>
+  <sys:String x:Key="PointerRestoredStatus">Le modèle de pointeur précédent a été restauré.</sys:String><sys:String x:Key="PointerDefaultsRestoredStatus">Les curseurs Windows par défaut ont été restaurés.</sys:String>
+  <sys:String x:Key="PointerRecoveredStatus">Une session expérimentale interrompue a été récupérée en toute sécurité.</sys:String><sys:String x:Key="PointerPanicStatus">Le comportement expérimental du pointeur a été désactivé.</sys:String>
+  <sys:String x:Key="PointerExternalSchemeDetected">Windows a modifié le modèle de curseur en dehors de KeyClick. Le Studio du pointeur a cessé d'en revendiquer le contrôle.</sys:String>
+  <sys:String x:Key="PointerDeviceCapabilitiesFormat">{0} boutons · molette horizontale : {1}</sys:String><sys:String x:Key="PointerHorizontalWheelYes">oui</sys:String><sys:String x:Key="PointerHorizontalWheelNo">non</sys:String>
+  <sys:String x:Key="PointerScopeSystemWide">Tout le système</sys:String><sys:String x:Key="PointerScopeKeyClickOnly">KeyClick uniquement</sys:String><sys:String x:Key="PointerScopePreviewOnly">Aperçu temporaire</sys:String>
+  <sys:String x:Key="PointerSizeSmall">Petit</sys:String><sys:String x:Key="PointerSizeStandard">Standard</sys:String><sys:String x:Key="PointerSizeLarge">Grand</sys:String><sys:String x:Key="PointerSizeExtraLarge">Très grand</sys:String>
+  <sys:String x:Key="PointerVariantAutomatic">Clair / sombre automatique</sys:String><sys:String x:Key="PointerVariantHighContrast">Contraste élevé</sys:String>
+  <sys:String x:Key="PointerModeCompanion">Effets compagnons</sys:String><sys:String x:Key="PointerModeReplacement">Remplacement complet (expérimental)</sys:String>
+  <sys:String x:Key="PointerPresetWindTail">Traînée au vent</sys:String><sys:String x:Key="PointerPresetElastic">Élastique</sys:String><sys:String x:Key="PointerPresetComet">Comète</sys:String><sys:String x:Key="PointerPresetLiquid">Liquide</sys:String><sys:String x:Key="PointerPresetGlow">Lueur</sys:String><sys:String x:Key="PointerPresetShakeFinder">Localisation par secousse</sys:String>
+  <sys:String x:Key="PointerClickRing">Anneau</sys:String><sys:String x:Key="PointerClickRipple">Ondulation</sys:String><sys:String x:Key="PointerClickExplosion">Petite explosion</sys:String><sys:String x:Key="PointerClickSparkles">Étincelles</sys:String><sys:String x:Key="PointerClickTicks">Traits radiaux</sys:String><sys:String x:Key="PointerClickPulse">Pulsation</sys:String>
+  <sys:String x:Key="PointerActionPreviousPack">Pack sonore précédent</sys:String><sys:String x:Key="PointerActionNextPack">Pack sonore suivant</sys:String><sys:String x:Key="PointerActionToggleEffects">Activer/désactiver les effets</sys:String><sys:String x:Key="PointerActionNextTheme">Thème de pointeur suivant</sys:String><sys:String x:Key="PointerActionShowHide">Afficher / masquer KeyClick</sys:String>
+  <sys:String x:Key="PointerActionBrowserBack">Page précédente</sys:String><sys:String x:Key="PointerActionBrowserForward">Page suivante</sys:String><sys:String x:Key="PointerActionMediaPlayPause">Lecture / pause</sys:String><sys:String x:Key="PointerActionVolumeUp">Augmenter le volume</sys:String><sys:String x:Key="PointerActionVolumeDown">Baisser le volume</sys:String><sys:String x:Key="PointerActionShowDesktop">Afficher le bureau</sys:String>
+  <sys:String x:Key="PointerActionDisableButton">Désactiver le bouton</sys:String><sys:String x:Key="PointerActionLeftClick">Remplacer par un clic gauche</sys:String><sys:String x:Key="PointerActionRightClick">Remplacer par un clic droit</sys:String><sys:String x:Key="PointerActionMiddleClick">Remplacer par un clic central</sys:String>
+  <sys:String x:Key="PointerThemeMeridian">Méridien</sys:String><sys:String x:Key="PointerThemeMeridianHelp">Géométrie propre et équilibrée avec un accent directionnel lumineux.</sys:String>
+  <sys:String x:Key="PointerThemeOrbit">Orbite</sys:String><sys:String x:Key="PointerThemeOrbitHelp">Détails orbitaux arrondis et contraste bleu calme.</sys:String>
+  <sys:String x:Key="PointerThemePrism">Verre prismatique</sys:String><sys:String x:Key="PointerThemePrismHelp">Formes nettes inspirées du verre avec des facettes violettes.</sys:String>
+  <sys:String x:Key="PointerThemeNeon">Vecteur néon</sys:String><sys:String x:Key="PointerThemeNeonHelp">Formes vectorielles sombres bordées d'un aqua lumineux.</sys:String>
+  <sys:String x:Key="PointerThemeSoftDrop">Goutte douce</sys:String><sys:String x:Key="PointerThemeSoftDropHelp">Courbes organiques chaudes avec un accent corail.</sys:String>
+  <sys:String x:Key="PointerThemePixelNova">Pixel Nova</sys:String><sys:String x:Key="PointerThemePixelNovaHelp">Construction pixelisée nette au cœur magenta.</sys:String>
+  <sys:String x:Key="PointerThemePaperFold">Papier plié</sys:String><sys:String x:Key="PointerThemePaperFoldHelp">Géométrie de papier superposé avec un pli doré subtil.</sys:String>
+  <sys:String x:Key="PointerThemeLiquid">Liquide</sys:String><sys:String x:Key="PointerThemeLiquidHelp">Formes cyan fluides qui restent précises au point actif.</sys:String>
+  <sys:String x:Key="PointerThemeCircuit">Circuit</sys:String><sys:String x:Key="PointerThemeCircuitHelp">Géométrie technique verte inspirée des pistes connectées.</sys:String>
+  <sys:String x:Key="PointerThemeComet">Comète</sys:String><sys:String x:Key="PointerThemeCometHelp">Formes roses ludiques conçues pour des mouvements vivants.</sys:String>
 </ResourceDictionary>

@@ -24,6 +24,7 @@ public sealed class StartupService(AppPaths paths)
 public sealed class BackupService(AppPaths paths)
 {
   public const long MaxRestoreBytes = 1024L * 1024 * 1024;
+  public const int MaxRestoreEntries = 10_000;
 
   public async Task<string> CreateAsync(CancellationToken cancellationToken = default)
   {
@@ -44,13 +45,16 @@ public sealed class BackupService(AppPaths paths)
     if (!file.Exists) throw new FileNotFoundException("The selected backup no longer exists.", archivePath);
     if (file.Length > 500L * 1024 * 1024) throw new InvalidDataException("Backup archives must be 500 MB or smaller.");
     using var archive = ZipFile.OpenRead(archivePath);
+    if (archive.Entries.Count is 0 or > MaxRestoreEntries) throw new InvalidDataException("The backup contains an invalid number of entries.");
     long expanded = 0;
+    var names = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
     foreach (var entry in archive.Entries)
     {
       cancellationToken.ThrowIfCancellationRequested();
       var normalized = entry.FullName.Replace('\\', '/');
       if (normalized.StartsWith('/') || normalized.Contains("../", StringComparison.Ordinal) ||
-          !(normalized.StartsWith("data/", StringComparison.Ordinal) || normalized.StartsWith("media/", StringComparison.Ordinal)))
+          !(normalized.StartsWith("data/", StringComparison.Ordinal) || normalized.StartsWith("media/", StringComparison.Ordinal)) ||
+          !names.Add(normalized) || IsUnsafeRecoveryEntry(normalized))
         throw new InvalidDataException("The archive is not a valid KeyClick backup.");
       expanded += entry.Length;
       if (expanded > MaxRestoreBytes) throw new InvalidDataException("The expanded backup is unexpectedly large.");
@@ -66,7 +70,12 @@ public sealed class BackupService(AppPaths paths)
     {
       if (file.EndsWith("-wal", StringComparison.OrdinalIgnoreCase) || file.EndsWith("-shm", StringComparison.OrdinalIgnoreCase)) continue;
       var relative = Path.GetRelativePath(directory, file).Replace('\\', '/');
+      if (IsUnsafeRecoveryEntry($"{root}/{relative}")) continue;
       archive.CreateEntryFromFile(file, $"{root}/{relative}", CompressionLevel.Optimal);
     }
   }
+
+  private static bool IsUnsafeRecoveryEntry(string name) =>
+    name.Equals("data/pointer-experimental-active", StringComparison.OrdinalIgnoreCase) ||
+    name.Equals("data/pointer-recovery.json", StringComparison.OrdinalIgnoreCase);
 }

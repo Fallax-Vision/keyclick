@@ -15,11 +15,11 @@
       </TabControl.ItemContainerStyle>
       <TabItem Header="{DynamicResource FunDashboardTab}">
         <Grid Margin="12">
-          <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="*" /></Grid.RowDefinitions>
+          <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /><RowDefinition Height="*" /></Grid.RowDefinitions>
           <StackPanel Margin="0,0,0,12">
             <StackPanel Orientation="Horizontal">
-              <CheckBox Content="{DynamicResource FunEnable}" IsChecked="{Binding FunStatsEnabled}" Margin="0,0,20,0" />
-              <CheckBox Content="{DynamicResource FunMetricCardsEnable}" IsChecked="{Binding MetricCardFunFactsEnabled}" />
+              <CheckBox Content="{DynamicResource FunEnable}" IsChecked="{Binding FunStatsEnabled}" Style="{StaticResource SettingsToggle}" Margin="0,0,20,0" />
+              <CheckBox Content="{DynamicResource FunMetricCardsEnable}" IsChecked="{Binding MetricCardFunFactsEnabled}" Style="{StaticResource SettingsToggle}" />
             </StackPanel>
             <TextBlock Text="{DynamicResource FunCategories}" Style="{StaticResource FieldLabel}" Margin="0,12,0,3" />
             <ItemsControl ItemsSource="{Binding FunStatCategoryOptions}">
@@ -29,18 +29,26 @@
               </ItemsControl.ItemTemplate>
             </ItemsControl>
           </StackPanel>
-          <ListBox Grid.Row="1" ItemsSource="{Binding FunStatOptions}" Background="Transparent" BorderThickness="0"
+          <Grid Grid.Row="1" Margin="14,0,14,5">
+            <Grid.ColumnDefinitions>
+              <ColumnDefinition Width="104" /><ColumnDefinition Width="116" /><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" />
+            </Grid.ColumnDefinitions>
+            <TextBlock Text="{DynamicResource FunDashboardColumn}" Style="{StaticResource FieldLabel}" TextAlignment="Center" />
+            <TextBlock Grid.Column="1" Text="{DynamicResource FunCardFactColumn}" Style="{StaticResource FieldLabel}" TextAlignment="Center" />
+            <TextBlock Grid.Column="2" Text="{DynamicResource FunMilestoneColumn}" Style="{StaticResource FieldLabel}" />
+          </Grid>
+          <ListBox Grid.Row="2" ItemsSource="{Binding FunStatOptions}" Background="Transparent" BorderThickness="0"
                    ItemContainerStyle="{StaticResource InsetListBoxItem}" ScrollViewer.HorizontalScrollBarVisibility="Disabled">
             <ListBox.ItemTemplate>
               <DataTemplate>
                 <Grid Margin="14,10">
                   <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="Auto" /><ColumnDefinition Width="Auto" /><ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="104" /><ColumnDefinition Width="116" /><ColumnDefinition Width="*" />
                     <ColumnDefinition Width="Auto" /><ColumnDefinition Width="Auto" /><ColumnDefinition Width="Auto" />
                   </Grid.ColumnDefinitions>
-                  <CheckBox IsChecked="{Binding IsSelected}" ToolTip="{DynamicResource FunPinDashboard}" VerticalAlignment="Center" />
+                  <CheckBox IsChecked="{Binding IsSelected}" ToolTip="{DynamicResource FunPinDashboard}" VerticalAlignment="Center" HorizontalAlignment="Center" />
                   <CheckBox Grid.Column="1" IsChecked="{Binding IsEnabled}" IsEnabled="{Binding IsCustom, Converter={StaticResource InverseBooleanConverter}}"
-                            ToolTip="{DynamicResource FunEnableFact}" VerticalAlignment="Center" Margin="12,0" />
+                            ToolTip="{DynamicResource FunEnableFact}" VerticalAlignment="Center" HorizontalAlignment="Center" />
                   <StackPanel Grid.Column="2" VerticalAlignment="Center">
                     <TextBlock Text="{Binding Title}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
                     <TextBlock Text="{Binding Category}" Style="{StaticResource MutedText}" Margin="0,2,0,0" />

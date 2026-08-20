@@ -102,7 +102,13 @@ public sealed class TypingChallengeService(ITypingChallengeStore store, IStatist
     await File.WriteAllTextAsync(path, output.ToString(), new UTF8Encoding(false), cancellationToken);
   }
 
-  private static string Csv(string? value) => $"\"{(value ?? string.Empty).Replace("\"", "\"\"")}\"";
+  private static string Csv(string? value)
+  {
+    var safe = value ?? string.Empty;
+    var first = safe.AsSpan().TrimStart();
+    if (!first.IsEmpty && first[0] is '=' or '+' or '-' or '@' or '\t' or '\r' or '\n') safe = "'" + safe;
+    return $"\"{safe.Replace("\"", "\"\"")}\"";
+  }
 
   private static (int Current, int Longest) CalculateStreak(IEnumerable<DateOnly> dates)
   {

@@ -89,6 +89,8 @@ public interface IRawInputService : IDisposable
 {
   event EventHandler<InputActionEvent>? InputAction;
   event EventHandler<InputDeviceDescriptor>? DeviceChanged;
+  event Action<PointerMovementSignal>? PointerMoved;
+  IReadOnlyList<InputDeviceDescriptor> EnumeratePointerDevices();
   void Start();
 }
 

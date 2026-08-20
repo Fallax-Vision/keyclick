@@ -116,6 +116,7 @@ public sealed class ProfileTransferService(AppPaths paths, IAppStore appStore, I
     if (manifest.Sections.Contains("settings-mappings", StringComparer.Ordinal))
     {
       var payload = await ReadJsonAsync<SettingsPayload>(zip, "settings.json", cancellationToken) ?? throw new InvalidDataException("The settings section is invalid.");
+      ValidateSettingsPayload(payload, zip.GetEntry("settings.json")?.Length ?? 0);
       local = MergeTransferable(local, payload.Settings);
       await appStore.SaveSettingsAsync(local, cancellationToken);
       foreach (var value in payload.Overrides) await appStore.SaveOverrideAsync(value, cancellationToken);
@@ -161,8 +162,25 @@ public sealed class ProfileTransferService(AppPaths paths, IAppStore appStore, I
     settings.StatisticsExcludedExecutables = [];
     settings.AllowedIntegrationClients = [];
     settings.DeviceClassifications = [];
+    settings.PointerStudio.Normalize(profileImport: true);
     settings.PackRotation = settings.PackRotation with { NextDueUtc = null, LastWindowsBootTicks = null };
     return settings;
+  }
+
+  private static void ValidateSettingsPayload(SettingsPayload payload, long serializedLength)
+  {
+    if (serializedLength is <= 0 or > 16L * 1024 * 1024 ||
+        payload.Overrides is null || payload.Groups is null || payload.Shortcuts is null ||
+        payload.Overrides.Count > 10_000 || payload.Groups.Count > 2_000 || payload.Shortcuts.Count > 1_000)
+      throw new InvalidDataException("The settings section exceeds its safety limits.");
+    if (payload.Overrides.Any(item => item is null || item.PackId is not { Length: > 0 and <= 64 } || item.InputId is not { Length: > 0 and <= 128 } ||
+        !Enum.IsDefined(item.Variant) || item.SampleIds is null || item.SampleIds.Count > 16 || item.SampleIds.Any(id => !CustomSampleId.IsValid(id))) ||
+        payload.Groups.Any(item => item is null || item.PackId is not { Length: > 0 and <= 64 } || !Enum.IsDefined(item.Group) ||
+        !Enum.IsDefined(item.Variant) || item.SampleIds is null || item.SampleIds.Count > 16 || item.SampleIds.Any(id => !CustomSampleId.IsValid(id))) ||
+        payload.Shortcuts.Any(item => item is null || item.CommandId is not { Length: > 0 and <= 128 } || item.Name is not { Length: > 0 and <= 128 } ||
+        !Enum.IsDefined(item.Scope) || !Enum.IsDefined(item.Kind) || item.Steps is null || item.Steps.Count is 0 or > 2 ||
+        item.Steps.Any(step => step.VirtualKey is < 1 or > 0xFF)))
+      throw new InvalidDataException("The settings section contains an invalid mapping.");
   }
 
   private static AppSettings MergeTransferable(AppSettings local, AppSettings imported)
@@ -211,6 +229,8 @@ public sealed class ProfileTransferService(AppPaths paths, IAppStore appStore, I
     local.StatisticsChartViewType = imported.StatisticsChartViewType;
     local.StatisticsTrendGranularity = imported.StatisticsTrendGranularity;
     local.EnabledStatisticsChartSeries = [.. imported.EnabledStatisticsChartSeries];
+    local.PointerStudio = JsonSerializer.Deserialize<PointerStudioSettings>(JsonSerializer.Serialize(imported.PointerStudio, Json), Json) ?? new();
+    local.PointerStudio.Normalize(profileImport: true);
     local.TypingChallengeGoalWordsPerMinute = imported.TypingChallengeGoalWordsPerMinute;
     local.TypingChallengeGoalAccuracy = imported.TypingChallengeGoalAccuracy;
     local.FavoriteTypingChallengeIds = [.. imported.FavoriteTypingChallengeIds];
@@ -338,6 +358,18 @@ public sealed class ProfileTransferService(AppPaths paths, IAppStore appStore, I
         : new HashSet<string>(StringComparer.OrdinalIgnoreCase) { ".wav", ".mp3", ".ogg" };
       if (!allowed.Contains(Path.GetExtension(entry.Name)) || entry.Name != Path.GetFileName(entry.Name)) throw new InvalidDataException("The profile contains an unsupported media file.");
       var directory = pack ? paths.Packs : paths.Sounds;
+      if (pack)
+      {
+        await using var validationStream = entry.Open();
+        SoundPackDefinition? definition;
+        try { definition = await JsonSerializer.DeserializeAsync<SoundPackDefinition>(validationStream, Json, cancellationToken); }
+        catch (JsonException) { throw new InvalidDataException("The profile contains an invalid sound pack."); }
+        if (definition is null || !definition.IsCustom || definition.Id is not { Length: > 0 and <= 64 } ||
+            definition.Id.Any(character => !(char.IsAsciiLetterOrDigit(character) || character is '-' or '_')) ||
+            definition.Name is not { Length: > 0 and <= 128 } || definition.SamplePools is not { Count: > 0 and <= 128 } ||
+            definition.AllSampleIds().Any(id => !CustomSampleId.IsValid(id)))
+          throw new InvalidDataException("The profile contains an invalid sound pack.");
+      }
       Directory.CreateDirectory(directory);
       var destination = Path.GetFullPath(Path.Combine(directory, entry.Name));
       if (!destination.StartsWith(Path.GetFullPath(directory) + Path.DirectorySeparatorChar, StringComparison.OrdinalIgnoreCase)) throw new InvalidDataException("The profile media path is unsafe.");

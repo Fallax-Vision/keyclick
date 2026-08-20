@@ -1,0 +1,32 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://keyclick.local/schemas/pointer-studio.v1.schema.json",
+  "title": "KeyClick Pointer Studio catalog",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["version", "roles", "themes"],
+  "properties": {
+    "version": { "const": 1 },
+    "roles": { "type": "array", "minItems": 15, "uniqueItems": true, "items": { "type": "string", "minLength": 1, "maxLength": 32 } },
+    "themes": {
+      "type": "array",
+      "minItems": 10,
+      "uniqueItems": true,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "nameKey", "descriptionKey", "style", "primary", "secondary", "outline", "provenance"],
+        "properties": {
+          "id": { "type": "string", "pattern": "^[a-z0-9-]{1,40}$" },
+          "nameKey": { "type": "string", "minLength": 1, "maxLength": 80 },
+          "descriptionKey": { "type": "string", "minLength": 1, "maxLength": 80 },
+          "style": { "type": "string", "minLength": 1, "maxLength": 40 },
+          "primary": { "type": "string", "pattern": "^#[0-9A-Fa-f]{6}$" },
+          "secondary": { "type": "string", "pattern": "^#[0-9A-Fa-f]{6}$" },
+          "outline": { "type": "string", "pattern": "^#[0-9A-Fa-f]{6}$" },
+          "provenance": { "type": "string", "minLength": 1, "maxLength": 160 }
+        }
+      }
+    }
+  }
+}

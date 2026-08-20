@@ -39,6 +39,24 @@ public sealed class BackupTests
     await Assert.ThrowsAsync<InvalidDataException>(() => new BackupService(paths).ValidateAsync(archivePath));
   }
 
+  [Theory]
+  [InlineData("data/pointer-experimental-active")]
+  [InlineData("data/pointer-recovery.json")]
+  public async Task Restore_validation_rejects_pointer_recovery_state(string entryName)
+  {
+    using var folder = new TemporaryFolder();
+    var paths = new AppPaths(System.IO.Path.Combine(folder.Path, "state"));
+    paths.EnsureCreated();
+    var archivePath = System.IO.Path.Combine(folder.Path, "unsafe-recovery.zip");
+    using (var archive = ZipFile.Open(archivePath, ZipArchiveMode.Create))
+    {
+      archive.CreateEntry("data/keyclick.db");
+      archive.CreateEntry(entryName);
+    }
+
+    await Assert.ThrowsAsync<InvalidDataException>(() => new BackupService(paths).ValidateAsync(archivePath));
+  }
+
   private sealed class TemporaryFolder : IDisposable
   {
     public TemporaryFolder()

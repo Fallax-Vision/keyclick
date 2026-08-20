@@ -168,7 +168,7 @@
       "keyclick.infrastructure.windows": {
         "type": "Project",
         "dependencies": {
-          "KeyClick.Core": "[1.5.1, )",
+          "KeyClick.Core": "[1.6.1, )",
           "Microsoft.Data.Sqlite": "[10.0.10, )",
           "NAudio": "[2.3.0, )",
           "NAudio.Vorbis": "[1.5.0, )",

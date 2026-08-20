@@ -12,6 +12,7 @@ namespace KeyClick.Infrastructure.Windows;
 public sealed class OutcomePipeServer : IAsyncDisposable
 {
   public const int MaxPayloadBytes = 4096;
+  private static readonly TimeSpan ClientTimeout = TimeSpan.FromSeconds(5);
   private readonly Func<bool> _enabled;
   private readonly Func<string, bool> _clientAllowed;
   private readonly Action<IntegrationResultRequest> _accepted;
@@ -50,27 +51,33 @@ public sealed class OutcomePipeServer : IAsyncDisposable
   {
     while (!cancellationToken.IsCancellationRequested)
     {
-      await using var pipe = new NamedPipeServerStream(
-        PipeName,
-        PipeDirection.InOut,
-        4,
-        PipeTransmissionMode.Byte,
-        PipeOptions.Asynchronous | PipeOptions.CurrentUserOnly,
-        MaxPayloadBytes + 4,
-        MaxPayloadBytes + 4);
       try
       {
+        await using var pipe = new NamedPipeServerStream(
+          PipeName,
+          PipeDirection.InOut,
+          1,
+          PipeTransmissionMode.Byte,
+          PipeOptions.Asynchronous | PipeOptions.CurrentUserOnly | PipeOptions.FirstPipeInstance,
+          MaxPayloadBytes + 4,
+          MaxPayloadBytes + 4);
         await pipe.WaitForConnectionAsync(cancellationToken);
-        var response = await ProcessClientAsync(pipe, cancellationToken);
+        using var clientTimeout = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+        clientTimeout.CancelAfter(ClientTimeout);
+        var response = await ProcessClientAsync(pipe, clientTimeout.Token);
         var payload = JsonSerializer.SerializeToUtf8Bytes(response, _json);
         var header = new byte[4];
         BinaryPrimitives.WriteInt32LittleEndian(header, payload.Length);
-        await pipe.WriteAsync(header, cancellationToken);
-        await pipe.WriteAsync(payload, cancellationToken);
-        await pipe.FlushAsync(cancellationToken);
+        await pipe.WriteAsync(header, clientTimeout.Token);
+        await pipe.WriteAsync(payload, clientTimeout.Token);
+        await pipe.FlushAsync(clientTimeout.Token);
       }
+      catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested) { }
       catch (OperationCanceledException) { }
-      catch (IOException) { }
+      catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
+      {
+        await Task.Delay(TimeSpan.FromSeconds(1), cancellationToken);
+      }
     }
   }
 

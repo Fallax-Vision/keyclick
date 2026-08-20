@@ -50,6 +50,7 @@ public sealed class StatisticsService : IAsyncDisposable
   }
 
   public long OverflowCount => Interlocked.Read(ref _overflowCount);
+  public event Action? DataChanged;
 
   public void UpdatePolicy(AppSettings settings)
   {
@@ -72,7 +73,9 @@ public sealed class StatisticsService : IAsyncDisposable
     if (!accepted) return false;
     if (action.Input.DeviceId is { Length: > 0 } deviceId && policy.DeviceClassifications.TryGetValue(deviceId, out var family))
       action = action with { Input = action.Input with { DeviceFamily = family } };
-    return TryQueue(new QueueItem(action, false, null, null, null, null));
+    var queued = TryQueue(new QueueItem(action, false, null, null, null, null));
+    if (queued) DataChanged?.Invoke();
+    return queued;
   }
 
   public async Task<StatisticsSnapshot> QueryAsync(StatisticsQuery query, CancellationToken cancellationToken = default)
@@ -93,6 +96,7 @@ public sealed class StatisticsService : IAsyncDisposable
   {
     await RequestFlushAsync(cancellationToken);
     await _store.DeleteStatisticsAsync(request, cancellationToken);
+    DataChanged?.Invoke();
   }
 
   public async Task ExportCsvAsync(StatisticsSnapshot snapshot, string path, CancellationToken cancellationToken = default)

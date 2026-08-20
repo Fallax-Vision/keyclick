@@ -19,23 +19,42 @@ public static class InputEventRules
 public sealed class WheelAccumulator
 {
   public const int DetentDelta = 120;
+  public const int MaximumDetentsPerReport = 8;
   private int _remainder;
+
+  public int AddDetents(int delta)
+  {
+    var accumulated = _remainder + delta;
+    var detents = accumulated / DetentDelta;
+    _remainder = accumulated % DetentDelta;
+    return Math.Clamp(detents, -MaximumDetentsPerReport, MaximumDetentsPerReport);
+  }
 
   public IReadOnlyList<int> Add(int delta)
   {
-    _remainder += delta;
-    if (Math.Abs(_remainder) < DetentDelta) return [];
-    var directions = new List<int>();
-    while (Math.Abs(_remainder) >= DetentDelta)
-    {
-      var direction = Math.Sign(_remainder);
-      directions.Add(direction);
-      _remainder -= direction * DetentDelta;
-    }
-    return directions;
+    var detents = AddDetents(delta);
+    if (detents == 0) return [];
+    return Enumerable.Repeat(Math.Sign(detents), Math.Abs(detents)).ToArray();
   }
 
   public int Remainder => _remainder;
+}
+
+public static class CustomSampleId
+{
+  public const int HashLength = 64;
+  public const int TotalLength = 7 + HashLength;
+
+  public static bool IsValid(string? value) =>
+    value is { Length: TotalLength } &&
+    value.StartsWith("custom:", StringComparison.Ordinal) &&
+    value.AsSpan(7).ToString().All(char.IsAsciiHexDigit);
+
+  public static string FileName(string value)
+  {
+    if (!IsValid(value)) throw new InvalidDataException("The custom sample identifier is invalid.");
+    return $"{value[7..].ToLowerInvariant()}.wav";
+  }
 }
 
 public static class ShortcutBindingValidator

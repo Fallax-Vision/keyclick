@@ -189,6 +189,33 @@ public sealed class UpdateService
     }
   }
 
+  public async Task LaunchVerifiedAsync(UpdateInfo update, string stagedPath, string arguments, CancellationToken cancellationToken = default)
+  {
+    ValidateAssetName(update.AssetName);
+    var fullPath = Path.GetFullPath(stagedPath);
+    if (!string.Equals(Path.GetFileName(fullPath), update.AssetName, StringComparison.OrdinalIgnoreCase))
+      throw new InvalidDataException("The staged update path is invalid.");
+    string expected;
+    if (update.IsLocal)
+    {
+      expected = ParseChecksum(await File.ReadAllTextAsync(update.LocalChecksumPath!, cancellationToken), update.AssetName);
+    }
+    else
+    {
+      ValidateUri(update.ChecksumUrl);
+      using var client = CreateClient();
+      using var response = await GetWithApprovedRedirectsAsync(client, update.ChecksumUrl, cancellationToken);
+      response.EnsureSuccessStatusCode();
+      expected = ParseChecksum(await ReadBoundedTextAsync(response.Content, cancellationToken), update.AssetName);
+    }
+    await using var locked = new FileStream(fullPath, FileMode.Open, FileAccess.Read, FileShare.Read, 81920, true);
+    var actual = await SHA256.HashDataAsync(locked, cancellationToken);
+    if (!CryptographicOperations.FixedTimeEquals(Convert.FromHexString(expected), actual))
+      throw new InvalidDataException("The staged update changed after verification.");
+    using var process = Process.Start(new ProcessStartInfo(fullPath, arguments) { UseShellExecute = true })
+      ?? throw new InvalidOperationException("Windows could not start the verified update.");
+  }
+
   public static bool IsNewer(string candidate, string current) =>
     SemanticVersion.TryParse(candidate, out var candidateValue) &&
     SemanticVersion.TryParse(current, out var currentValue) &&
@@ -233,7 +260,7 @@ public sealed class UpdateService
         !string.Equals(Path.GetDirectoryName(source), Path.GetDirectoryName(checksums), StringComparison.OrdinalIgnoreCase))
       throw new InvalidDataException("The local update files are not from the same approved artifact folder.");
     if (new FileInfo(source).Length > MaximumAssetBytes) throw new InvalidDataException("The local update asset is unexpectedly large.");
-    await VerifyFileAsync(source, checksums, update.AssetName, cancellationToken);
+    var expected = ParseChecksum(await File.ReadAllTextAsync(checksums, cancellationToken), update.AssetName);
 
     Directory.CreateDirectory(destinationDirectory);
     var destination = Path.Combine(destinationDirectory, update.AssetName);
@@ -241,8 +268,15 @@ public sealed class UpdateService
     try
     {
       await using (var input = new FileStream(source, FileMode.Open, FileAccess.Read, FileShare.Read, 81920, true))
-      await using (var output = new FileStream(temporary, FileMode.CreateNew, FileAccess.Write, FileShare.None, 81920, true))
+      {
+        var actual = await SHA256.HashDataAsync(input, cancellationToken);
+        if (!CryptographicOperations.FixedTimeEquals(Convert.FromHexString(expected), actual))
+          throw new InvalidDataException("The local update failed SHA-256 verification.");
+        input.Position = 0;
+        await using var output = new FileStream(temporary, FileMode.CreateNew, FileAccess.Write, FileShare.None, 81920, true);
         await input.CopyToAsync(output, cancellationToken);
+      }
+      await VerifyHashAsync(temporary, expected, cancellationToken);
       File.Move(temporary, destination, true);
       return destination;
     }

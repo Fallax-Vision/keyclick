@@ -50,22 +50,25 @@
           <RadioButton Style="{StaticResource NavButton}" GroupName="PrimaryNavigation" Tag="3" Checked="Navigation_Checked" AutomationProperties.Name="{DynamicResource NavMappings}">
             <StackPanel Orientation="Horizontal"><TextBlock Text="&#xE92E;" Style="{StaticResource NavigationIcon}" Foreground="{Binding Foreground, RelativeSource={RelativeSource AncestorType=RadioButton}}" /><TextBlock Text="{DynamicResource NavMappings}" VerticalAlignment="Center" Foreground="{Binding Foreground, RelativeSource={RelativeSource AncestorType=RadioButton}}" /></StackPanel>
           </RadioButton>
-          <RadioButton Style="{StaticResource NavButton}" GroupName="PrimaryNavigation" Tag="4" Checked="Navigation_Checked" AutomationProperties.Name="{DynamicResource NavShortcuts}">
+          <RadioButton Style="{StaticResource NavButton}" GroupName="PrimaryNavigation" Tag="4" Checked="Navigation_Checked" AutomationProperties.Name="{DynamicResource NavPointerStudio}">
+            <StackPanel Orientation="Horizontal"><TextBlock Text="&#xE962;" Style="{StaticResource NavigationIcon}" Foreground="{Binding Foreground, RelativeSource={RelativeSource AncestorType=RadioButton}}" /><TextBlock Text="{DynamicResource NavPointerStudio}" VerticalAlignment="Center" Foreground="{Binding Foreground, RelativeSource={RelativeSource AncestorType=RadioButton}}" /></StackPanel>
+          </RadioButton>
+          <RadioButton Style="{StaticResource NavButton}" GroupName="PrimaryNavigation" Tag="5" Checked="Navigation_Checked" AutomationProperties.Name="{DynamicResource NavShortcuts}">
             <StackPanel Orientation="Horizontal"><TextBlock Text="&#xE765;" Style="{StaticResource NavigationIcon}" Foreground="{Binding Foreground, RelativeSource={RelativeSource AncestorType=RadioButton}}" /><TextBlock Text="{DynamicResource NavShortcuts}" VerticalAlignment="Center" Foreground="{Binding Foreground, RelativeSource={RelativeSource AncestorType=RadioButton}}" /></StackPanel>
           </RadioButton>
-          <RadioButton Style="{StaticResource NavButton}" GroupName="PrimaryNavigation" Tag="8" Checked="Navigation_Checked" AutomationProperties.Name="{DynamicResource NavTypingChallenge}">
+          <RadioButton Style="{StaticResource NavButton}" GroupName="PrimaryNavigation" Tag="9" Checked="Navigation_Checked" AutomationProperties.Name="{DynamicResource NavTypingChallenge}">
             <StackPanel Orientation="Horizontal"><TextBlock Text="&#xE7C1;" Style="{StaticResource NavigationIcon}" Foreground="{Binding Foreground, RelativeSource={RelativeSource AncestorType=RadioButton}}" /><TextBlock Text="{DynamicResource NavTypingChallenge}" VerticalAlignment="Center" Foreground="{Binding Foreground, RelativeSource={RelativeSource AncestorType=RadioButton}}" /></StackPanel>
           </RadioButton>
           <RadioButton Style="{StaticResource NavButton}" GroupName="PrimaryNavigation" Tag="1" Checked="Navigation_Checked" AutomationProperties.Name="{DynamicResource NavStatistics}">
             <StackPanel Orientation="Horizontal"><TextBlock Text="&#xE9D2;" Style="{StaticResource NavigationIcon}" Foreground="{Binding Foreground, RelativeSource={RelativeSource AncestorType=RadioButton}}" /><TextBlock Text="{DynamicResource NavStatistics}" VerticalAlignment="Center" Foreground="{Binding Foreground, RelativeSource={RelativeSource AncestorType=RadioButton}}" /></StackPanel>
           </RadioButton>
-          <RadioButton Style="{StaticResource NavButton}" GroupName="PrimaryNavigation" Tag="5" Checked="Navigation_Checked" AutomationProperties.Name="{DynamicResource NavSettings}">
+          <RadioButton Style="{StaticResource NavButton}" GroupName="PrimaryNavigation" Tag="6" Checked="Navigation_Checked" AutomationProperties.Name="{DynamicResource NavSettings}">
             <StackPanel Orientation="Horizontal"><TextBlock Text="&#xE713;" Style="{StaticResource NavigationIcon}" Foreground="{Binding Foreground, RelativeSource={RelativeSource AncestorType=RadioButton}}" /><TextBlock Text="{DynamicResource NavSettings}" VerticalAlignment="Center" Foreground="{Binding Foreground, RelativeSource={RelativeSource AncestorType=RadioButton}}" /></StackPanel>
           </RadioButton>
-          <RadioButton Style="{StaticResource NavButton}" GroupName="PrimaryNavigation" Tag="6" Checked="Navigation_Checked" AutomationProperties.Name="{DynamicResource NavIntegrations}">
+          <RadioButton Style="{StaticResource NavButton}" GroupName="PrimaryNavigation" Tag="7" Checked="Navigation_Checked" AutomationProperties.Name="{DynamicResource NavIntegrations}">
             <StackPanel Orientation="Horizontal"><TextBlock Text="&#xE774;" Style="{StaticResource NavigationIcon}" Foreground="{Binding Foreground, RelativeSource={RelativeSource AncestorType=RadioButton}}" /><TextBlock Text="{DynamicResource NavIntegrations}" VerticalAlignment="Center" Foreground="{Binding Foreground, RelativeSource={RelativeSource AncestorType=RadioButton}}" /></StackPanel>
           </RadioButton>
-          <RadioButton Style="{StaticResource NavButton}" GroupName="PrimaryNavigation" Tag="7" Checked="Navigation_Checked" AutomationProperties.Name="{DynamicResource NavAbout}">
+          <RadioButton Style="{StaticResource NavButton}" GroupName="PrimaryNavigation" Tag="8" Checked="Navigation_Checked" AutomationProperties.Name="{DynamicResource NavAbout}">
             <StackPanel Orientation="Horizontal"><TextBlock Text="&#xE946;" Style="{StaticResource NavigationIcon}" Foreground="{Binding Foreground, RelativeSource={RelativeSource AncestorType=RadioButton}}" /><TextBlock Text="{DynamicResource NavAbout}" VerticalAlignment="Center" Foreground="{Binding Foreground, RelativeSource={RelativeSource AncestorType=RadioButton}}" /></StackPanel>
           </RadioButton>
         </StackPanel>
@@ -219,7 +222,7 @@
                 </WrapPanel>
                 <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Bottom" Margin="20,0,0,0">
                   <Button Content="{DynamicResource ExportCsv}" Click="ExportStatistics_Click" Margin="0,0,8,0" />
-                  <Button Content="{DynamicResource DeleteStatistics}" Click="DeleteStatistics_Click" />
+                  <Button Content="{DynamicResource DeleteStatistics}" Click="DeleteStatistics_Click" Style="{StaticResource DangerButton}" />
                 </StackPanel>
               </Grid>
             </Border>
@@ -612,6 +615,212 @@
       </TabItem>
 
       <TabItem>
+        <ScrollViewer x:Name="PointerStudioScrollViewer" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" HorizontalContentAlignment="Stretch">
+          <StackPanel Style="{StaticResource PageContent}">
+            <TextBlock Text="{DynamicResource NavPointerStudio}" Style="{StaticResource PageTitle}" />
+            <TextBlock Text="{DynamicResource PointerStudioIntro}" Style="{StaticResource PageIntro}" />
+
+            <Border Style="{StaticResource Card}">
+              <Grid DataContext="{Binding PointerStudio}">
+                <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
+                <StackPanel>
+                  <CheckBox Content="{DynamicResource PointerStudioEnable}" IsChecked="{Binding Enabled}" Style="{StaticResource SettingsToggle}" FontSize="17" FontWeight="SemiBold" />
+                  <TextBlock Text="{Binding PerformanceStatus}" Style="{StaticResource MutedText}" Margin="52,2,0,0" />
+                </StackPanel>
+                <WrapPanel Grid.Column="1" HorizontalAlignment="Right" VerticalAlignment="Center">
+                  <StackPanel Margin="0,0,8,0"><TextBlock Text="{DynamicResource PointerApplyScope}" Style="{StaticResource FieldLabel}" /><ComboBox ItemsSource="{Binding ScopeOptions}" SelectedIndex="{Binding ScopeIndex}" Width="170" AutomationProperties.Name="{DynamicResource PointerApplyScope}" /></StackPanel>
+                  <Button Content="{DynamicResource PointerApply}" Command="{Binding ApplyCommand}" Style="{StaticResource AccentButton}" MinWidth="120" />
+                </WrapPanel>
+              </Grid>
+            </Border>
+
+            <TabControl Style="{StaticResource StatisticsSectionTabControl}" DataContext="{Binding PointerStudio}">
+              <TabControl.ItemContainerStyle>
+                <Style TargetType="TabItem" BasedOn="{StaticResource SectionTabItem}"><Setter Property="Visibility" Value="Visible" /></Style>
+              </TabControl.ItemContainerStyle>
+              <TabItem Header="{DynamicResource PointerDesignsTab}">
+                <StackPanel Margin="0,14,0,0">
+                  <Border Style="{StaticResource Card}">
+                    <StackPanel>
+                      <TextBlock Text="{DynamicResource PointerTheme}" Style="{StaticResource SectionTitle}" />
+                      <TextBlock Text="{DynamicResource PointerThemeGridHelp}" Style="{StaticResource MutedText}" TextWrapping="Wrap" Margin="0,0,0,8" />
+                      <ListBox ItemsSource="{Binding Themes}" SelectedIndex="{Binding SelectedThemeIndex}" BorderThickness="0" ScrollViewer.HorizontalScrollBarVisibility="Disabled" ScrollViewer.VerticalScrollBarVisibility="Disabled" PreviewMouseWheel="PointerThemeGallery_PreviewMouseWheel" AutomationProperties.Name="{DynamicResource PointerTheme}">
+                        <ListBox.ItemsPanel><ItemsPanelTemplate><local:ResponsiveGridPanel MinItemWidth="176" ItemHeight="188" /></ItemsPanelTemplate></ListBox.ItemsPanel>
+                        <ListBox.ItemContainerStyle>
+                          <Style TargetType="ListBoxItem" BasedOn="{StaticResource GridCardListBoxItem}">
+                            <Setter Property="MinHeight" Value="188" />
+                            <Setter Property="Padding" Value="12" />
+                            <Setter Property="AutomationProperties.Name" Value="{Binding Name}" />
+                          </Style>
+                        </ListBox.ItemContainerStyle>
+                        <ListBox.ItemTemplate>
+                          <DataTemplate>
+                            <Grid>
+                              <Grid.RowDefinitions><RowDefinition Height="76" /><RowDefinition Height="Auto" /><RowDefinition Height="*" /></Grid.RowDefinitions>
+                              <Grid HorizontalAlignment="Stretch">
+                                <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="*" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
+                                <local:PointerThemePreview Theme="{Binding Definition}" Role="Arrow" Width="54" Height="64" HorizontalAlignment="Center" />
+                                <local:PointerThemePreview Grid.Column="1" Theme="{Binding Definition}" Role="Hand" Width="46" Height="58" HorizontalAlignment="Center" />
+                                <local:PointerThemePreview Grid.Column="2" Theme="{Binding Definition}" Role="IBeam" Width="42" Height="58" HorizontalAlignment="Center" />
+                              </Grid>
+                              <Grid Grid.Row="1" Margin="0,5,0,3">
+                                <TextBlock Text="{Binding Name}" FontWeight="SemiBold" FontSize="15" TextTrimming="CharacterEllipsis" />
+                                <TextBlock Text="{Binding FavoriteMark}" Foreground="{DynamicResource AccentBrush}" HorizontalAlignment="Right" FontSize="16" AutomationProperties.Name="{DynamicResource PointerFavorite}" />
+                              </Grid>
+                              <TextBlock Grid.Row="2" Text="{Binding Description}" Style="{StaticResource MutedText}" TextWrapping="Wrap" TextTrimming="CharacterEllipsis" MaxHeight="48" />
+                            </Grid>
+                          </DataTemplate>
+                        </ListBox.ItemTemplate>
+                      </ListBox>
+                      <Grid Margin="6,12,6,0">
+                        <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="12" /><ColumnDefinition Width="*" /><ColumnDefinition Width="12" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
+                        <StackPanel><TextBlock Text="{DynamicResource PointerSize}" Style="{StaticResource FieldLabel}" /><ComboBox ItemsSource="{Binding SizeOptions}" SelectedIndex="{Binding SizeIndex}" MinWidth="170" /></StackPanel>
+                        <StackPanel Grid.Column="2"><TextBlock Text="{DynamicResource PointerVariant}" Style="{StaticResource FieldLabel}" /><ComboBox ItemsSource="{Binding VariantOptions}" SelectedIndex="{Binding VariantIndex}" MinWidth="200" /></StackPanel>
+                        <Button Grid.Column="4" Content="{Binding FavoriteButtonText}" Command="{Binding ToggleFavoriteCommand}" VerticalAlignment="Bottom" />
+                      </Grid>
+                      <TextBlock Text="{Binding SelectedThemeDescription}" Style="{StaticResource MutedText}" TextWrapping="Wrap" Margin="6,10,6,0" />
+                    </StackPanel>
+                  </Border>
+                  <Border Style="{StaticResource Card}" Margin="0,16,0,0">
+                      <StackPanel>
+                        <TextBlock Text="{DynamicResource PointerLiveTest}" Style="{StaticResource SectionTitle}" />
+                        <TextBlock Text="{DynamicResource PointerLiveTestHelp}" Style="{StaticResource MutedText}" Margin="0,0,0,14" />
+                        <ItemsControl ItemsSource="{Binding RolePreviews}">
+                          <ItemsControl.ItemsPanel><ItemsPanelTemplate><local:ResponsiveGridPanel MinItemWidth="128" ItemHeight="118" /></ItemsPanelTemplate></ItemsControl.ItemsPanel>
+                          <ItemsControl.ItemTemplate>
+                            <DataTemplate>
+                              <Border Style="{StaticResource InsetCard}" Margin="4">
+                                <StackPanel Margin="8">
+                                  <local:PointerThemePreview Theme="{Binding DataContext.SelectedTheme.Definition, RelativeSource={RelativeSource AncestorType=TabControl}}" Role="{Binding Role}" Width="58" Height="64" HorizontalAlignment="Center" />
+                                  <TextBlock Text="{Binding Name}" TextAlignment="Center" TextWrapping="Wrap" Margin="0,4,0,0" />
+                                </StackPanel>
+                              </Border>
+                            </DataTemplate>
+                          </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                        <WrapPanel Margin="0,16,0,0">
+                          <Button Content="{DynamicResource PointerRestorePrevious}" Command="{Binding RestorePreviousCommand}" Margin="0,0,8,0" />
+                          <Button Content="{DynamicResource PointerRestoreDefaults}" Command="{Binding RestoreDefaultsCommand}" />
+                        </WrapPanel>
+                        <TextBlock Text="{Binding Status}" Foreground="{DynamicResource AccentBrush}" TextWrapping="Wrap" Margin="0,12,0,0" />
+                      </StackPanel>
+                  </Border>
+                </StackPanel>
+              </TabItem>
+
+              <TabItem Header="{DynamicResource PointerMotionClicksTab}">
+                <StackPanel Margin="0,14,0,0">
+                  <Grid>
+                    <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="16" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
+                    <Border Style="{StaticResource Card}">
+                      <StackPanel>
+                        <TextBlock Text="{DynamicResource PointerWindowsFeel}" Style="{StaticResource SectionTitle}" />
+                        <Grid><TextBlock Text="{DynamicResource PointerSpeed}" /><TextBlock Text="{Binding WindowsPointerSpeed, StringFormat={}{0:0}/20}" HorizontalAlignment="Right" /></Grid>
+                        <Slider Minimum="1" Maximum="20" Value="{Binding WindowsPointerSpeed}" TickFrequency="1" />
+                        <CheckBox Content="{DynamicResource PointerEnhancePrecision}" IsChecked="{Binding EnhancePointerPrecision}" />
+                        <Grid Margin="0,8,0,0"><TextBlock Text="{DynamicResource PointerTrails}" /><TextBlock Text="{Binding PointerTrails, StringFormat={}{0:0}}" HorizontalAlignment="Right" /></Grid>
+                        <Slider Minimum="0" Maximum="16" Value="{Binding PointerTrails}" TickFrequency="1" />
+                        <CheckBox Content="{DynamicResource PointerNativeShadow}" IsChecked="{Binding NativeShadow}" />
+                      </StackPanel>
+                    </Border>
+                    <Border Grid.Column="2" Style="{StaticResource Card}">
+                      <StackPanel>
+                        <TextBlock Text="{DynamicResource PointerMotionEffects}" Style="{StaticResource SectionTitle}" />
+                        <CheckBox Content="{DynamicResource PointerEnableMotion}" IsChecked="{Binding MotionEffectsEnabled}" Style="{StaticResource SettingsToggle}" />
+                        <StackPanel IsEnabled="{Binding MotionEffectsEnabled}">
+                        <Grid Margin="0,8,0,0"><Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="10" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
+                          <ComboBox ItemsSource="{Binding MotionModeOptions}" SelectedIndex="{Binding MotionModeIndex}" />
+                          <ComboBox Grid.Column="2" ItemsSource="{Binding MotionPresetOptions}" SelectedIndex="{Binding MotionPresetIndex}" />
+                        </Grid>
+                        <Grid Margin="0,10,0,0"><TextBlock Text="{DynamicResource PointerVisualScale}" /><TextBlock Text="{Binding VisualScale, StringFormat={}{0:0.0}×}" HorizontalAlignment="Right" /></Grid><Slider Minimum="0.5" Maximum="3" Value="{Binding VisualScale}" />
+                        <Grid><TextBlock Text="{DynamicResource PointerSmoothing}" /><TextBlock Text="{Binding Smoothing, StringFormat={}{0:P0}}" HorizontalAlignment="Right" /></Grid><Slider Minimum="0" Maximum="1" Value="{Binding Smoothing}" />
+                        <Grid><TextBlock Text="{DynamicResource PointerSpring}" /><TextBlock Text="{Binding SpringStrength, StringFormat={}{0:P0}}" HorizontalAlignment="Right" /></Grid><Slider Minimum="0.05" Maximum="1" Value="{Binding SpringStrength}" />
+                        <Grid><TextBlock Text="{DynamicResource PointerDamping}" /><TextBlock Text="{Binding Damping, StringFormat={}{0:P0}}" HorizontalAlignment="Right" /></Grid><Slider Minimum="0.05" Maximum="1" Value="{Binding Damping}" />
+                        <Grid><TextBlock Text="{DynamicResource PointerTrailLength}" /><TextBlock Text="{Binding TrailLength, StringFormat={}{0:0}}" HorizontalAlignment="Right" /></Grid><Slider Minimum="0" Maximum="24" Value="{Binding TrailLength}" />
+                        <CheckBox Content="{DynamicResource PointerShakeEnlarge}" IsChecked="{Binding ShakeToEnlarge}" />
+                        <Button Content="{DynamicResource PointerFindNow}" Command="{Binding FindPointerCommand}" Margin="0,10,0,0" />
+                        </StackPanel>
+                      </StackPanel>
+                    </Border>
+                  </Grid>
+                  <Border Style="{StaticResource Card}">
+                    <StackPanel>
+                      <TextBlock Text="{DynamicResource PointerClickIndicators}" Style="{StaticResource SectionTitle}" />
+                      <CheckBox Content="{DynamicResource PointerEnableClickIndicators}" IsChecked="{Binding ClickIndicatorsEnabled}" Style="{StaticResource SettingsToggle}" Margin="0,0,0,10" />
+                      <UniformGrid Columns="4" IsEnabled="{Binding ClickIndicatorsEnabled}">
+                        <StackPanel DataContext="{Binding LeftClick}" Margin="0,0,12,0"><TextBlock Text="{DynamicResource PointerLeftClick}" FontWeight="SemiBold" /><CheckBox Content="{DynamicResource Enabled}" IsChecked="{Binding Enabled}" /><ComboBox ItemsSource="{Binding StyleOptions}" SelectedIndex="{Binding StyleIndex}" /><TextBox Text="{Binding Color, UpdateSourceTrigger=LostFocus}" Margin="0,8,0,0" /><Slider Minimum="8" Maximum="120" Value="{Binding Size}" /></StackPanel>
+                        <StackPanel DataContext="{Binding RightClick}" Margin="0,0,12,0"><TextBlock Text="{DynamicResource PointerRightClick}" FontWeight="SemiBold" /><CheckBox Content="{DynamicResource Enabled}" IsChecked="{Binding Enabled}" /><ComboBox ItemsSource="{Binding StyleOptions}" SelectedIndex="{Binding StyleIndex}" /><TextBox Text="{Binding Color, UpdateSourceTrigger=LostFocus}" Margin="0,8,0,0" /><Slider Minimum="8" Maximum="120" Value="{Binding Size}" /></StackPanel>
+                        <StackPanel DataContext="{Binding MiddleClick}" Margin="0,0,12,0"><TextBlock Text="{DynamicResource PointerMiddleClick}" FontWeight="SemiBold" /><CheckBox Content="{DynamicResource Enabled}" IsChecked="{Binding Enabled}" /><ComboBox ItemsSource="{Binding StyleOptions}" SelectedIndex="{Binding StyleIndex}" /><TextBox Text="{Binding Color, UpdateSourceTrigger=LostFocus}" Margin="0,8,0,0" /><Slider Minimum="8" Maximum="120" Value="{Binding Size}" /></StackPanel>
+                        <StackPanel DataContext="{Binding AuxiliaryClick}"><TextBlock Text="{DynamicResource PointerAuxiliaryClick}" FontWeight="SemiBold" /><CheckBox Content="{DynamicResource Enabled}" IsChecked="{Binding Enabled}" /><ComboBox ItemsSource="{Binding StyleOptions}" SelectedIndex="{Binding StyleIndex}" /><TextBox Text="{Binding Color, UpdateSourceTrigger=LostFocus}" Margin="0,8,0,0" /><Slider Minimum="8" Maximum="120" Value="{Binding Size}" /></StackPanel>
+                      </UniformGrid>
+                    </StackPanel>
+                  </Border>
+                </StackPanel>
+              </TabItem>
+
+              <TabItem Header="{DynamicResource PointerDevicesButtonsTab}" DataContext="{Binding DataContext, RelativeSource={RelativeSource AncestorType=Window}}">
+                <StackPanel Margin="0,14,0,0">
+                  <Border Style="{StaticResource Card}">
+                    <StackPanel>
+                      <Grid Margin="0,0,0,10"><Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions><StackPanel><TextBlock Text="{DynamicResource PointerConnectedDevices}" Style="{StaticResource SectionTitle}" /><TextBlock Text="{DynamicResource PointerConnectedDevicesHelp}" Style="{StaticResource MutedText}" /></StackPanel><Button Grid.Column="1" Content="{DynamicResource Refresh}" Command="{Binding PointerStudio.RefreshDevicesCommand}" /></Grid>
+                      <ItemsControl ItemsSource="{Binding PointerDevices}">
+                        <ItemsControl.ItemTemplate><DataTemplate>
+                          <Border Style="{StaticResource InsetCard}" Margin="0,0,0,8"><Grid Margin="12"><Grid.ColumnDefinitions><ColumnDefinition Width="2*" /><ColumnDefinition Width="12" /><ColumnDefinition Width="180" /><ColumnDefinition Width="12" /><ColumnDefinition Width="150" /></Grid.ColumnDefinitions>
+                            <StackPanel><TextBlock Text="{Binding DisplayName}" FontWeight="SemiBold" /><TextBlock Text="{Binding Capabilities}" Style="{StaticResource MutedText}" /><TextBlock Text="{Binding ConnectionStatus}" Foreground="{DynamicResource AccentBrush}" /></StackPanel>
+                            <ComboBox Grid.Column="2" ItemsSource="{Binding FamilyOptions}" SelectedIndex="{Binding FamilyIndex}" />
+                            <StackPanel Grid.Column="4"><TextBlock Text="{DynamicResource PointerAuxiliaryActions}" Style="{StaticResource FieldLabel}" /><ComboBox ItemsSource="{Binding ActionOptions}" SelectedIndex="{Binding X1ActionIndex}" ToolTip="X1" /><ComboBox ItemsSource="{Binding ActionOptions}" SelectedIndex="{Binding X2ActionIndex}" ToolTip="X2" Margin="0,6,0,0" /></StackPanel>
+                          </Grid></Border>
+                        </DataTemplate></ItemsControl.ItemTemplate>
+                      </ItemsControl>
+                    </StackPanel>
+                  </Border>
+                  <Border Style="{StaticResource Card}" DataContext="{Binding PointerStudio}">
+                    <StackPanel>
+                      <TextBlock Text="{DynamicResource PointerNativeSettingsLinks}" Style="{StaticResource SectionTitle}" />
+                      <TextBlock Text="{DynamicResource PointerNativeSettingsHelp}" Style="{StaticResource MutedText}" Margin="0,0,0,10" />
+                      <WrapPanel><Button Content="{DynamicResource PointerOpenMouseSettings}" Command="{Binding OpenMouseSettingsCommand}" Margin="0,0,8,0" /><Button Content="{DynamicResource PointerOpenTouchpadSettings}" Command="{Binding OpenTouchpadSettingsCommand}" /></WrapPanel>
+                    </StackPanel>
+                  </Border>
+                </StackPanel>
+              </TabItem>
+
+              <TabItem Header="{DynamicResource PointerPerformanceSafetyTab}">
+                <StackPanel Margin="0,14,0,0">
+                  <Grid>
+                    <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="16" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
+                    <Border Style="{StaticResource Card}"><StackPanel><TextBlock Text="{DynamicResource PointerAdaptivePerformance}" Style="{StaticResource SectionTitle}" /><CheckBox Content="{DynamicResource PointerAdaptiveEnable}" IsChecked="{Binding AdaptivePerformance}" Style="{StaticResource SettingsToggle}" /><StackPanel IsEnabled="{Binding AdaptivePerformance}"><CheckBox Content="{DynamicResource PointerPauseBattery}" IsChecked="{Binding PauseOnBatterySaver}" /><CheckBox Content="{DynamicResource PointerPauseFullscreen}" IsChecked="{Binding PauseInFullscreen}" /><CheckBox Content="{DynamicResource PointerPauseRemote}" IsChecked="{Binding PauseInRemoteSession}" /></StackPanel><TextBlock Text="{Binding PerformanceStatus}" Foreground="{DynamicResource AccentBrush}" Margin="0,10,0,0" /></StackPanel></Border>
+                    <Border Grid.Column="2" Style="{StaticResource Card}">
+                      <StackPanel>
+                        <TextBlock Text="{DynamicResource PointerExperimental}" Style="{StaticResource SectionTitle}" />
+                        <TextBlock Text="{DynamicResource PointerExperimentalHelp}" Style="{StaticResource MutedText}" TextWrapping="Wrap" Margin="0,0,0,8" />
+                        <CheckBox Content="{DynamicResource PointerExperimentalReplacement}" IsChecked="{Binding ExperimentalReplacementEnabled}" Style="{StaticResource SettingsToggle}" />
+                        <CheckBox Content="{DynamicResource PointerExperimentalSuppression}" IsChecked="{Binding ExperimentalSuppressionEnabled}" Style="{StaticResource SettingsToggle}" />
+                        <TextBlock Text="{DynamicResource PointerGlobalRemaps}" Style="{StaticResource FieldLabel}" Margin="0,8,0,0" />
+                        <TextBlock Text="{DynamicResource PointerGlobalRemapsHelp}" Style="{StaticResource MutedText}" TextWrapping="Wrap" Margin="0,0,0,6" />
+                        <Grid IsEnabled="{Binding ExperimentalSuppressionEnabled}">
+                          <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="8" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
+                          <StackPanel><TextBlock Text="{DynamicResource PointerLeftClick}" Style="{StaticResource FieldLabel}" /><ComboBox ItemsSource="{Binding ActionOptions}" SelectedIndex="{Binding GlobalLeftActionIndex}" /></StackPanel>
+                          <StackPanel Grid.Column="2"><TextBlock Text="{DynamicResource PointerRightClick}" Style="{StaticResource FieldLabel}" /><ComboBox ItemsSource="{Binding ActionOptions}" SelectedIndex="{Binding GlobalRightActionIndex}" /></StackPanel>
+                        </Grid>
+                        <Grid IsEnabled="{Binding ExperimentalSuppressionEnabled}" Margin="0,6,0,0">
+                          <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="8" /><ColumnDefinition Width="*" /><ColumnDefinition Width="8" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
+                          <StackPanel><TextBlock Text="{DynamicResource PointerMiddleClick}" Style="{StaticResource FieldLabel}" /><ComboBox ItemsSource="{Binding ActionOptions}" SelectedIndex="{Binding GlobalMiddleActionIndex}" /></StackPanel>
+                          <StackPanel Grid.Column="2"><TextBlock Text="X1" Style="{StaticResource FieldLabel}" /><ComboBox ItemsSource="{Binding ActionOptions}" SelectedIndex="{Binding GlobalX1ActionIndex}" /></StackPanel>
+                          <StackPanel Grid.Column="4"><TextBlock Text="X2" Style="{StaticResource FieldLabel}" /><ComboBox ItemsSource="{Binding ActionOptions}" SelectedIndex="{Binding GlobalX2ActionIndex}" /></StackPanel>
+                        </Grid>
+                        <TextBlock Text="{Binding ExperimentalStatus}" Foreground="{DynamicResource AccentBrush}" Margin="0,8,0,10" />
+                        <Button Content="{DynamicResource PointerPanicButton}" Command="{Binding PanicCommand}" Style="{StaticResource DangerButton}" IsEnabled="{Binding HasExperimentalControls}" />
+                      </StackPanel>
+                    </Border>
+                  </Grid>
+                </StackPanel>
+              </TabItem>
+            </TabControl>
+          </StackPanel>
+        </ScrollViewer>
+      </TabItem>
+
+      <TabItem>
         <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" HorizontalContentAlignment="Stretch">
           <StackPanel Style="{StaticResource PageContent}">
             <TextBlock Text="{DynamicResource ShortcutsTitle}" Style="{StaticResource PageTitle}" />
@@ -737,15 +946,6 @@
             </Border>
             <Border Style="{StaticResource Card}">
               <StackPanel>
-                <TextBlock Text="{DynamicResource PointerDeviceClassification}" Style="{StaticResource SectionTitle}" />
-                <TextBlock Text="{DynamicResource PointerDeviceClassificationHelp}" Style="{StaticResource MutedText}" Margin="0,0,0,10" TextWrapping="Wrap" />
-                <ItemsControl ItemsSource="{Binding PointerDevices}">
-                  <ItemsControl.ItemTemplate><DataTemplate><Grid Margin="0,0,0,10"><Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="12" /><ColumnDefinition Width="180" /><ColumnDefinition Width="12" /><ColumnDefinition Width="110" /></Grid.ColumnDefinitions><TextBlock Text="{Binding DisplayName}" VerticalAlignment="Center" /><ComboBox Grid.Column="2" ItemsSource="{Binding FamilyOptions}" SelectedIndex="{Binding FamilyIndex}" /><TextBlock Grid.Column="4" Text="{Binding ConnectionStatus}" Style="{StaticResource MutedText}" VerticalAlignment="Center" /></Grid></DataTemplate></ItemsControl.ItemTemplate>
-                </ItemsControl>
-              </StackPanel>
-            </Border>
-            <Border Style="{StaticResource Card}">
-              <StackPanel>
                 <TextBlock Text="{DynamicResource PerAppMuting}" Style="{StaticResource SectionTitle}" />
                 <Grid><Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="10" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
                   <TextBox x:Name="ExclusionPath" ToolTip="{DynamicResource ExclusionTooltip}" />
@@ -759,7 +959,7 @@
               <Grid>
                 <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="24" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
                 <StackPanel><TextBlock Text="{DynamicResource ResetSettings}" Style="{StaticResource SectionTitle}" /><TextBlock Text="{DynamicResource ResetSettingsHelp}" Style="{StaticResource MutedText}" /></StackPanel>
-                <Button Grid.Column="2" Content="{DynamicResource ResetSettings}" Click="ResetSettings_Click" VerticalAlignment="Center" />
+                <Button Grid.Column="2" Content="{DynamicResource ResetSettings}" Click="ResetSettings_Click" Style="{StaticResource DangerButton}" VerticalAlignment="Center" />
               </Grid>
             </Border>
           </StackPanel>
@@ -773,7 +973,7 @@
             <TextBlock Text="{DynamicResource IntegrationsIntro}" Style="{StaticResource PageIntro}" />
             <Border Style="{StaticResource Card}">
               <StackPanel>
-                <CheckBox Content="{DynamicResource EnableActionResultApi}" IsChecked="{Binding IntegrationApiEnabled}" FontWeight="SemiBold" />
+                <CheckBox Content="{DynamicResource EnableActionResultApi}" IsChecked="{Binding IntegrationApiEnabled}" Style="{StaticResource SettingsToggle}" FontWeight="SemiBold" />
                 <TextBlock Text="{DynamicResource ActionApiHelp}" Style="{StaticResource MutedText}" Margin="0,6,0,0" />
               </StackPanel>
             </Border>
@@ -983,7 +1183,7 @@
                     <StackPanel Width="180" Margin="0,0,12,0"><TextBlock Text="{DynamicResource ChallengeSource}" Style="{StaticResource FieldLabel}" /><ComboBox ItemsSource="{Binding HistorySourceOptions}" SelectedIndex="{Binding HistorySourceIndex}" /></StackPanel>
                     <StackPanel Width="210"><TextBlock Text="{DynamicResource ChallengeRunMode}" Style="{StaticResource FieldLabel}" /><ComboBox ItemsSource="{Binding HistoryModeOptions}" SelectedIndex="{Binding HistoryModeIndex}" /></StackPanel>
                   </WrapPanel>
-                  <WrapPanel HorizontalAlignment="Right" Margin="0,14,0,0"><Button Content="{DynamicResource ExportCsv}" Click="ChallengeExport_Click" Margin="0,0,10,0" /><Button Content="{DynamicResource ChallengeCompareSelected}" Click="ChallengeCompareSelected_Click" IsEnabled="{Binding CanDeleteSelected}" Margin="0,0,10,0" /><Button Content="{DynamicResource ChallengeDeleteSelected}" Click="ChallengeDeleteSelected_Click" IsEnabled="{Binding CanDeleteSelected}" Margin="0,0,10,0" /><Button Content="{DynamicResource ChallengeDeletePeriod}" Click="ChallengeDeletePeriod_Click" /></WrapPanel>
+                  <WrapPanel HorizontalAlignment="Right" Margin="0,14,0,0"><Button Content="{DynamicResource ExportCsv}" Click="ChallengeExport_Click" Margin="0,0,10,0" /><Button Content="{DynamicResource ChallengeCompareSelected}" Click="ChallengeCompareSelected_Click" IsEnabled="{Binding CanDeleteSelected}" Margin="0,0,18,0" /><Button Content="{DynamicResource ChallengeDeleteSelected}" Click="ChallengeDeleteSelected_Click" IsEnabled="{Binding CanDeleteSelected}" Style="{StaticResource DangerButton}" Margin="0,0,10,0" /><Button Content="{DynamicResource ChallengeDeletePeriod}" Click="ChallengeDeletePeriod_Click" Style="{StaticResource DangerButton}" /></WrapPanel>
                 </StackPanel>
               </Border>
               <Border Style="{StaticResource Card}">

@@ -46,6 +46,26 @@ public sealed class InputAndShortcutTests
   }
 
   [Fact]
+  public void Wheel_reports_are_bounded_without_retaining_an_extreme_backlog()
+  {
+    var accumulator = new WheelAccumulator();
+
+    Assert.Equal(WheelAccumulator.MaximumDetentsPerReport, accumulator.AddDetents(short.MaxValue));
+    Assert.InRange(accumulator.Remainder, 0, WheelAccumulator.DetentDelta - 1);
+    Assert.Equal(0, accumulator.AddDetents(0));
+  }
+
+  [Theory]
+  [InlineData("custom:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef", true)]
+  [InlineData("custom:C:/outside.wav", false)]
+  [InlineData("custom:\\\\server\\sample", false)]
+  [InlineData("custom:0123", false)]
+  public void Custom_sample_ids_accept_only_sha256_identifiers(string value, bool expected)
+  {
+    Assert.Equal(expected, CustomSampleId.IsValid(value));
+  }
+
+  [Fact]
   public void Sequence_matches_within_timeout_and_resets_after_timeout()
   {
     var first = new ShortcutStep(true, false, false, false, 0x4B);

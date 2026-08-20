@@ -103,6 +103,7 @@ public sealed class MainViewModel : INotifyPropertyChanged, IDisposable
   public event EventHandler? ShowHideRequested;
   public event EventHandler? LanguageChanged;
   public event EventHandler? StatisticsPolicyChanged;
+  public event EventHandler? SettingsImported;
 
   public ObservableCollection<SoundPackDefinition> Packs { get; }
   public ObservableCollection<ShortcutBinding> Shortcuts { get; } = [];
@@ -159,6 +160,7 @@ public sealed class MainViewModel : INotifyPropertyChanged, IDisposable
     AvailableUpdate.IsLocal ? "LocalUpdateAvailableFormat" : "UpdateReadyFormat", AvailableUpdate.Version);
   public StatisticsViewModel? Statistics { get; private set; }
   public TypingChallengeViewModel? TypingChallenges { get; private set; }
+  public PointerStudioViewModel? PointerStudio { get; private set; }
   public WellnessSnapshot? WellnessSnapshot { get; private set; }
   public string WellnessTodaySummary => WellnessSnapshot is null ? _localization.Get("NoStatisticsYet") :
     _localization.Format("WellnessTodayFormat", WellnessSnapshot.KeyboardPressesToday, WellnessSnapshot.PointerClicksToday, WellnessSnapshot.ActiveMinutesToday);
@@ -278,6 +280,7 @@ public sealed class MainViewModel : INotifyPropertyChanged, IDisposable
       if (_settings.ReducedMotion == value) return;
       _settings.ReducedMotion = value;
       Statistics?.NotifyReducedMotion();
+      PointerStudio?.SetReducedMotion(value);
       SettingChanged(nameof(ReducedMotion));
     }
   }
@@ -467,6 +470,7 @@ public sealed class MainViewModel : INotifyPropertyChanged, IDisposable
   {
     _settings = await _store.LoadSettingsAsync();
     _settings.LaunchAtStartup = _startup.IsEnabled();
+    if (_settings.LaunchAtStartup) _startup.SetEnabled(true);
     foreach (var pack in await _packImports.LoadInstalledAsync()) Packs.Add(pack);
     RebuildRotationPackOptions();
     _activePack = Packs.FirstOrDefault(pack => pack.Id == _settings.ActivePackId) ?? Packs[0];
@@ -484,6 +488,7 @@ public sealed class MainViewModel : INotifyPropertyChanged, IDisposable
 
   public void HandleInputAction(InputActionEvent input)
   {
+    PointerStudio?.HandleInput(input);
     if (_captureInput && input.Phase is InputPhase.Up or InputPhase.WheelDetent)
     {
       _captureInput = false;
@@ -616,6 +621,8 @@ public sealed class MainViewModel : INotifyPropertyChanged, IDisposable
     return path;
   }
 
+  public Task LaunchPreparedUpdateAsync(UpdateInfo update, string path) => _updates.LaunchVerifiedAsync(update, path, "--update");
+
   public async Task DiscoverLocalUpdateAsync(string artifactsDirectory)
   {
     if (IsPortable) return;
@@ -714,6 +721,7 @@ public sealed class MainViewModel : INotifyPropertyChanged, IDisposable
   {
     Statistics?.Dispose();
     TypingChallenges?.Dispose();
+    PointerStudio?.Dispose();
     _rotationTimer.Dispose();
     _saveDebounce?.Cancel();
     _saveDebounce?.Dispose();
@@ -731,10 +739,10 @@ public sealed class MainViewModel : INotifyPropertyChanged, IDisposable
       var customSampleIds = pack.AllSampleIds()
         .Concat(overrides.SelectMany(item => item.SampleIds))
         .Concat(groupMappings.SelectMany(item => item.SampleIds))
-        .Where(value => value.StartsWith("custom:", StringComparison.Ordinal) && value.Length > 7)
+        .Where(CustomSampleId.IsValid)
         .Distinct(StringComparer.Ordinal);
       var customSamplePaths = customSampleIds
-        .Select(sampleId => (SampleId: sampleId, Path: Path.Combine(((App)Application.Current).Paths.Sounds, $"{sampleId[7..]}.wav")))
+        .Select(sampleId => (SampleId: sampleId, Path: Path.Combine(((App)Application.Current).Paths.Sounds, CustomSampleId.FileName(sampleId))))
         .Where(item => File.Exists(item.Path))
         .ToDictionary(item => item.SampleId, item => item.Path, StringComparer.Ordinal);
       await _audio.LoadPackAsync(pack, customSamplePaths);
@@ -799,6 +807,7 @@ public sealed class MainViewModel : INotifyPropertyChanged, IDisposable
   }
 
   public void ReportStatus(string message) => StatusMessage = message;
+  public void QueuePointerSettingsSave() => QueueSettingsSave();
 
   public void AttachTypingChallenges(TypingChallengeService service, StatisticsService statistics)
   {
@@ -818,6 +827,17 @@ public sealed class MainViewModel : INotifyPropertyChanged, IDisposable
 
   public void AttachProfiles(ProfileTransferService service) => _profiles = service;
 
+  public void AttachPointerStudio(PointerStudioViewModel pointerStudio)
+  {
+    PointerStudio?.Dispose();
+    PointerStudio = pointerStudio;
+    pointerStudio.SetReducedMotion(ReducedMotion);
+    pointerStudio.KeyClickActionRequested += HandlePointerAction;
+    Notify(nameof(PointerStudio));
+  }
+
+  public void HandlePointerMovement(PointerMovementSignal signal) => PointerStudio?.HandleMovement(signal);
+
   public void SetDistributionMode(DistributionMode mode)
   {
     IsPortable = mode == DistributionMode.Portable;
@@ -836,13 +856,15 @@ public sealed class MainViewModel : INotifyPropertyChanged, IDisposable
         if (existing is not null) existing.IsConnected = false;
         return;
       }
-      if (existing is not null) { existing.IsConnected = true; return; }
+      if (existing is not null) { existing.UpdateDescriptor(device); return; }
       var family = _settings.DeviceClassifications.TryGetValue(device.Id, out var manual) ? manual : device.Family;
       PointerDevices.Add(new(device.Id, family, _localization, selected =>
       {
         _settings.DeviceClassifications[device.Id] = selected;
         StatisticsSettingChanged(nameof(PointerDevices));
-      }));
+      }, device.DisplayName, device.ButtonCount, device.HasHorizontalWheel,
+        button => PointerStudio?.GetBinding(device.Id, button) ?? PointerActionKind.None,
+        (button, action) => PointerStudio?.SetBinding(device.Id, button, action, false)));
     });
   }
 
@@ -867,6 +889,7 @@ public sealed class MainViewModel : INotifyPropertyChanged, IDisposable
     await LoadPackAndOverridesAsync(_activePack);
     NotifyAllSettings();
     StatisticsPolicyChanged?.Invoke(this, EventArgs.Empty);
+    SettingsImported?.Invoke(this, EventArgs.Empty);
     StatusMessage = _localization.Get("ProfileImported");
   }
 
@@ -1159,6 +1182,7 @@ public sealed class MainViewModel : INotifyPropertyChanged, IDisposable
     else MappingSound = _localization.Get("BuiltInSoundPool");
     Statistics?.RefreshLocalization();
     TypingChallenges?.RefreshLocalization();
+    PointerStudio?.RefreshLocalization();
 
     Notify(
       nameof(DisplayLanguage), nameof(DisplayLanguageIndex), nameof(DisplayLanguages), nameof(Theme), nameof(ThemeIndex),
@@ -1228,6 +1252,19 @@ public sealed class MainViewModel : INotifyPropertyChanged, IDisposable
       ? _localization.Get(input.Input.Code switch { 6 => "WheelUp", 7 => "WheelDown", 8 => "WheelLeft", _ => "WheelRight" })
       : _localization.Get(input.Input.Code switch { 1 => "PrimaryButton", 2 => "SecondaryButton", 3 => "MiddleButton", 4 => "X1Button", _ => "X2Button" });
 
+  private void HandlePointerAction(PointerActionKind action) => Application.Current.Dispatcher.BeginInvoke(() =>
+  {
+    switch (action)
+    {
+      case PointerActionKind.ToggleSounds: ToggleSoundsCommand.Execute(null); break;
+      case PointerActionKind.PreviousSoundPack: PreviousPackCommand.Execute(null); break;
+      case PointerActionKind.NextSoundPack: NextPackCommand.Execute(null); break;
+      case PointerActionKind.TogglePointerEffects when PointerStudio is not null: PointerStudio.MotionEffectsEnabled = !PointerStudio.MotionEffectsEnabled; break;
+      case PointerActionKind.NextPointerTheme when PointerStudio is not null: PointerStudio.SelectedThemeIndex = (PointerStudio.SelectedThemeIndex + 1) % PointerStudio.Themes.Count; break;
+      case PointerActionKind.ShowHideKeyClick: ShowHideRequested?.Invoke(this, EventArgs.Empty); break;
+    }
+  });
+
   private static string GetVersion() => typeof(MainViewModel).Assembly.GetName().Version?.ToString(3) ?? "1.0.0";
 }
 
@@ -1275,18 +1312,38 @@ public sealed class DeviceClassificationOption : INotifyPropertyChanged
   private readonly LocalizationService _localization;
   private DeviceFamily _family;
   private bool _isConnected = true;
+  private string _hardwareName;
+  private int _buttonCount;
+  private bool _hasHorizontalWheel;
+  private readonly Func<PointerButtonKind, PointerActionKind>? _actionGetter;
+  private readonly Action<PointerButtonKind, PointerActionKind>? _actionChanged;
 
-  public DeviceClassificationOption(string id, DeviceFamily family, LocalizationService localization, Action<DeviceFamily> changed)
+  public DeviceClassificationOption(string id, DeviceFamily family, LocalizationService localization, Action<DeviceFamily> changed,
+    string hardwareName = "", int buttonCount = 0, bool hasHorizontalWheel = false,
+    Func<PointerButtonKind, PointerActionKind>? actionGetter = null,
+    Action<PointerButtonKind, PointerActionKind>? actionChanged = null)
   {
     Id = id;
     _family = Families.Contains(family) ? family : DeviceFamily.UnknownPointer;
     _localization = localization;
     _changed = changed;
+    _hardwareName = hardwareName;
+    _buttonCount = buttonCount;
+    _hasHorizontalWheel = hasHorizontalWheel;
+    _actionGetter = actionGetter;
+    _actionChanged = actionChanged;
   }
 
   public event PropertyChangedEventHandler? PropertyChanged;
   public string Id { get; }
-  public string DisplayName => $"{_localization.EnumName(_family)} · {Id[..Math.Min(8, Id.Length)]}";
+  public string DisplayName => string.IsNullOrWhiteSpace(_hardwareName)
+    ? $"{_localization.EnumName(_family)} · {Id[..Math.Min(8, Id.Length)]}"
+    : $"{_hardwareName} · {Id[..Math.Min(8, Id.Length)]}";
+  public string Capabilities => _localization.Format("PointerDeviceCapabilitiesFormat", _buttonCount, _hasHorizontalWheel ? _localization.Get("PointerHorizontalWheelYes") : _localization.Get("PointerHorizontalWheelNo"));
+  public IReadOnlyList<string> ActionOptions => Enum.GetValues<PointerActionKind>().Select(value => _localization.EnumName(value)).ToArray();
+  public int MiddleActionIndex { get => (int)(_actionGetter?.Invoke(PointerButtonKind.Middle) ?? PointerActionKind.None); set => SetAction(PointerButtonKind.Middle, value, nameof(MiddleActionIndex)); }
+  public int X1ActionIndex { get => (int)(_actionGetter?.Invoke(PointerButtonKind.X1) ?? PointerActionKind.None); set => SetAction(PointerButtonKind.X1, value, nameof(X1ActionIndex)); }
+  public int X2ActionIndex { get => (int)(_actionGetter?.Invoke(PointerButtonKind.X2) ?? PointerActionKind.None); set => SetAction(PointerButtonKind.X2, value, nameof(X2ActionIndex)); }
   public IReadOnlyList<string> FamilyOptions => Families.Select(family => _localization.EnumName(family)).ToArray();
   public int FamilyIndex
   {
@@ -1306,6 +1363,23 @@ public sealed class DeviceClassificationOption : INotifyPropertyChanged
     set { if (_isConnected == value) return; _isConnected = value; PropertyChanged?.Invoke(this, new(nameof(IsConnected))); PropertyChanged?.Invoke(this, new(nameof(ConnectionStatus))); }
   }
   public string ConnectionStatus => _localization.Get(IsConnected ? "DeviceConnected" : "DeviceDisconnected");
+
+  public void UpdateDescriptor(InputDeviceDescriptor descriptor)
+  {
+    _hardwareName = descriptor.DisplayName;
+    _buttonCount = descriptor.ButtonCount;
+    _hasHorizontalWheel = descriptor.HasHorizontalWheel;
+    IsConnected = descriptor.Connected;
+    PropertyChanged?.Invoke(this, new(nameof(DisplayName)));
+    PropertyChanged?.Invoke(this, new(nameof(Capabilities)));
+  }
+
+  private void SetAction(PointerButtonKind button, int value, string property)
+  {
+    if (!Enum.IsDefined(typeof(PointerActionKind), value)) return;
+    _actionChanged?.Invoke(button, (PointerActionKind)value);
+    PropertyChanged?.Invoke(this, new(property));
+  }
 }
 
 internal sealed class AsyncDelegateCommand(Func<Task> execute, Func<bool>? canExecute = null) : ICommand

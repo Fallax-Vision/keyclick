@@ -5,6 +5,7 @@ using System.Security.Cryptography;
 using System.Text;
 using System.Threading;
 using System.Windows;
+using System.Windows.Input;
 using KeyClick.Core;
 using KeyClick.Infrastructure.Windows;
 using KeyClick.Updater;
@@ -29,6 +30,10 @@ public partial class App : Application
   private GlobalShortcutService? _shortcuts;
   private OutcomePipeServer? _outcomePipe;
   private ThemeService? _themes;
+  private PointerAppearanceService? _pointerAppearance;
+  private PointerEffectsService? _pointerEffects;
+  private PointerSuppressionService? _pointerSuppression;
+  private PointerActionService? _pointerActions;
   private LocalizationService? _localization;
   private MainViewModel? _viewModel;
   private Forms.NotifyIcon? _tray;
@@ -37,6 +42,9 @@ public partial class App : Application
   private Forms.ToolStripItem? _trayToggleSounds;
   private Forms.ToolStripMenuItem? _trayKeyboardStatistics;
   private Forms.ToolStripMenuItem? _trayPointerStatistics;
+  private Forms.ToolStripMenuItem? _trayPointerStudio;
+  private Forms.ToolStripMenuItem? _trayPointerEffects;
+  private Forms.ToolStripItem? _trayPointerPanic;
   private Forms.ToolStripItem? _trayExit;
   private bool _exiting;
   private int _windowGeneration;
@@ -75,6 +83,10 @@ public partial class App : Application
       _rawInput = new RawInputService();
       _shortcuts = new GlobalShortcutService();
       _themes = new ThemeService();
+      _pointerAppearance = new PointerAppearanceService(Paths);
+      _pointerEffects = new PointerEffectsService();
+      _pointerSuppression = new PointerSuppressionService();
+      _pointerActions = new PointerActionService();
       _themes.Apply(initialSettings.Theme);
       var startup = new StartupService(Paths);
       var backup = new BackupService(Paths);
@@ -86,13 +98,10 @@ public partial class App : Application
         DataLocation = Paths.Root
       };
       await _viewModel.InitializeAsync();
+      AttachPointerStudio();
+      _viewModel.SettingsImported += (_, _) => AttachPointerStudio();
+      Paths.CleanupLegacyApplicationFiles();
       _viewModel.SetDistributionMode(Paths.Mode);
-      if (Paths.Mode == DistributionMode.Installed)
-      {
-        var localArtifacts = Environment.GetEnvironmentVariable("KEYCLICK_LOCAL_UPDATE_DIRECTORY")
-          ?? @"C:\wamp64\www\fallax_projects\lab\keyclick\artifacts";
-        _ = _viewModel.DiscoverLocalUpdateAsync(localArtifacts);
-      }
       if (!_viewModel.StatisticsDisclosureConfirmed)
       {
         var disclosure = new PrivacyDisclosureWindow();
@@ -128,6 +137,7 @@ public partial class App : Application
         _viewModel.HandleInputAction(input);
       };
       _rawInput.DeviceChanged += (_, device) => _viewModel.HandleDeviceChanged(device);
+      _rawInput.PointerMoved += signal => _viewModel.HandlePointerMovement(signal);
       _shortcuts.CommandInvoked += (_, command) => _viewModel.HandleShortcut(command);
 
       _outcomePipe = new OutcomePipeServer(
@@ -142,6 +152,7 @@ public partial class App : Application
 
       var startupLaunch = e.Args.Contains("--startup", StringComparer.OrdinalIgnoreCase);
       if (!startupLaunch || !_viewModel.StartMinimized) ShowWindow();
+      _ = Dispatcher.BeginInvoke(RefreshPointerDevices, System.Windows.Threading.DispatcherPriority.ContextIdle);
     }
     catch (Exception exception)
     {
@@ -229,6 +240,9 @@ public partial class App : Application
       _ = StopCaptureAndPlaybackAsync();
     _shortcuts?.Dispose();
     _viewModel?.Dispose();
+    _pointerEffects?.Dispose();
+    _pointerSuppression?.Dispose();
+    _pointerAppearance?.ClearExperimentalMarker();
     if (_store is not null) _ = _store.DisposeAsync().AsTask();
     _store = null;
     _themes?.Dispose();
@@ -283,6 +297,26 @@ public partial class App : Application
     _trayPointerStatistics = new Forms.ToolStripMenuItem(_localization.Get("TrayPointerStatistics")) { CheckOnClick = true, Checked = _viewModel?.PointerStatisticsEnabled == true };
     _trayPointerStatistics.Click += (_, _) => Dispatcher.BeginInvoke(() => { if (_viewModel is not null) _viewModel.PointerStatisticsEnabled = _trayPointerStatistics.Checked; });
     menu.Items.Add(_trayPointerStatistics);
+    _trayPointerStudio = new Forms.ToolStripMenuItem(_localization.Get("NavPointerStudio"));
+    _trayPointerEffects = new Forms.ToolStripMenuItem(_localization.Get("PointerMotionEffects")) { CheckOnClick = true, Checked = _viewModel?.PointerStudio?.MotionEffectsEnabled == true };
+    _trayPointerEffects.Click += (_, _) => Dispatcher.BeginInvoke(() => { if (_viewModel?.PointerStudio is { } studio) studio.MotionEffectsEnabled = _trayPointerEffects.Checked; });
+    _trayPointerStudio.DropDownItems.Add(_trayPointerEffects);
+    _trayPointerStudio.DropDownItems.Add(new Forms.ToolStripSeparator());
+    if (_viewModel?.PointerStudio is { } pointerStudio)
+      foreach (var theme in pointerStudio.Themes)
+      {
+        var item = new Forms.ToolStripMenuItem(theme.Name) { Tag = theme.Definition.Id };
+        item.Click += (_, _) => Dispatcher.BeginInvoke(() =>
+        {
+          if (_viewModel?.PointerStudio is not { } studio) return;
+          studio.SelectedThemeIndex = studio.Themes.ToList().FindIndex(option => option.Definition.Id == (string)item.Tag!);
+          studio.ApplyCommand.Execute(null);
+        });
+        _trayPointerStudio.DropDownItems.Add(item);
+      }
+    _trayPointerStudio.DropDownItems.Add(new Forms.ToolStripSeparator());
+    _trayPointerPanic = _trayPointerStudio.DropDownItems.Add(_localization.Get("PointerDisableExperimental"), null, (_, _) => Dispatcher.BeginInvoke(() => _viewModel?.PointerStudio?.PanicCommand.Execute(null)));
+    menu.Items.Add(_trayPointerStudio);
     menu.Items.Add(new Forms.ToolStripSeparator());
     _trayExit = menu.Items.Add(_localization.Get("TrayExit"), null, (_, _) => Dispatcher.BeginInvoke(ExitApplication));
     _trayIcon = LoadApplicationIcon();
@@ -315,6 +349,9 @@ public partial class App : Application
     if (_trayToggleSounds is not null) _trayToggleSounds.Text = _localization.Get("TrayToggleSounds");
     if (_trayKeyboardStatistics is not null) _trayKeyboardStatistics.Text = _localization.Get("TrayKeyboardStatistics");
     if (_trayPointerStatistics is not null) _trayPointerStatistics.Text = _localization.Get("TrayPointerStatistics");
+    if (_trayPointerStudio is not null) _trayPointerStudio.Text = _localization.Get("NavPointerStudio");
+    if (_trayPointerEffects is not null) _trayPointerEffects.Text = _localization.Get("PointerMotionEffects");
+    if (_trayPointerPanic is not null) _trayPointerPanic.Text = _localization.Get("PointerDisableExperimental");
     if (_trayExit is not null) _trayExit.Text = _localization.Get("TrayExit");
   }
 
@@ -329,6 +366,28 @@ public partial class App : Application
     window.Activated += (_, _) => _viewModel.SetAppFocused(true);
     window.Deactivated += (_, _) => _viewModel.SetAppFocused(false);
     return window;
+  }
+
+  private void AttachPointerStudio()
+  {
+    if (_viewModel is null || _localization is null || _pointerAppearance is null || _pointerEffects is null || _pointerSuppression is null || _pointerActions is null) return;
+    var studio = new PointerStudioViewModel(
+      _viewModel.Settings,
+      _pointerAppearance,
+      _pointerEffects,
+      _pointerSuppression,
+      _pointerActions,
+      _localization,
+      _viewModel.QueuePointerSettingsSave,
+      RefreshPointerDevices);
+    studio.AppCursorChanged += (path, _) => Dispatcher.BeginInvoke(() => Mouse.OverrideCursor = path is null ? null : new System.Windows.Input.Cursor(path));
+    _viewModel.AttachPointerStudio(studio);
+  }
+
+  private void RefreshPointerDevices()
+  {
+    if (_rawInput is null || _viewModel is null) return;
+    foreach (var device in _rawInput.EnumeratePointerDevices()) _viewModel.HandleDeviceChanged(device);
   }
 
   private void StartActivationListener()
@@ -372,9 +431,16 @@ public partial class App : Application
     var rootIndex = Array.FindIndex(args, value => value.Equals("--data-root", StringComparison.OrdinalIgnoreCase));
     var launcherIndex = Array.FindIndex(args, value => value.Equals("--launcher", StringComparison.OrdinalIgnoreCase));
     var portable = args.Contains("--distribution-portable", StringComparer.OrdinalIgnoreCase);
+    if (!portable) return new AppPaths();
     var root = rootIndex >= 0 && rootIndex + 1 < args.Length ? Path.GetFullPath(args[rootIndex + 1]) : null;
     var launcher = launcherIndex >= 0 && launcherIndex + 1 < args.Length ? Path.GetFullPath(args[launcherIndex + 1]) : null;
-    return new AppPaths(root, portable ? DistributionMode.Portable : DistributionMode.Installed, launcher);
+    if (root is null || launcher is null || root.StartsWith("\\\\", StringComparison.Ordinal) || launcher.StartsWith("\\\\", StringComparison.Ordinal))
+      throw new InvalidDataException("Portable KeyClick requires trusted local data and launcher paths.");
+    var expectedRoot = Path.GetFullPath(Path.Combine(Path.GetDirectoryName(launcher)!, "KeyClickData"));
+    var installedRoot = Path.GetFullPath(Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "KeyClick"));
+    if (!root.Equals(expectedRoot, StringComparison.OrdinalIgnoreCase) && !root.Equals(installedRoot, StringComparison.OrdinalIgnoreCase))
+      throw new InvalidDataException("The portable data folder is outside the allowed local locations.");
+    return new AppPaths(root, DistributionMode.Portable, launcher);
   }
 
   private static System.Drawing.Icon LoadApplicationIcon()

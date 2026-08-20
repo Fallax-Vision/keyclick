@@ -37,7 +37,7 @@ public sealed class UiConsistencyTests
     Assert.Contains("<CornerRadius x:Key=\"CardCornerRadius\">16</CornerRadius>", appXaml);
     Assert.Contains("x:Key=\"MetricCard\"", appXaml);
     Assert.Contains("x:Key=\"PageContent\"", appXaml);
-    Assert.Equal(9, Count(mainXaml, "Style=\"{StaticResource PageContent}\""));
+    Assert.Equal(10, Count(mainXaml, "Style=\"{StaticResource PageContent}\""));
     Assert.Equal(8, Count(mainXaml, "Style=\"{StaticResource MetricCard}\""));
     Assert.Equal(8, Count(mainXaml, "Style=\"{StaticResource MetricCardButton}\""));
     Assert.DoesNotContain("Foreground=\"#", appXaml);
@@ -50,8 +50,8 @@ public sealed class UiConsistencyTests
     var appXaml = File.ReadAllText(Path.Combine(repositoryRoot, "apps", "windows", "src", "KeyClick.App", "App.xaml"));
     var mainXaml = File.ReadAllText(Path.Combine(repositoryRoot, "apps", "windows", "src", "KeyClick.App", "MainWindow.xaml"));
 
-    Assert.Equal(9, Count(mainXaml, "Style=\"{StaticResource NavButton}\""));
-    Assert.Equal(9, Count(mainXaml, "Style=\"{StaticResource NavigationIcon}\""));
+    Assert.Equal(10, Count(mainXaml, "Style=\"{StaticResource NavButton}\""));
+    Assert.Equal(10, Count(mainXaml, "Style=\"{StaticResource NavigationIcon}\""));
     Assert.Contains("GroupName=\"PrimaryNavigation\"", mainXaml);
     Assert.DoesNotContain("ActiveMarker", appXaml);
     Assert.Contains("<Setter Property=\"Margin\" Value=\"0,0,15,0\" />", appXaml);
@@ -199,7 +199,7 @@ public sealed class UiConsistencyTests
     Assert.Contains("PeriodLastFiveHours", viewModel);
     Assert.Contains("SetApplicationsVisible", codeBehind);
     Assert.DoesNotContain("RefreshStatistics_Click", codeBehind);
-    Assert.DoesNotContain("Content=\"{DynamicResource Refresh}\"", mainXaml);
+    Assert.DoesNotContain("RefreshStatistics_Click", mainXaml);
   }
 
   [Fact]
@@ -259,6 +259,25 @@ public sealed class UiConsistencyTests
   }
 
   [Fact]
+  public void Pointer_studio_uses_a_visual_keyboard_accessible_design_gallery()
+  {
+    var root = FindRepositoryRoot();
+    var main = File.ReadAllText(Path.Combine(root, "apps", "windows", "src", "KeyClick.App", "MainWindow.xaml"));
+    var preview = File.ReadAllText(Path.Combine(root, "apps", "windows", "src", "KeyClick.App", "PointerThemePreview.cs"));
+
+    Assert.Contains("<ListBox ItemsSource=\"{Binding Themes}\" SelectedIndex=\"{Binding SelectedThemeIndex}\"", main);
+    Assert.Contains("<local:ResponsiveGridPanel MinItemWidth=\"176\" ItemHeight=\"188\"", main);
+    Assert.Contains("<local:PointerThemePreview Theme=\"{Binding Definition}\"", main);
+    Assert.Contains("Role=\"Hand\"", main);
+    Assert.Contains("Role=\"IBeam\"", main);
+    Assert.Contains("ItemsSource=\"{Binding RolePreviews}\"", main);
+    Assert.Contains("AutomationProperties.Name\" Value=\"{Binding Name}\"", main);
+    Assert.DoesNotContain("<ComboBox ItemsSource=\"{Binding Themes}\"", main);
+    Assert.Contains("DrawMotif", preview);
+    Assert.Contains("DrawAccent", preview);
+  }
+
+  [Fact]
   public void Uninstaller_waits_for_graceful_or_forced_app_exit_before_deleting_payloads()
   {
     var repositoryRoot = FindRepositoryRoot();
@@ -267,10 +286,17 @@ public sealed class UiConsistencyTests
 
     Assert.Contains("Local\\KeyClick.Shutdown.", app);
     Assert.Contains("Local\\KeyClick.Shutdown.", bootstrap);
-    Assert.Contains("StopRunningApp(root);", bootstrap);
+    Assert.Contains("StopRunningApp(dataRoot, installRoot, dataRoot);", bootstrap);
     Assert.Contains("process.Kill(entireProcessTree: true);", bootstrap);
     Assert.Contains("process.WaitForExit(5000)", bootstrap);
     Assert.Contains("DeleteWithRetry", bootstrap);
+    Assert.Contains("Environment.SpecialFolder.ProgramFiles", bootstrap);
+    Assert.Contains("Verb = \"runas\"", bootstrap);
+    Assert.Contains("LaunchInstalledLauncher(launcher)", bootstrap);
+    Assert.Contains("var elevatedInstallation =", bootstrap);
+    Assert.Contains("if (elevatedInstallation)", bootstrap);
+    var viewModel = File.ReadAllText(Path.Combine(repositoryRoot, "apps", "windows", "src", "KeyClick.App", "MainViewModel.cs"));
+    Assert.Contains("if (_settings.LaunchAtStartup) _startup.SetEnabled(true);", viewModel);
     Assert.DoesNotContain("if (!process.WaitForExit(1500)) process.Kill();", bootstrap);
   }
 

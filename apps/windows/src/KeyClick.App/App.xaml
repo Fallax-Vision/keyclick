@@ -136,6 +136,32 @@
       <Setter Property="MinWidth" Value="96" />
     </Style>
 
+    <Style x:Key="DangerButton" TargetType="Button" BasedOn="{StaticResource {x:Type Button}}">
+      <Setter Property="Foreground" Value="{DynamicResource DangerBrush}" />
+      <Setter Property="BorderBrush" Value="{DynamicResource DangerBrush}" />
+      <Setter Property="Template">
+        <Setter.Value>
+          <ControlTemplate TargetType="Button">
+            <Border x:Name="DangerBorder" Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}"
+                    BorderThickness="{TemplateBinding BorderThickness}" CornerRadius="{StaticResource ControlCornerRadius}" Padding="{TemplateBinding Padding}">
+              <ContentPresenter HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}" VerticalAlignment="{TemplateBinding VerticalContentAlignment}"
+                                RecognizesAccessKey="True" TextElement.Foreground="{TemplateBinding Foreground}" />
+            </Border>
+            <ControlTemplate.Triggers>
+              <Trigger Property="IsMouseOver" Value="True"><Setter TargetName="DangerBorder" Property="Background" Value="{DynamicResource SurfaceHoverBrush}" /></Trigger>
+              <Trigger Property="IsKeyboardFocused" Value="True"><Setter TargetName="DangerBorder" Property="BorderThickness" Value="2" /></Trigger>
+              <Trigger Property="IsPressed" Value="True"><Setter TargetName="DangerBorder" Property="Opacity" Value="0.78" /></Trigger>
+              <Trigger Property="IsEnabled" Value="False"><Setter TargetName="DangerBorder" Property="Opacity" Value="0.35" /></Trigger>
+            </ControlTemplate.Triggers>
+          </ControlTemplate>
+        </Setter.Value>
+      </Setter>
+    </Style>
+
+    <Style x:Key="DialogDangerButton" TargetType="Button" BasedOn="{StaticResource DangerButton}">
+      <Setter Property="MinWidth" Value="96" />
+    </Style>
+
     <Style x:Key="NavButton" TargetType="RadioButton">
       <Setter Property="Foreground" Value="{DynamicResource TextBrush}" />
       <Setter Property="Background" Value="Transparent" />
@@ -427,7 +453,7 @@
     <Style TargetType="CheckBox">
       <Setter Property="Foreground" Value="{DynamicResource TextBrush}" />
       <Setter Property="VerticalContentAlignment" Value="Center" />
-      <Setter Property="MinHeight" Value="32" />
+      <Setter Property="MinHeight" Value="40" />
       <Setter Property="Margin" Value="0,3" />
       <Setter Property="Cursor" Value="Hand" />
       <Setter Property="Template">
@@ -435,7 +461,7 @@
           <ControlTemplate TargetType="CheckBox">
             <Grid>
               <Grid.ColumnDefinitions><ColumnDefinition Width="Auto" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
-              <Border x:Name="Box" Width="18" Height="18" CornerRadius="5" Background="{DynamicResource SurfaceBrush}"
+              <Border x:Name="Box" Width="20" Height="20" CornerRadius="5" Background="{DynamicResource SurfaceBrush}"
                       BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1" VerticalAlignment="Center">
                 <Path x:Name="CheckMark" Data="M 3 8 L 7 12 L 15 4" Stroke="{DynamicResource AccentTextBrush}"
                       StrokeThickness="2" StrokeStartLineCap="Round" StrokeEndLineCap="Round" Visibility="Collapsed" />
@@ -600,6 +626,36 @@
               <Trigger Property="IsKeyboardFocused" Value="True"><Setter TargetName="PackContainer" Property="BorderBrush" Value="{DynamicResource AccentBrush}" /></Trigger>
               <Trigger Property="IsSelected" Value="True"><Setter TargetName="PackContainer" Property="Background" Value="{DynamicResource SelectionBrush}" /><Setter TargetName="PackContainer" Property="BorderBrush" Value="{DynamicResource AccentBrush}" /></Trigger>
               <Trigger Property="IsEnabled" Value="False"><Setter TargetName="PackContainer" Property="Opacity" Value="0.45" /></Trigger>
+            </ControlTemplate.Triggers>
+          </ControlTemplate>
+        </Setter.Value>
+      </Setter>
+    </Style>
+
+    <Style x:Key="SettingsToggle" TargetType="CheckBox" BasedOn="{StaticResource {x:Type CheckBox}}">
+      <Setter Property="MinHeight" Value="44" />
+      <Setter Property="Template">
+        <Setter.Value>
+          <ControlTemplate TargetType="CheckBox">
+            <Grid>
+              <Grid.ColumnDefinitions><ColumnDefinition Width="42" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
+              <Border x:Name="Track" Width="42" Height="22" CornerRadius="11" Background="{DynamicResource SurfaceBrush}"
+                      BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1" VerticalAlignment="Center">
+                <Ellipse x:Name="Knob" Width="16" Height="16" Margin="3" HorizontalAlignment="Left" Fill="{DynamicResource MutedTextBrush}" />
+              </Border>
+              <ContentPresenter Grid.Column="1" Margin="10,0,0,0" VerticalAlignment="Center" RecognizesAccessKey="True"
+                                TextElement.Foreground="{TemplateBinding Foreground}" />
+            </Grid>
+            <ControlTemplate.Triggers>
+              <Trigger Property="IsChecked" Value="True">
+                <Setter TargetName="Track" Property="Background" Value="{DynamicResource AccentBrush}" />
+                <Setter TargetName="Track" Property="BorderBrush" Value="{DynamicResource AccentBrush}" />
+                <Setter TargetName="Knob" Property="HorizontalAlignment" Value="Right" />
+                <Setter TargetName="Knob" Property="Fill" Value="Black" />
+              </Trigger>
+              <Trigger Property="IsMouseOver" Value="True"><Setter TargetName="Track" Property="BorderBrush" Value="{DynamicResource AccentBrush}" /></Trigger>
+              <Trigger Property="IsKeyboardFocused" Value="True"><Setter TargetName="Track" Property="BorderThickness" Value="2" /></Trigger>
+              <Trigger Property="IsEnabled" Value="False"><Setter Property="Opacity" Value="0.45" /></Trigger>
             </ControlTemplate.Triggers>
           </ControlTemplate>
         </Setter.Value>
@@ -940,6 +996,14 @@
       <Setter Property="Padding" Value="16" />
       <Setter Property="Margin" Value="5" />
       <Setter Property="MinHeight" Value="102" />
+    </Style>
+
+    <Style x:Key="InsetCard" TargetType="Border">
+      <Setter Property="Background" Value="{DynamicResource SurfaceBrush}" />
+      <Setter Property="BorderBrush" Value="{DynamicResource BorderBrush}" />
+      <Setter Property="BorderThickness" Value="1" />
+      <Setter Property="CornerRadius" Value="{StaticResource ControlCornerRadius}" />
+      <Setter Property="Margin" Value="4" />
     </Style>
 
     <Style x:Key="MetricCardButton" TargetType="Button" BasedOn="{StaticResource {x:Type Button}}">

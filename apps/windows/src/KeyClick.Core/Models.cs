@@ -276,7 +276,13 @@ public sealed record StatisticsSnapshot(
   public double AverageClicksPerActiveSecond => PointerActiveMilliseconds <= 0 ? 0 : PointerClicks * 1000d / PointerActiveMilliseconds;
 }
 
-public sealed record InputDeviceDescriptor(string Id, DeviceFamily Family, bool Connected);
+public sealed record InputDeviceDescriptor(
+  string Id,
+  DeviceFamily Family,
+  bool Connected,
+  string DisplayName = "",
+  int ButtonCount = 0,
+  bool HasHorizontalWheel = false);
 
 public sealed record StatisticsDeleteRequest(
   DateTimeOffset? StartUtc,
@@ -533,10 +539,13 @@ public sealed class AppSettings
   public List<string> StatisticsExcludedExecutables { get; set; } = [];
   public List<string> AllowedIntegrationClients { get; set; } = [];
   public Dictionary<string, DeviceFamily> DeviceClassifications { get; set; } = [];
+  public PointerStudioSettings PointerStudio { get; set; } = new();
   public PackRotationPolicy PackRotation { get; set; } = new();
 
   public void NormalizeFunStats()
   {
+    PointerStudio ??= new();
+    PointerStudio.Normalize();
     SelectedFunStatIds ??= [];
     DisabledFunFactIds ??= [];
     CustomFunStats ??= [];

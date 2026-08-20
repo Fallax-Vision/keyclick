@@ -16,6 +16,7 @@ public sealed class RawInputService : IRawInputService
   private const uint WmDestroy = 0x0002;
   private const uint RidInput = 0x10000003;
   private const uint RidiDeviceName = 0x20000007;
+  private const uint RidiDeviceInfo = 0x2000000B;
   private const uint RidevInputSink = 0x00000100;
   private const uint RidevDevNotify = 0x00002000;
   private const ushort RiKeyE0 = 0x0002;
@@ -44,6 +45,25 @@ public sealed class RawInputService : IRawInputService
 
   public event EventHandler<InputActionEvent>? InputAction;
   public event EventHandler<InputDeviceDescriptor>? DeviceChanged;
+  public event Action<PointerMovementSignal>? PointerMoved;
+
+  public IReadOnlyList<InputDeviceDescriptor> EnumeratePointerDevices()
+  {
+    uint count = 0;
+    var entrySize = (uint)Marshal.SizeOf<RawInputDeviceListEntry>();
+    if (GetRawInputDeviceList(null, ref count, entrySize) == uint.MaxValue || count == 0 || count > 256) return [];
+    var entries = new RawInputDeviceListEntry[count];
+    if (GetRawInputDeviceList(entries, ref count, entrySize) == uint.MaxValue) return [];
+    var devices = new List<InputDeviceDescriptor>((int)count);
+    foreach (var entry in entries.Take((int)count))
+    {
+      if (entry.Type != RimTypeMouse || entry.Device == 0) continue;
+      var descriptor = ResolveDescriptor(entry.Device, DeviceFamily.UnknownPointer);
+      _devices[entry.Device] = descriptor;
+      devices.Add(ToPublic(descriptor, true));
+    }
+    return devices;
+  }
 
   public void Start()
   {
@@ -134,7 +154,7 @@ public sealed class RawInputService : IRawInputService
         _pressedKeys.RemoveWhere(item => item.Device == lParam);
         lock (_wheelAccumulators)
           foreach (var key in _wheelAccumulators.Keys.Where(key => key.Device == lParam).ToArray()) _wheelAccumulators.Remove(key);
-        if (removed is not null) DeviceChanged?.Invoke(this, new(removed.Id, removed.Family, false));
+        if (removed is not null) DeviceChanged?.Invoke(this, ToPublic(removed, false));
         return 0;
       case WmClose:
         DestroyWindow(window);
@@ -208,6 +228,8 @@ public sealed class RawInputService : IRawInputService
   private void ProcessMouse(nint device, RawMouse mouse)
   {
     var descriptor = DescribeDevice(device, DeviceFamily.UnknownPointer);
+    if (mouse.LastX != 0 || mouse.LastY != 0)
+      PointerMoved?.Invoke(new(mouse.LastX, mouse.LastY, Stopwatch.GetTimestamp()));
     var flags = mouse.ButtonFlags;
     if ((flags & 0x0002) != 0) EmitPointer(descriptor, 1, InputKind.PointerButton);
     if ((flags & 0x0008) != 0) EmitPointer(descriptor, 2, InputKind.PointerButton);
@@ -228,7 +250,9 @@ public sealed class RawInputService : IRawInputService
         accumulator = new WheelAccumulator();
         _wheelAccumulators[key] = accumulator;
       }
-      foreach (var direction in accumulator.Add(delta))
+      var detents = accumulator.AddDetents(delta);
+      var direction = Math.Sign(detents);
+      for (var index = 0; index < Math.Abs(detents); index++)
       {
         var code = horizontal ? (direction > 0 ? 9 : 8) : (direction > 0 ? 6 : 7);
         EmitPointer(descriptor, code, InputKind.Wheel);
@@ -267,6 +291,14 @@ public sealed class RawInputService : IRawInputService
 
   private void ResolveDevice(nint current, DeviceFamily expectedFamily)
   {
+    var descriptor = ResolveDescriptor(current, expectedFamily);
+    _devices[current] = descriptor;
+    _pendingDeviceLookups.TryRemove(current, out _);
+    DeviceChanged?.Invoke(this, ToPublic(descriptor, true));
+  }
+
+  private static DeviceDescriptor ResolveDescriptor(nint current, DeviceFamily expectedFamily)
+  {
     var capacity = 512u;
     var name = new StringBuilder((int)capacity);
     var result = GetRawInputDeviceInfo(current, RidiDeviceName, name, ref capacity);
@@ -278,13 +310,41 @@ public sealed class RawInputService : IRawInputService
         ? DeviceFamily.Trackpad
         : lower.Contains("mouse") ? DeviceFamily.ExternalMouse : DeviceFamily.UnknownPointer;
     var digest = SHA256.HashData(Encoding.UTF8.GetBytes(rawName));
-    var descriptor = new DeviceDescriptor(current, Convert.ToHexString(digest.AsSpan(0, 8)), family);
-    _devices[current] = descriptor;
-    _pendingDeviceLookups.TryRemove(current, out _);
-    DeviceChanged?.Invoke(this, new(descriptor.Id, descriptor.Family, true));
+    var info = new RawInputDeviceInfo { Size = (uint)Marshal.SizeOf<RawInputDeviceInfo>() };
+    var infoSize = info.Size;
+    var hasInfo = GetRawInputDeviceInfoStruct(current, RidiDeviceInfo, ref info, ref infoSize) != uint.MaxValue;
+    var buttons = hasInfo ? Math.Clamp((int)info.Mouse.NumberOfButtons, 0, 32) : 0;
+    var horizontalWheel = hasInfo && info.Mouse.HasHorizontalWheel != 0;
+    return new(current, Convert.ToHexString(digest.AsSpan(0, 8)), family, FriendlyDeviceName(rawName, family), buttons, horizontalWheel);
   }
 
-  private sealed record DeviceDescriptor(nint Handle, string Id, DeviceFamily Family);
+  private static InputDeviceDescriptor ToPublic(DeviceDescriptor descriptor, bool connected) =>
+    new(descriptor.Id, descriptor.Family, connected, descriptor.DisplayName, descriptor.ButtonCount, descriptor.HasHorizontalWheel);
+
+  private static string FriendlyDeviceName(string rawName, DeviceFamily family)
+  {
+    var upper = rawName.ToUpperInvariant();
+    var vid = ExtractHardwareToken(upper, "VID_");
+    var pid = ExtractHardwareToken(upper, "PID_");
+    var kind = family == DeviceFamily.Trackpad ? "Precision trackpad" : "Mouse";
+    return vid is null && pid is null ? kind : $"{kind} · {vid ?? "----"}:{pid ?? "----"}";
+  }
+
+  private static string? ExtractHardwareToken(string source, string prefix)
+  {
+    var index = source.IndexOf(prefix, StringComparison.Ordinal);
+    if (index < 0 || index + prefix.Length + 4 > source.Length) return null;
+    var value = source.Substring(index + prefix.Length, 4);
+    return value.All(char.IsAsciiHexDigit) ? value : null;
+  }
+
+  private sealed record DeviceDescriptor(
+    nint Handle,
+    string Id,
+    DeviceFamily Family,
+    string DisplayName = "Pointer device",
+    int ButtonCount = 0,
+    bool HasHorizontalWheel = false);
 
   [StructLayout(LayoutKind.Sequential)]
   private struct RawInputDevice
@@ -300,6 +360,30 @@ public sealed class RawInputService : IRawInputService
     public ushort Usage;
     public uint Flags;
     public nint Target;
+  }
+
+  [StructLayout(LayoutKind.Sequential)]
+  private struct RawInputDeviceListEntry
+  {
+    public nint Device;
+    public uint Type;
+  }
+
+  [StructLayout(LayoutKind.Explicit)]
+  private struct RawInputDeviceInfo
+  {
+    [FieldOffset(0)] public uint Size;
+    [FieldOffset(4)] public uint Type;
+    [FieldOffset(8)] public RawInputMouseInfo Mouse;
+  }
+
+  [StructLayout(LayoutKind.Sequential)]
+  private struct RawInputMouseInfo
+  {
+    public uint Id;
+    public uint NumberOfButtons;
+    public uint SampleRate;
+    public uint HasHorizontalWheel;
   }
 
   [StructLayout(LayoutKind.Sequential)]
@@ -383,8 +467,10 @@ public sealed class RawInputService : IRawInputService
   }
 
   [DllImport("user32.dll", SetLastError = true)] private static extern bool RegisterRawInputDevices(RawInputDevice[] devices, uint number, uint size);
+  [DllImport("user32.dll", SetLastError = true)] private static extern uint GetRawInputDeviceList([Out] RawInputDeviceListEntry[]? devices, ref uint count, uint size);
   [DllImport("user32.dll", SetLastError = true)] private static extern uint GetRawInputData(nint input, uint command, nint data, ref uint size, uint headerSize);
   [DllImport("user32.dll", CharSet = CharSet.Unicode, SetLastError = true)] private static extern uint GetRawInputDeviceInfo(nint device, uint command, StringBuilder data, ref uint size);
+  [DllImport("user32.dll", EntryPoint = "GetRawInputDeviceInfoW", SetLastError = true)] private static extern uint GetRawInputDeviceInfoStruct(nint device, uint command, ref RawInputDeviceInfo data, ref uint size);
   [DllImport("user32.dll", CharSet = CharSet.Unicode, SetLastError = true)] private static extern ushort RegisterClassEx(ref WndClassEx windowClass);
   [DllImport("user32.dll", CharSet = CharSet.Unicode, SetLastError = true)] private static extern nint CreateWindowEx(uint exStyle, string className, string windowName, uint style, int x, int y, int width, int height, nint parent, nint menu, nint instance, nint parameter);
   [DllImport("user32.dll")] private static extern nint DefWindowProc(nint window, uint message, nint wParam, nint lParam);

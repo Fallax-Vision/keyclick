@@ -1,0 +1,19 @@
+{
+  "version": 1,
+  "roles": [
+    "Arrow", "Help", "AppStarting", "Wait", "Crosshair", "IBeam", "NWPen", "No",
+    "SizeNS", "SizeWE", "SizeNWSE", "SizeNESW", "SizeAll", "UpArrow", "Hand"
+  ],
+  "themes": [
+    { "id": "meridian", "nameKey": "PointerThemeMeridian", "descriptionKey": "PointerThemeMeridianHelp", "style": "clean", "primary": "#F7F9FC", "secondary": "#24C85A", "outline": "#101319", "provenance": "KeyClick original vector construction" },
+    { "id": "orbit", "nameKey": "PointerThemeOrbit", "descriptionKey": "PointerThemeOrbitHelp", "style": "orbital", "primary": "#E9F2FF", "secondary": "#5B8CFF", "outline": "#17233F", "provenance": "KeyClick original vector construction" },
+    { "id": "prism", "nameKey": "PointerThemePrism", "descriptionKey": "PointerThemePrismHelp", "style": "glass", "primary": "#E5F7FF", "secondary": "#A461FF", "outline": "#18304A", "provenance": "KeyClick original vector construction" },
+    { "id": "neon-vector", "nameKey": "PointerThemeNeon", "descriptionKey": "PointerThemeNeonHelp", "style": "neon", "primary": "#0D1822", "secondary": "#00F5D4", "outline": "#A8FFF3", "provenance": "KeyClick original vector construction" },
+    { "id": "soft-drop", "nameKey": "PointerThemeSoftDrop", "descriptionKey": "PointerThemeSoftDropHelp", "style": "organic", "primary": "#FFF5ED", "secondary": "#FF7F5C", "outline": "#4A2920", "provenance": "KeyClick original vector construction" },
+    { "id": "pixel-nova", "nameKey": "PointerThemePixelNova", "descriptionKey": "PointerThemePixelNovaHelp", "style": "pixel", "primary": "#F8FAFF", "secondary": "#FF4FD8", "outline": "#23142B", "provenance": "KeyClick original vector construction" },
+    { "id": "paper-fold", "nameKey": "PointerThemePaperFold", "descriptionKey": "PointerThemePaperFoldHelp", "style": "folded", "primary": "#FFFDF7", "secondary": "#E5B84C", "outline": "#3A3428", "provenance": "KeyClick original vector construction" },
+    { "id": "liquid", "nameKey": "PointerThemeLiquid", "descriptionKey": "PointerThemeLiquidHelp", "style": "liquid", "primary": "#E3FBFF", "secondary": "#20BDEB", "outline": "#123D4A", "provenance": "KeyClick original vector construction" },
+    { "id": "circuit", "nameKey": "PointerThemeCircuit", "descriptionKey": "PointerThemeCircuitHelp", "style": "geometric", "primary": "#E9FFF2", "secondary": "#34D27B", "outline": "#123320", "provenance": "KeyClick original vector construction" },
+    { "id": "comet", "nameKey": "PointerThemeComet", "descriptionKey": "PointerThemeCometHelp", "style": "playful", "primary": "#FFF1FA", "secondary": "#FF5C9A", "outline": "#4A1730", "provenance": "KeyClick original vector construction" }
+  ]
+}

@@ -189,16 +189,16 @@ public sealed class SoundPackImportService(AppPaths paths, AudioImportService au
     }
   }
 
-  private bool IsInstalledPackValid(SoundPackDefinition pack) =>
-    pack.IsCustom && pack.Id.Length is > 0 and <= 64 && PackId.IsMatch(pack.Id) &&
+  private bool IsInstalledPackValid(SoundPackDefinition? pack) =>
+    pack is not null && pack.IsCustom && pack.Id is { Length: > 0 and <= 64 } && PackId.IsMatch(pack.Id) &&
     !BuiltInCatalog.Packs.Any(item => string.Equals(item.Id, pack.Id, StringComparison.OrdinalIgnoreCase)) &&
     !string.IsNullOrWhiteSpace(pack.Name) && pack.SamplePools is { Count: > 0 } &&
     pack.AllSampleIds().All(IsInstalledSampleValid);
 
   private bool IsInstalledSampleValid(string sampleId)
   {
-    if (!sampleId.StartsWith("custom:", StringComparison.Ordinal) || sampleId.Length != 71 || sampleId[7..].Any(character => !Uri.IsHexDigit(character))) return false;
-    return File.Exists(Path.Combine(paths.Sounds, $"{sampleId[7..]}.wav"));
+    if (!CustomSampleId.IsValid(sampleId)) return false;
+    return File.Exists(Path.Combine(paths.Sounds, CustomSampleId.FileName(sampleId)));
   }
 
   private static bool TryParseVariant(string value, out KeyVariant variant)

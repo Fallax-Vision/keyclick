@@ -66,6 +66,8 @@ public sealed class StatisticsViewModel : INotifyPropertyChanged, IDisposable
   private bool _heatmapRefreshPending;
   private bool _heatmapVisible;
   private bool _homeVisible;
+  private bool _statisticsVisible;
+  private int _dirtyRefreshScheduled;
   private bool _applicationsVisible;
   private bool _heatmapTooltipsEnabled = true;
   private bool _funStatsPresented;
@@ -84,6 +86,7 @@ public sealed class StatisticsViewModel : INotifyPropertyChanged, IDisposable
     RebuildFunStatCategoryOptions();
     RebuildChartSeriesOptions();
     RebuildChartOptions();
+    _service.DataChanged += StatisticsDataChanged;
   }
 
   public event PropertyChangedEventHandler? PropertyChanged;
@@ -385,9 +388,10 @@ public sealed class StatisticsViewModel : INotifyPropertyChanged, IDisposable
     _visibleRefresh?.Cancel();
     _visibleRefresh?.Dispose();
     _visibleRefresh = null;
+    _statisticsVisible = visible;
     if (!visible) return;
     _visibleRefresh = new CancellationTokenSource();
-    _ = RefreshWhileVisibleAsync(_visibleRefresh.Token);
+    _ = RefreshAsync(_visibleRefresh.Token);
   }
 
   public void SetHomeVisible(bool visible)
@@ -618,21 +622,26 @@ public sealed class StatisticsViewModel : INotifyPropertyChanged, IDisposable
 
   public void Dispose()
   {
+    _service.DataChanged -= StatisticsDataChanged;
     _visibleRefresh?.Cancel();
     _visibleRefresh?.Dispose();
   }
 
-  private async Task RefreshWhileVisibleAsync(CancellationToken cancellationToken)
+  private void StatisticsDataChanged()
+  {
+    if (!_statisticsVisible || Interlocked.Exchange(ref _dirtyRefreshScheduled, 1) != 0) return;
+    _ = RefreshDirtyAsync();
+  }
+
+  private async Task RefreshDirtyAsync()
   {
     try
     {
-      while (!cancellationToken.IsCancellationRequested)
-      {
-        await RefreshAsync(cancellationToken);
-        await Task.Delay(TimeSpan.FromSeconds(1), cancellationToken);
-      }
+      await Task.Delay(TimeSpan.FromSeconds(1));
+      if (!_statisticsVisible) return;
+      await System.Windows.Application.Current.Dispatcher.InvokeAsync(async () => await RefreshAsync()).Task.Unwrap();
     }
-    catch (OperationCanceledException) { }
+    finally { Interlocked.Exchange(ref _dirtyRefreshScheduled, 0); }
   }
 
   private StatisticsQuery CreateQuery()

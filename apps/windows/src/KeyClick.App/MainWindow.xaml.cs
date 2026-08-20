@@ -38,7 +38,10 @@ public partial class MainWindow : Window
   private void Navigation_Checked(object sender, RoutedEventArgs e)
   {
     if (sender is System.Windows.Controls.RadioButton { Tag: string tag } && int.TryParse(tag, out var page) && PageTabs is not null)
+    {
       PageTabs.SelectedIndex = page;
+      if (page == 4) _viewModel.PointerStudio?.OnPageOpened();
+    }
   }
 
   private async void ImportSound_Click(object sender, RoutedEventArgs e)
@@ -222,6 +225,16 @@ public partial class MainWindow : Window
     {
       RoutedEvent = UIElement.MouseWheelEvent,
       Source = SoundPacksScrollViewer
+    });
+  }
+
+  private void PointerThemeGallery_PreviewMouseWheel(object sender, MouseWheelEventArgs e)
+  {
+    e.Handled = true;
+    PointerStudioScrollViewer.RaiseEvent(new MouseWheelEventArgs(e.MouseDevice, e.Timestamp, e.Delta)
+    {
+      RoutedEvent = UIElement.MouseWheelEvent,
+      Source = PointerStudioScrollViewer
     });
   }
 
@@ -449,7 +462,7 @@ public partial class MainWindow : Window
           L.Get("UpdateAvailableTitle"), MessageBoxButton.YesNo, MessageBoxImage.Question);
         if (confirmation != MessageBoxResult.Yes) return;
         var path = await _viewModel.PrepareUpdateAsync(update);
-        Process.Start(new ProcessStartInfo(path, "--update") { UseShellExecute = true });
+        await _viewModel.LaunchPreparedUpdateAsync(update, path);
         ((App)Application.Current).ExitApplication();
         return;
       }
@@ -471,7 +484,7 @@ public partial class MainWindow : Window
         L.Get("UpdateAvailableTitle"), MessageBoxButton.YesNo, MessageBoxImage.Question);
       if (confirmation != MessageBoxResult.Yes) return;
       var path = await _viewModel.PrepareUpdateAsync(update);
-      Process.Start(new ProcessStartInfo(path, "--update") { UseShellExecute = true });
+      await _viewModel.LaunchPreparedUpdateAsync(update, path);
       ((App)Application.Current).ExitApplication();
     }
     catch (Exception exception)
@@ -485,8 +498,13 @@ public partial class MainWindow : Window
     var app = (App)Application.Current;
     if (AllowClose || app.IsExiting) return;
     e.Cancel = true;
-    Dispatcher.BeginInvoke(app.ExitApplication);
+    Dispatcher.BeginInvoke(ShouldHideOnClose(_viewModel.CloseToTray, AllowClose, app.IsExiting)
+      ? app.HideWindow
+      : app.ExitApplication);
   }
+
+  internal static bool ShouldHideOnClose(bool closeToTray, bool allowClose, bool appIsExiting) =>
+    closeToTray && !allowClose && !appIsExiting;
 
   private void Window_StateChanged(object? sender, EventArgs e)
   {
