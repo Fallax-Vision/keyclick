@@ -62,7 +62,7 @@ public sealed class StatisticsService : IAsyncDisposable
   {
     var policy = Volatile.Read(ref _policy);
     if (!policy.DisclosureConfirmed) return false;
-    if (action.ForegroundExecutable is not null && policy.ExcludedExecutables.Contains(action.ForegroundExecutable)) return false;
+    if (ExecutableExclusionMatcher.Matches(policy.ExcludedExecutables, action.ForegroundExecutable)) return false;
     var accepted = action.Input.Kind switch
     {
       InputKind.KeyboardKey => action.Phase == InputPhase.Down && policy.KeyboardEnabled,

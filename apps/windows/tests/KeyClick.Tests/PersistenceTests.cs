@@ -62,12 +62,59 @@ public sealed class PersistenceTests
       command.CommandText = "PRAGMA journal_mode;";
       Assert.Equal("wal", (await command.ExecuteScalarAsync())?.ToString());
       command.CommandText = "SELECT MAX(version) FROM schema_migrations;";
-      Assert.Equal(5L, (long)(await command.ExecuteScalarAsync())!);
+      Assert.Equal(6L, (long)(await command.ExecuteScalarAsync())!);
       command.CommandText = "SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name='statistics_application_hourly';";
       Assert.Equal(1L, (long)(await command.ExecuteScalarAsync())!);
       command.CommandText = "SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name='typing_challenge_results';";
       Assert.Equal(1L, (long)(await command.ExecuteScalarAsync())!);
     }
+  }
+
+  [Fact]
+  public async Task Privacy_migration_removes_legacy_content_derived_custom_prompt_ids_only()
+  {
+    using var folder = new TemporaryFolder();
+    var paths = new AppPaths(folder.Path);
+    await using (var store = new SqliteAppStore(paths))
+    {
+      await store.InitializeAsync();
+    }
+
+    await using (var connection = new SqliteConnection($"Data Source={paths.Database};Pooling=False"))
+    {
+      await connection.OpenAsync();
+      var command = connection.CreateCommand();
+      command.CommandText = """
+        DELETE FROM schema_migrations WHERE version=6;
+        INSERT INTO typing_challenge_prompts(id,title,prompt_text,language,difficulty,favorite,created_utc,updated_utc,revision)
+        VALUES('saved-prompt','Saved','Local text','en','Medium',0,$now,$now,1);
+        INSERT INTO typing_challenge_results
+          (id,source_id,completed_utc,source,prompt_id,prompt_title,language,difficulty,run_mode,mistake_mode,
+           duration_limit_seconds,active_ms,character_attempts,correct_characters,error_attempts,corrections,
+           retained_characters,words,gross_wpm,net_wpm,accuracy_percent,consistency_percent,reference_completed,
+           valid_for_streak,goal_wpm_snapshot,goal_accuracy_snapshot,revision)
+        VALUES
+          ('legacy','source',$now,'Custom','content-derived-fingerprint','Custom','en','Medium','PassageCompletion','Flow',
+           NULL,1000,5,5,0,0,5,1,12,12,100,100,1,0,40,95,1),
+          ('saved','source',$now,'Custom','saved-prompt','Saved','en','Medium','PassageCompletion','Flow',
+           NULL,1000,5,5,0,0,5,1,12,12,100,100,1,0,40,95,1);
+        """;
+      command.Parameters.AddWithValue("$now", DateTimeOffset.UtcNow.ToString("O"));
+      await command.ExecuteNonQueryAsync();
+    }
+
+    await using (var migrated = new SqliteAppStore(paths))
+    {
+      await migrated.InitializeAsync();
+    }
+
+    await using var check = new SqliteConnection($"Data Source={paths.Database};Pooling=False");
+    await check.OpenAsync();
+    var query = check.CreateCommand();
+    query.CommandText = "SELECT prompt_id FROM typing_challenge_results WHERE id='legacy';";
+    Assert.Equal(DBNull.Value, await query.ExecuteScalarAsync());
+    query.CommandText = "SELECT prompt_id FROM typing_challenge_results WHERE id='saved';";
+    Assert.Equal("saved-prompt", await query.ExecuteScalarAsync());
   }
 
   [Theory]

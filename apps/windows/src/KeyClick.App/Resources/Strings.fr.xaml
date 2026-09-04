@@ -805,7 +805,10 @@
   <sys:String x:Key="PointerMotionEffects">Effets de mouvement</sys:String><sys:String x:Key="PointerEnableMotion">Activer la personnalité du mouvement</sys:String>
   <sys:String x:Key="PointerVisualScale">Échelle visuelle</sys:String><sys:String x:Key="PointerSmoothing">Lissage visuel</sys:String><sys:String x:Key="PointerSpring">Force du ressort</sys:String><sys:String x:Key="PointerDamping">Amortissement</sys:String><sys:String x:Key="PointerTrailLength">Longueur de la traînée</sys:String>
   <sys:String x:Key="PointerShakeEnlarge">Agrandir lorsque le pointeur est secoué</sys:String><sys:String x:Key="PointerFindNow">Localiser le pointeur</sys:String>
-  <sys:String x:Key="PointerClickIndicators">Indicateurs de clic</sys:String><sys:String x:Key="PointerEnableClickIndicators">Activer le retour visuel des clics</sys:String>
+  <sys:String x:Key="PointerClickIndicators">Indicateurs de clic</sys:String>
+  <sys:String x:Key="ActionFailed">L’action n’a pas pu être effectuée</sys:String>
+  <sys:String x:Key="ActionFailedFormat">KeyClick n’a pas pu effectuer cette action : {0}</sys:String>
+  <sys:String x:Key="PointerEnableClickIndicators">Activer le retour visuel des clics</sys:String>
   <sys:String x:Key="PointerLeftClick">Clic gauche</sys:String><sys:String x:Key="PointerRightClick">Clic droit</sys:String><sys:String x:Key="PointerMiddleClick">Molette / clic central</sys:String><sys:String x:Key="PointerAuxiliaryClick">Boutons supplémentaires</sys:String><sys:String x:Key="Enabled">Activé</sys:String>
   <sys:String x:Key="PointerConnectedDevices">Périphériques de pointage connectés</sys:String>
   <sys:String x:Key="PointerConnectedDevicesHelp">Les périphériques sont recensés au démarrage, à l'actualisation ou lors d'un changement matériel. Les chemins HID bruts ne sont jamais enregistrés.</sys:String>
@@ -845,4 +848,7 @@
   <sys:String x:Key="PointerThemeLiquid">Liquide</sys:String><sys:String x:Key="PointerThemeLiquidHelp">Formes cyan fluides qui restent précises au point actif.</sys:String>
   <sys:String x:Key="PointerThemeCircuit">Circuit</sys:String><sys:String x:Key="PointerThemeCircuitHelp">Géométrie technique verte inspirée des pistes connectées.</sys:String>
   <sys:String x:Key="PointerThemeComet">Comète</sys:String><sys:String x:Key="PointerThemeCometHelp">Formes roses ludiques conçues pour des mouvements vivants.</sys:String>
+  <sys:String x:Key="PointerIndicatorStyle">Style de l’indicateur</sys:String>
+  <sys:String x:Key="PointerIndicatorColor">Couleur (hex.)</sys:String>
+  <sys:String x:Key="PointerIndicatorSize">Taille</sys:String>
 </ResourceDictionary>

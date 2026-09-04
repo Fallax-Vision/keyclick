@@ -68,6 +68,8 @@ public sealed class StatisticsViewModel : INotifyPropertyChanged, IDisposable
   private bool _homeVisible;
   private bool _statisticsVisible;
   private int _dirtyRefreshScheduled;
+  private long _dirtyRefreshRevision;
+  private long _lastDirtyRefreshRevision;
   private bool _applicationsVisible;
   private bool _heatmapTooltipsEnabled = true;
   private bool _funStatsPresented;
@@ -385,6 +387,7 @@ public sealed class StatisticsViewModel : INotifyPropertyChanged, IDisposable
 
   public void SetVisible(bool visible)
   {
+    if (_statisticsVisible == visible) return;
     _visibleRefresh?.Cancel();
     _visibleRefresh?.Dispose();
     _visibleRefresh = null;
@@ -629,6 +632,12 @@ public sealed class StatisticsViewModel : INotifyPropertyChanged, IDisposable
 
   private void StatisticsDataChanged()
   {
+    Interlocked.Increment(ref _dirtyRefreshRevision);
+    ScheduleDirtyRefresh();
+  }
+
+  private void ScheduleDirtyRefresh()
+  {
     if (!_statisticsVisible || Interlocked.Exchange(ref _dirtyRefreshScheduled, 1) != 0) return;
     _ = RefreshDirtyAsync();
   }
@@ -637,11 +646,22 @@ public sealed class StatisticsViewModel : INotifyPropertyChanged, IDisposable
   {
     try
     {
-      await Task.Delay(TimeSpan.FromSeconds(1));
-      if (!_statisticsVisible) return;
-      await System.Windows.Application.Current.Dispatcher.InvokeAsync(async () => await RefreshAsync()).Task.Unwrap();
+      while (_statisticsVisible)
+      {
+        var revision = Volatile.Read(ref _dirtyRefreshRevision);
+        await Task.Delay(TimeSpan.FromSeconds(1));
+        if (!_statisticsVisible) return;
+        await System.Windows.Application.Current.Dispatcher.InvokeAsync(async () => await RefreshAsync()).Task.Unwrap();
+        Volatile.Write(ref _lastDirtyRefreshRevision, revision);
+        if (revision == Volatile.Read(ref _dirtyRefreshRevision)) return;
+      }
     }
-    finally { Interlocked.Exchange(ref _dirtyRefreshScheduled, 0); }
+    finally
+    {
+      Interlocked.Exchange(ref _dirtyRefreshScheduled, 0);
+      if (_statisticsVisible && Volatile.Read(ref _lastDirtyRefreshRevision) != Volatile.Read(ref _dirtyRefreshRevision))
+        ScheduleDirtyRefresh();
+    }
   }
 
   private StatisticsQuery CreateQuery()

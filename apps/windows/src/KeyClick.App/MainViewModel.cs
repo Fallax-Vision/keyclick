@@ -471,10 +471,13 @@ public sealed class MainViewModel : INotifyPropertyChanged, IDisposable
     _settings = await _store.LoadSettingsAsync();
     _settings.LaunchAtStartup = _startup.IsEnabled();
     if (_settings.LaunchAtStartup) _startup.SetEnabled(true);
-    foreach (var pack in await _packImports.LoadInstalledAsync()) Packs.Add(pack);
+    var installedPacksTask = _packImports.LoadInstalledAsync();
+    var shortcutsTask = _store.LoadShortcutsAsync();
+    await Task.WhenAll(installedPacksTask, shortcutsTask);
+    foreach (var pack in await installedPacksTask) Packs.Add(pack);
     RebuildRotationPackOptions();
     _activePack = Packs.FirstOrDefault(pack => pack.Id == _settings.ActivePackId) ?? Packs[0];
-    var shortcuts = await _store.LoadShortcutsAsync();
+    var shortcuts = await shortcutsTask;
     foreach (var shortcut in shortcuts) Shortcuts.Add(LocalizeShortcut(shortcut));
     foreach (var executable in _settings.ExcludedExecutables) ExcludedExecutables.Add(executable);
     foreach (var executable in _settings.StatisticsExcludedExecutables) StatisticsExcludedExecutables.Add(executable);
@@ -1393,6 +1396,11 @@ internal sealed class AsyncDelegateCommand(Func<Task> execute, Func<bool>? canEx
     _running = true;
     CanExecuteChanged?.Invoke(this, EventArgs.Empty);
     try { await execute(); }
+    catch (Exception exception)
+    {
+      System.Windows.MessageBox.Show(LocalizationService.Current.Format("ActionFailedFormat", exception.Message),
+        LocalizationService.Current.Get("ActionFailed"), System.Windows.MessageBoxButton.OK, System.Windows.MessageBoxImage.Warning);
+    }
     finally { _running = false; CanExecuteChanged?.Invoke(this, EventArgs.Empty); }
   }
 }

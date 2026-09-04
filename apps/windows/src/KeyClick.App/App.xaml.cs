@@ -152,7 +152,7 @@ public partial class App : Application
 
       var startupLaunch = e.Args.Contains("--startup", StringComparer.OrdinalIgnoreCase);
       if (!startupLaunch || !_viewModel.StartMinimized) ShowWindow();
-      _ = Dispatcher.BeginInvoke(RefreshPointerDevices, System.Windows.Threading.DispatcherPriority.ContextIdle);
+      _ = Dispatcher.BeginInvoke(async () => await RefreshPointerDevicesAsync(), System.Windows.Threading.DispatcherPriority.ContextIdle);
     }
     catch (Exception exception)
     {
@@ -379,15 +379,23 @@ public partial class App : Application
       _pointerActions,
       _localization,
       _viewModel.QueuePointerSettingsSave,
-      RefreshPointerDevices);
+      RefreshPointerDevicesAsync);
     studio.AppCursorChanged += (path, _) => Dispatcher.BeginInvoke(() => Mouse.OverrideCursor = path is null ? null : new System.Windows.Input.Cursor(path));
     _viewModel.AttachPointerStudio(studio);
   }
 
-  private void RefreshPointerDevices()
+  private async Task RefreshPointerDevicesAsync()
   {
     if (_rawInput is null || _viewModel is null) return;
-    foreach (var device in _rawInput.EnumeratePointerDevices()) _viewModel.HandleDeviceChanged(device);
+    try
+    {
+      var devices = await Task.Run(_rawInput.EnumeratePointerDevices);
+      foreach (var device in devices) _viewModel.HandleDeviceChanged(device);
+    }
+    catch (Exception exception)
+    {
+      _viewModel.ReportStatus(_localization?.Format("ActionFailedFormat", exception.Message) ?? exception.Message);
+    }
   }
 
   private void StartActivationListener()

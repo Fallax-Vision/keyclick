@@ -139,6 +139,26 @@ public sealed class TypingChallengeTests
   }
 
   [Fact]
+  public async Task Unsaved_custom_prompt_results_do_not_persist_a_content_fingerprint()
+  {
+    using var folder = new TemporaryFolder();
+    var paths = new AppPaths(folder.Path);
+    await using var store = new SqliteAppStore(paths);
+    await store.InitializeAsync();
+    var definition = new TypingChallengeDefinition(
+      "temporary-definition", "Unsaved", "abc", "en", TypingChallengeDifficulty.Easy, TypingChallengeSource.Custom);
+    var session = new TypingChallengeSession(definition, TypingChallengeRunMode.PassageCompletion, TypingChallengeMistakeMode.Flow);
+    session.Input("abc");
+    var service = new TypingChallengeService(store, store);
+
+    var unsaved = await service.CreateResultAsync(session, null, "Unsaved", 40, 95);
+    var saved = await service.CreateResultAsync(session, "saved-id", "Saved", 40, 95);
+
+    Assert.Null(unsaved.PromptId);
+    Assert.Equal("saved-id", saved.PromptId);
+  }
+
+  [Fact]
   public async Task Profile_v2_reader_remains_compatible_with_a_v1_manifest()
   {
     using var folder = new TemporaryFolder();

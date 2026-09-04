@@ -65,6 +65,25 @@ public sealed class WindowAndInstallationLifecycleTests
     Assert.True(File.Exists(Path.Combine(updates, "download.exe")));
   }
 
+  [Fact]
+  public void Privileged_bootstrap_delegates_user_data_cleanup_and_rejects_privileged_restore()
+  {
+    var root = FindRepositoryRoot();
+    var bootstrap = File.ReadAllText(Path.Combine(root, "apps", "windows", "src", "KeyClick.Bootstrap", "Program.cs"));
+
+    Assert.Contains("restoreRequested && !portable && (externalInstall || IsProcessElevated())", bootstrap);
+    Assert.Contains("Backups can be restored only by the installed, unelevated KeyClick launcher", bootstrap);
+    Assert.Contains("LaunchUserDataPurge", bootstrap);
+    Assert.Contains("User data cleanup must run without administrator privileges", bootstrap);
+  }
+
+  private static string FindRepositoryRoot()
+  {
+    var directory = new DirectoryInfo(AppContext.BaseDirectory);
+    while (directory is not null && !File.Exists(Path.Combine(directory.FullName, "KeyClick.sln"))) directory = directory.Parent;
+    return directory?.FullName ?? throw new DirectoryNotFoundException("Repository root not found.");
+  }
+
   private sealed class TempDirectory : IDisposable
   {
     public TempDirectory()

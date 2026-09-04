@@ -825,6 +825,8 @@
   <sys:String x:Key="PointerShakeEnlarge">Enlarge when the pointer is shaken</sys:String>
   <sys:String x:Key="PointerFindNow">Find pointer now</sys:String>
   <sys:String x:Key="PointerClickIndicators">Click indicators</sys:String>
+  <sys:String x:Key="ActionFailed">Action could not be completed</sys:String>
+  <sys:String x:Key="ActionFailedFormat">KeyClick could not complete this action: {0}</sys:String>
   <sys:String x:Key="PointerEnableClickIndicators">Enable visual click feedback</sys:String>
   <sys:String x:Key="PointerLeftClick">Left click</sys:String>
   <sys:String x:Key="PointerRightClick">Right click</sys:String>
@@ -916,4 +918,7 @@
   <sys:String x:Key="PointerThemeLiquid">Liquid</sys:String><sys:String x:Key="PointerThemeLiquidHelp">Fluid cyan forms that remain precise at the hotspot.</sys:String>
   <sys:String x:Key="PointerThemeCircuit">Circuit</sys:String><sys:String x:Key="PointerThemeCircuitHelp">Technical green geometry inspired by connected traces.</sys:String>
   <sys:String x:Key="PointerThemeComet">Comet</sys:String><sys:String x:Key="PointerThemeCometHelp">Playful rose forms designed for lively motion effects.</sys:String>
+  <sys:String x:Key="PointerIndicatorStyle">Indicator style</sys:String>
+  <sys:String x:Key="PointerIndicatorColor">Color (hex)</sys:String>
+  <sys:String x:Key="PointerIndicatorSize">Size</sys:String>
 </ResourceDictionary>

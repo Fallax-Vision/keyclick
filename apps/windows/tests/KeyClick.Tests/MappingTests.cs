@@ -58,6 +58,17 @@ public sealed class MappingTests
   }
 
   [Fact]
+  public void Filename_only_app_exclusion_matches_a_resolved_full_path()
+  {
+    var settings = new AppSettings { ExcludedExecutables = ["EDITOR.EXE"] };
+    var fullPathInput = Letter with { ForegroundExecutable = @"C:\Program Files\Editor\editor.exe" };
+
+    var result = new SoundMappingResolver().Resolve(settings, Pack, fullPathInput, null, null);
+
+    Assert.False(result.Enabled);
+  }
+
+  [Fact]
   public void Wheel_sound_is_independent_from_pointer_button_sound()
   {
     var wheel = new InputActionEvent(

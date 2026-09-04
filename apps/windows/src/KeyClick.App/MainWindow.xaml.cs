@@ -23,6 +23,7 @@ public partial class MainWindow : Window
   private readonly MainViewModel _viewModel;
   private readonly FunStatsShareService _funStatsShare = new();
   private bool _spaceEnteredOnKeyDown;
+  private bool _uiActionRunning;
   private static LocalizationService L => LocalizationService.Current;
   internal bool AllowClose { get; set; }
 
@@ -35,12 +36,13 @@ public partial class MainWindow : Window
     if (_viewModel.TypingChallenges is not null) _viewModel.TypingChallenges.SessionDisplayChanged += (_, _) => Dispatcher.BeginInvoke(RenderChallengeText);
   }
 
-  private void Navigation_Checked(object sender, RoutedEventArgs e)
+  private async void Navigation_Checked(object sender, RoutedEventArgs e)
   {
     if (sender is System.Windows.Controls.RadioButton { Tag: string tag } && int.TryParse(tag, out var page) && PageTabs is not null)
     {
       PageTabs.SelectedIndex = page;
-      if (page == 4) _viewModel.PointerStudio?.OnPageOpened();
+      if (page == 4 && _viewModel.PointerStudio is { } studio)
+        await RunUiActionAsync(sender, studio.OnPageOpenedAsync);
     }
   }
 
@@ -48,23 +50,29 @@ public partial class MainWindow : Window
   {
     var dialog = new OpenFileDialog { Title = L.Get("DialogImportSound"), Filter = L.Get("FilterSoundFiles") };
     if (dialog.ShowDialog(this) != true) return;
-    try { await _viewModel.ImportMappingSoundAsync(dialog.FileName); }
-    catch (Exception exception) { MessageBox.Show(this, exception.Message, L.Get("DialogImportFailed"), MessageBoxButton.OK, MessageBoxImage.Warning); }
+    await RunUiActionAsync(sender, async () =>
+    {
+      try { await _viewModel.ImportMappingSoundAsync(dialog.FileName); }
+      catch (Exception exception) { MessageBox.Show(this, exception.Message, L.Get("DialogImportFailed"), MessageBoxButton.OK, MessageBoxImage.Warning); }
+    });
   }
 
   private async void ImportSoundPack_Click(object sender, RoutedEventArgs e)
   {
     var dialog = new OpenFileDialog { Title = L.Get("DialogImportSoundPack"), Filter = L.Get("FilterSoundPacks") };
     if (dialog.ShowDialog(this) != true) return;
-    try { await _viewModel.ImportSoundPackAsync(dialog.FileName); }
-    catch (SoundPackImportException exception)
+    await RunUiActionAsync(sender, async () =>
     {
-      MessageBox.Show(this, L.Format(exception.ResourceKey, exception.Arguments), L.Get("DialogSoundPackImportFailed"), MessageBoxButton.OK, MessageBoxImage.Warning);
-    }
-    catch (Exception)
-    {
-      MessageBox.Show(this, L.Get("SoundPackArchiveInvalid"), L.Get("DialogSoundPackImportFailed"), MessageBoxButton.OK, MessageBoxImage.Warning);
-    }
+      try { await _viewModel.ImportSoundPackAsync(dialog.FileName); }
+      catch (SoundPackImportException exception)
+      {
+        MessageBox.Show(this, L.Format(exception.ResourceKey, exception.Arguments), L.Get("DialogSoundPackImportFailed"), MessageBoxButton.OK, MessageBoxImage.Warning);
+      }
+      catch (Exception)
+      {
+        MessageBox.Show(this, L.Get("SoundPackArchiveInvalid"), L.Get("DialogSoundPackImportFailed"), MessageBoxButton.OK, MessageBoxImage.Warning);
+      }
+    });
   }
 
   private async void ChallengeStart_Click(object sender, RoutedEventArgs e)
@@ -79,13 +87,16 @@ public partial class MainWindow : Window
     }
     if (challenges.SourceIndex == 1 && challenges.SaveCustomPrompt
       && MessageBox.Show(this, L.Get("ChallengeSavePromptQuestion"), L.Get("ChallengeSavePrompt"), MessageBoxButton.YesNo, MessageBoxImage.Warning) != MessageBoxResult.Yes) return;
-    try
+    await RunUiActionAsync(sender, async () =>
     {
-      await challenges.StartAsync();
-      RenderChallengeText();
-      ChallengeInput.Focus();
-    }
-    catch (Exception exception) { MessageBox.Show(this, exception.Message, L.Get("NavTypingChallenge"), MessageBoxButton.OK, MessageBoxImage.Information); }
+      try
+      {
+        await challenges.StartAsync();
+        RenderChallengeText();
+        ChallengeInput.Focus();
+      }
+      catch (Exception exception) { MessageBox.Show(this, exception.Message, L.Get("NavTypingChallenge"), MessageBoxButton.OK, MessageBoxImage.Information); }
+    });
   }
 
   private void ChallengeInput_PreviewTextInput(object sender, TextCompositionEventArgs e)
@@ -141,14 +152,20 @@ public partial class MainWindow : Window
   private async void ChallengeFinish_Click(object sender, RoutedEventArgs e)
   {
     if (_viewModel.TypingChallenges is not { } challenges) return;
-    await challenges.FinishAsync();
-    RenderChallengeText();
+    await RunUiActionAsync(sender, async () =>
+    {
+      await challenges.FinishAsync();
+      RenderChallengeText();
+    });
   }
 
   private void ChallengeCancel_Click(object sender, RoutedEventArgs e) => _viewModel.TypingChallenges?.Cancel();
   private void ChallengeResume_Click(object sender, RoutedEventArgs e) { _viewModel.TypingChallenges?.Resume(); ChallengeInput.Focus(); }
   private void ChallengeShowSetup_Click(object sender, RoutedEventArgs e) => _viewModel.TypingChallenges?.ShowSetup();
-  private async void ChallengeShowHistory_Click(object sender, RoutedEventArgs e) { if (_viewModel.TypingChallenges is { } value) await value.ShowHistoryAsync(); }
+  private async void ChallengeShowHistory_Click(object sender, RoutedEventArgs e)
+  {
+    if (_viewModel.TypingChallenges is { } value) await RunUiActionAsync(sender, () => value.ShowHistoryAsync());
+  }
   private void ChallengeRandom_Click(object sender, RoutedEventArgs e) => _viewModel.TypingChallenges?.SelectRandomPassage();
   private void ChallengeFavorite_Click(object sender, RoutedEventArgs e) => _viewModel.TypingChallenges?.ToggleFavorite();
   private void ChallengeCompareSelected_Click(object sender, RoutedEventArgs e) => _viewModel.TypingChallenges?.UseSelectedForComparison();
@@ -157,31 +174,36 @@ public partial class MainWindow : Window
   {
     if (_viewModel.TypingChallenges is not { } challenges) return;
     var dialog = new SaveFileDialog { Title = L.Get("ExportCsv"), Filter = L.Get("FilterCsv"), FileName = $"KeyClick-challenges-{DateTime.Now:yyyy-MM-dd}.csv" };
-    if (dialog.ShowDialog(this) == true) await challenges.ExportCsvAsync(dialog.FileName);
+    if (dialog.ShowDialog(this) == true) await RunUiActionAsync(sender, () => challenges.ExportCsvAsync(dialog.FileName));
   }
 
   private async void ChallengeDeleteSelected_Click(object sender, RoutedEventArgs e)
   {
     if (_viewModel.TypingChallenges is not { CanDeleteSelected: true } challenges) return;
     if (MessageBox.Show(this, L.Get("ChallengeDeleteSelectedQuestion"), L.Get("ChallengeDeleteSelected"), MessageBoxButton.YesNo, MessageBoxImage.Warning) != MessageBoxResult.Yes) return;
-    await _viewModel.CreateBackupNowAsync();
-    await challenges.DeleteSelectedAsync();
+    await RunUiActionAsync(sender, async () =>
+    {
+      await _viewModel.CreateBackupNowAsync();
+      await challenges.DeleteSelectedAsync();
+    });
   }
 
   private async void ChallengeDeletePeriod_Click(object sender, RoutedEventArgs e)
   {
     if (_viewModel.TypingChallenges is not { } challenges) return;
     if (MessageBox.Show(this, L.Get("ChallengeDeletePeriodQuestion"), L.Get("ChallengeDeletePeriod"), MessageBoxButton.YesNo, MessageBoxImage.Warning) != MessageBoxResult.Yes) return;
-    await _viewModel.CreateBackupNowAsync();
-    await challenges.DeleteVisiblePeriodAsync();
+    await RunUiActionAsync(sender, async () =>
+    {
+      await _viewModel.CreateBackupNowAsync();
+      await challenges.DeleteVisiblePeriodAsync();
+    });
   }
 
   private async void ChallengeDeletePrompt_Click(object sender, RoutedEventArgs e)
   {
     if (_viewModel.TypingChallenges?.SelectedSavedPrompt is null) return;
     if (MessageBox.Show(this, L.Get("ChallengeDeletePromptQuestion"), L.Get("RemoveSelected"), MessageBoxButton.YesNo, MessageBoxImage.Warning) != MessageBoxResult.Yes) return;
-    await _viewModel.CreateBackupNowAsync();
-    await _viewModel.TypingChallenges.DeleteSelectedPromptAsync();
+    await RunUiActionAsync(sender, () => _viewModel.TypingChallenges.DeleteSelectedPromptAsync());
   }
 
   private void UpdateChallengeInput(TypingChallengeViewModel challenges)
@@ -243,18 +265,24 @@ public partial class MainWindow : Window
     if (_viewModel.SelectedShortcut is not { } selected) return;
     var editor = new ShortcutEditorWindow(selected) { Owner = this };
     if (editor.ShowDialog() != true || editor.Result is null) return;
-    try { await _viewModel.SaveShortcutAsync(editor.Result); }
-    catch (Exception exception) { MessageBox.Show(this, exception.Message, L.Get("DialogShortcutUnavailable"), MessageBoxButton.OK, MessageBoxImage.Warning); }
+    await RunUiActionAsync(sender, async () =>
+    {
+      try { await _viewModel.SaveShortcutAsync(editor.Result); }
+      catch (Exception exception) { MessageBox.Show(this, exception.Message, L.Get("DialogShortcutUnavailable"), MessageBoxButton.OK, MessageBoxImage.Warning); }
+    });
   }
 
   private async void RestoreShortcuts_Click(object sender, RoutedEventArgs e)
   {
     if (MessageBox.Show(this, L.Get("RestoreShortcutsQuestion"), L.Get("RestoreShortcutsTitle"), MessageBoxButton.YesNo, MessageBoxImage.Question) != MessageBoxResult.Yes) return;
-    try
+    await RunUiActionAsync(sender, async () =>
     {
-      foreach (var binding in KeyClick.Core.BuiltInCatalog.DefaultShortcuts) await _viewModel.SaveShortcutAsync(binding);
-    }
-    catch (Exception exception) { MessageBox.Show(this, exception.Message, L.Get("RestoreShortcutsFailed"), MessageBoxButton.OK, MessageBoxImage.Warning); }
+      try
+      {
+        foreach (var binding in KeyClick.Core.BuiltInCatalog.DefaultShortcuts) await _viewModel.SaveShortcutAsync(binding);
+      }
+      catch (Exception exception) { MessageBox.Show(this, exception.Message, L.Get("RestoreShortcutsFailed"), MessageBoxButton.OK, MessageBoxImage.Warning); }
+    });
   }
 
   private void AddExclusion_Click(object sender, RoutedEventArgs e)
@@ -319,31 +347,35 @@ public partial class MainWindow : Window
 
   private void ShuffleFunStats_Click(object sender, RoutedEventArgs e) => _viewModel.Statistics?.ShuffleFunFacts();
 
-  private void CopyFunStats_Click(object sender, RoutedEventArgs e)
+  private async void CopyFunStats_Click(object sender, RoutedEventArgs e)
   {
     if (_viewModel.Statistics is not { } statistics || sender is not FrameworkElement { Tag: string location }) return;
     var home = location == "home";
     var tiles = home ? statistics.HomeFunStatsTiles : statistics.FunStatsTiles;
-    try
+    await RunUiActionAsync(sender, async () =>
     {
-      var background = FindResource("WindowBackgroundBrush") as SolidColorBrush;
-      var color = background?.Color ?? Colors.Black;
-      var dark = color.R + color.G + color.B < 384;
-      _funStatsShare.Copy(tiles, home ? statistics.HomeFunStatsPeriodLabel : statistics.CurrentPeriodLabel,
-        statistics.BuildShareCaption(home), statistics.FunStatsCopyMode, this, dark);
-      _viewModel.ReportStatus(L.Get("FunCopied"));
-    }
-    catch (Exception exception)
-    {
-      MessageBox.Show(this, L.Format("FunCopyFailedFormat", exception.Message), L.Get("Copy"), MessageBoxButton.OK, MessageBoxImage.Warning);
-    }
+      await System.Windows.Threading.Dispatcher.Yield(System.Windows.Threading.DispatcherPriority.Background);
+      try
+      {
+        var background = FindResource("WindowBackgroundBrush") as SolidColorBrush;
+        var color = background?.Color ?? Colors.Black;
+        var dark = color.R + color.G + color.B < 384;
+        _funStatsShare.Copy(tiles, home ? statistics.HomeFunStatsPeriodLabel : statistics.CurrentPeriodLabel,
+          statistics.BuildShareCaption(home), statistics.FunStatsCopyMode, this, dark);
+        _viewModel.ReportStatus(L.Get("FunCopied"));
+      }
+      catch (Exception exception)
+      {
+        MessageBox.Show(this, L.Format("FunCopyFailedFormat", exception.Message), L.Get("Copy"), MessageBoxButton.OK, MessageBoxImage.Warning);
+      }
+    });
   }
 
   private async void ExportStatistics_Click(object sender, RoutedEventArgs e)
   {
     if (_viewModel.Statistics?.Snapshot is null) return;
     var dialog = new SaveFileDialog { Title = L.Get("ExportCsv"), Filter = L.Get("FilterCsv"), FileName = $"KeyClick-statistics-{DateTime.Now:yyyy-MM-dd}.csv" };
-    if (dialog.ShowDialog(this) == true) await _viewModel.Statistics.ExportAsync(dialog.FileName);
+    if (dialog.ShowDialog(this) == true) await RunUiActionAsync(sender, () => _viewModel.Statistics.ExportAsync(dialog.FileName));
   }
 
   private async void DeleteStatistics_Click(object sender, RoutedEventArgs e)
@@ -352,11 +384,14 @@ public partial class MainWindow : Window
     var dialog = new DeleteStatisticsWindow { Owner = this };
     if (dialog.ShowDialog() != true) return;
     if (MessageBox.Show(this, L.Get("DeleteStatisticsQuestion"), L.Get("DeleteStatistics"), MessageBoxButton.YesNo, MessageBoxImage.Warning) != MessageBoxResult.Yes) return;
-    if (dialog.Request.CreateSafetyBackup) await _viewModel.CreateBackupNowAsync();
-    await _viewModel.Statistics.DeleteAsync(dialog.Request);
-    if ((dialog.Request.DeleteTypingChallengeResults || dialog.Request.DeleteTypingChallengeAchievements) && _viewModel.TypingChallenges is { } challenges)
-      await challenges.DeleteFromStatisticsDialogAsync(dialog.Request);
-    await _viewModel.Statistics.RefreshAsync();
+    await RunUiActionAsync(sender, async () =>
+    {
+      if (dialog.Request.CreateSafetyBackup) await _viewModel.CreateBackupNowAsync();
+      await _viewModel.Statistics.DeleteAsync(dialog.Request);
+      if ((dialog.Request.DeleteTypingChallengeResults || dialog.Request.DeleteTypingChallengeAchievements) && _viewModel.TypingChallenges is { } challenges)
+        await challenges.DeleteFromStatisticsDialogAsync(dialog.Request);
+      await _viewModel.Statistics.RefreshAsync();
+    });
   }
 
   private async void ExportProfile_Click(object sender, RoutedEventArgs e)
@@ -365,34 +400,40 @@ public partial class MainWindow : Window
     if (options.ShowDialog() != true) return;
     var dialog = new SaveFileDialog { Title = L.Get("ExportProfile"), Filter = L.Get("FilterProfile"), FileName = $"KeyClick-{DateTime.Now:yyyy-MM-dd}.keyclickprofile" };
     if (dialog.ShowDialog(this) != true) return;
-    try
+    await RunUiActionAsync(sender, async () =>
     {
-      await _viewModel.ExportProfileAsync(dialog.FileName, options.Options);
-      MessageBox.Show(this, L.Get("ProfileExported"), L.Get("ExportProfile"), MessageBoxButton.OK, MessageBoxImage.Information);
-    }
-    catch (Exception exception) { MessageBox.Show(this, exception.Message, L.Get("ExportProfile"), MessageBoxButton.OK, MessageBoxImage.Warning); }
+      try
+      {
+        await _viewModel.ExportProfileAsync(dialog.FileName, options.Options);
+        MessageBox.Show(this, L.Get("ProfileExported"), L.Get("ExportProfile"), MessageBoxButton.OK, MessageBoxImage.Information);
+      }
+      catch (Exception exception) { MessageBox.Show(this, exception.Message, L.Get("ExportProfile"), MessageBoxButton.OK, MessageBoxImage.Warning); }
+    });
   }
 
   private async void ImportProfile_Click(object sender, RoutedEventArgs e)
   {
     var dialog = new OpenFileDialog { Title = L.Get("ImportProfile"), Filter = L.Get("FilterProfile") };
     if (dialog.ShowDialog(this) != true) return;
-    string? password = null;
-    try
+    await RunUiActionAsync(sender, async () =>
     {
-      if (await _viewModel.ProfileRequiresPasswordAsync(dialog.FileName))
+      string? password = null;
+      try
       {
-        var passwordDialog = new ProfilePasswordWindow { Owner = this };
-        if (passwordDialog.ShowDialog() != true) return;
-        password = passwordDialog.Password;
+        if (await _viewModel.ProfileRequiresPasswordAsync(dialog.FileName))
+        {
+          var passwordDialog = new ProfilePasswordWindow { Owner = this };
+          if (passwordDialog.ShowDialog() != true) return;
+          password = passwordDialog.Password;
+        }
+        var preview = await _viewModel.PreviewProfileAsync(dialog.FileName, password);
+        var merge = new ProfileImportWindow(preview) { Owner = this };
+        if (merge.ShowDialog() != true) return;
+        await _viewModel.ImportProfileAsync(dialog.FileName, password, merge.UseImportedMedia);
+        MessageBox.Show(this, L.Get("ProfileImported"), L.Get("ImportProfile"), MessageBoxButton.OK, MessageBoxImage.Information);
       }
-      var preview = await _viewModel.PreviewProfileAsync(dialog.FileName, password);
-      var merge = new ProfileImportWindow(preview) { Owner = this };
-      if (merge.ShowDialog() != true) return;
-      await _viewModel.ImportProfileAsync(dialog.FileName, password, merge.UseImportedMedia);
-      MessageBox.Show(this, L.Get("ProfileImported"), L.Get("ImportProfile"), MessageBoxButton.OK, MessageBoxImage.Information);
-    }
-    catch (Exception exception) { MessageBox.Show(this, exception.Message, L.Get("ImportProfile"), MessageBoxButton.OK, MessageBoxImage.Warning); }
+      catch (Exception exception) { MessageBox.Show(this, exception.Message, L.Get("ImportProfile"), MessageBoxButton.OK, MessageBoxImage.Warning); }
+    });
   }
 
   private void UseInstalledData_Click(object sender, RoutedEventArgs e)
@@ -425,71 +466,109 @@ public partial class MainWindow : Window
     var dialog = new OpenFileDialog { Title = L.Get("RestoreBackupDialog"), Filter = L.Get("FilterBackup") };
     if (dialog.ShowDialog(this) != true) return;
     if (MessageBox.Show(this, L.Get("RestoreBackupQuestion"), L.Get("RestoreBackupTitle"), MessageBoxButton.YesNo, MessageBoxImage.Warning) != MessageBoxResult.Yes) return;
-    try
+    await RunUiActionAsync(sender, async () =>
     {
-      await _viewModel.PrepareRestoreAsync(dialog.FileName);
-      var launcher = ((App)Application.Current).Paths.Launcher;
-      if (!File.Exists(launcher)) throw new InvalidOperationException(L.Get("RestoreLauncherRequired"));
-      var start = new ProcessStartInfo(launcher) { UseShellExecute = true };
-      start.ArgumentList.Add("--restore-backup");
-      start.ArgumentList.Add(dialog.FileName);
-      Process.Start(start);
-      ((App)Application.Current).ExitApplication();
-    }
-    catch (Exception exception) { MessageBox.Show(this, exception.Message, L.Get("RestoreFailed"), MessageBoxButton.OK, MessageBoxImage.Warning); }
+      try
+      {
+        await _viewModel.PrepareRestoreAsync(dialog.FileName);
+        var launcher = ((App)Application.Current).Paths.Launcher;
+        if (!File.Exists(launcher)) throw new InvalidOperationException(L.Get("RestoreLauncherRequired"));
+        var start = new ProcessStartInfo(launcher) { UseShellExecute = true };
+        start.ArgumentList.Add("--restore-backup");
+        start.ArgumentList.Add(dialog.FileName);
+        Process.Start(start);
+        ((App)Application.Current).ExitApplication();
+      }
+      catch (Exception exception) { MessageBox.Show(this, exception.Message, L.Get("RestoreFailed"), MessageBoxButton.OK, MessageBoxImage.Warning); }
+    });
   }
 
   private async void ResetSettings_Click(object sender, RoutedEventArgs e)
   {
     if (MessageBox.Show(this, L.Get("ResetQuestion"), L.Get("ResetSettings"), MessageBoxButton.YesNo, MessageBoxImage.Warning) != MessageBoxResult.Yes) return;
-    try { await _viewModel.ResetSettingsAsync(); }
-    catch (Exception exception) { MessageBox.Show(this, exception.Message, L.Get("ResetFailed"), MessageBoxButton.OK, MessageBoxImage.Warning); }
+    await RunUiActionAsync(sender, async () =>
+    {
+      try { await _viewModel.ResetSettingsAsync(); }
+      catch (Exception exception) { MessageBox.Show(this, exception.Message, L.Get("ResetFailed"), MessageBoxButton.OK, MessageBoxImage.Warning); }
+    });
   }
 
   private async void CheckUpdates_Click(object sender, RoutedEventArgs e)
   {
-    try
+    await RunUiActionAsync(sender, async () =>
     {
-      var update = await _viewModel.CheckForUpdateAsync();
-      if (update is null)
+      try
       {
-        MessageBox.Show(this, L.Get("UpToDate"), L.Get("UpdatesTitle"), MessageBoxButton.OK, MessageBoxImage.Information);
-        return;
+        var update = await _viewModel.CheckForUpdateAsync();
+        if (update is null)
+        {
+          MessageBox.Show(this, L.Get("UpToDate"), L.Get("UpdatesTitle"), MessageBoxButton.OK, MessageBoxImage.Information);
+          return;
+        }
+        if (_viewModel.IsPortable)
+        {
+          var confirmation = MessageBox.Show(this, L.Format("PortableInstallUpdateQuestionFormat", update.Version),
+            L.Get("UpdateAvailableTitle"), MessageBoxButton.YesNo, MessageBoxImage.Question);
+          if (confirmation != MessageBoxResult.Yes) return;
+          var path = await _viewModel.PrepareUpdateAsync(update);
+          await _viewModel.LaunchPreparedUpdateAsync(update, path);
+          ((App)Application.Current).ExitApplication();
+          return;
+        }
+        MessageBox.Show(this, L.Format("UpdateDetectedFormat", update.Version), L.Get("UpdateAvailableTitle"),
+          MessageBoxButton.OK, MessageBoxImage.Information);
       }
-      if (_viewModel.IsPortable)
+      catch (Exception exception)
       {
-        var confirmation = MessageBox.Show(this, L.Format("PortableInstallUpdateQuestionFormat", update.Version),
-          L.Get("UpdateAvailableTitle"), MessageBoxButton.YesNo, MessageBoxImage.Question);
-        if (confirmation != MessageBoxResult.Yes) return;
-        var path = await _viewModel.PrepareUpdateAsync(update);
-        await _viewModel.LaunchPreparedUpdateAsync(update, path);
-        ((App)Application.Current).ExitApplication();
-        return;
+        MessageBox.Show(this, exception.Message, L.Get("UpdateFailed"), MessageBoxButton.OK, MessageBoxImage.Warning);
       }
-      MessageBox.Show(this, L.Format("UpdateDetectedFormat", update.Version), L.Get("UpdateAvailableTitle"),
-        MessageBoxButton.OK, MessageBoxImage.Information);
-    }
-    catch (Exception exception)
-    {
-      MessageBox.Show(this, exception.Message, L.Get("UpdateFailed"), MessageBoxButton.OK, MessageBoxImage.Warning);
-    }
+    });
   }
 
   private async void UpdateNow_Click(object sender, RoutedEventArgs e)
   {
     if (_viewModel.IsPortable || _viewModel.AvailableUpdate is not { } update) return;
+    await RunUiActionAsync(sender, async () =>
+    {
+      try
+      {
+        var confirmation = MessageBox.Show(this, L.Format("InstallUpdateQuestionFormat", update.Version),
+          L.Get("UpdateAvailableTitle"), MessageBoxButton.YesNo, MessageBoxImage.Question);
+        if (confirmation != MessageBoxResult.Yes) return;
+        var path = await _viewModel.PrepareUpdateAsync(update);
+        await _viewModel.LaunchPreparedUpdateAsync(update, path);
+        ((App)Application.Current).ExitApplication();
+      }
+      catch (Exception exception)
+      {
+        MessageBox.Show(this, exception.Message, L.Get("UpdateFailed"), MessageBoxButton.OK, MessageBoxImage.Warning);
+      }
+    });
+  }
+
+  private async Task RunUiActionAsync(object sender, Func<Task> action)
+  {
+    if (_uiActionRunning) return;
+    _uiActionRunning = true;
+    var control = sender as UIElement;
+    var wasEnabled = control?.IsEnabled == true;
+    var previousCursor = Mouse.OverrideCursor;
     try
     {
-      var confirmation = MessageBox.Show(this, L.Format("InstallUpdateQuestionFormat", update.Version),
-        L.Get("UpdateAvailableTitle"), MessageBoxButton.YesNo, MessageBoxImage.Question);
-      if (confirmation != MessageBoxResult.Yes) return;
-      var path = await _viewModel.PrepareUpdateAsync(update);
-      await _viewModel.LaunchPreparedUpdateAsync(update, path);
-      ((App)Application.Current).ExitApplication();
+      control?.SetCurrentValue(IsEnabledProperty, false);
+      await System.Windows.Threading.Dispatcher.Yield(System.Windows.Threading.DispatcherPriority.Render);
+      Mouse.OverrideCursor = System.Windows.Input.Cursors.Wait;
+      await action();
     }
     catch (Exception exception)
     {
-      MessageBox.Show(this, exception.Message, L.Get("UpdateFailed"), MessageBoxButton.OK, MessageBoxImage.Warning);
+      MessageBox.Show(this, L.Format("ActionFailedFormat", exception.Message), L.Get("ActionFailed"), MessageBoxButton.OK, MessageBoxImage.Warning);
+    }
+    finally
+    {
+      Mouse.OverrideCursor = previousCursor;
+      control?.SetCurrentValue(IsEnabledProperty, wasEnabled);
+      _uiActionRunning = false;
     }
   }
 

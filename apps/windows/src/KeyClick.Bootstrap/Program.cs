@@ -28,6 +28,15 @@ internal static class Program
       var root = portable ? dataRoot : InstalledApplicationRoot();
       var launcher = portable ? Environment.ProcessPath! : Path.Combine(root, "KeyClick.exe");
       var externalInstall = !portable && !PathsEqual(Environment.ProcessPath!, launcher);
+      var restoreRequested = args.Contains("--restore-backup", StringComparer.OrdinalIgnoreCase);
+      var purgeUserDataIndex = Array.FindIndex(args, value => value.Equals("--purge-user-data", StringComparison.OrdinalIgnoreCase));
+      if (purgeUserDataIndex >= 0)
+      {
+        if (portable || purgeUserDataIndex + 1 >= args.Length) throw new InvalidDataException("The user-data cleanup request is invalid.");
+        return PurgeUserData(dataRoot, args[purgeUserDataIndex + 1]);
+      }
+      if (restoreRequested && !portable && (externalInstall || IsProcessElevated()))
+        throw new InvalidOperationException("Backups can be restored only by the installed, unelevated KeyClick launcher.");
       if (!portable && (uninstalling || externalInstall) && !IsProcessElevated()) return RelaunchElevated(args);
 
       var firstSetup = !portable && !File.Exists(launcher);
@@ -44,6 +53,8 @@ internal static class Program
       var versionDirectory = Path.GetFullPath(Path.Combine(root, $"app-v{version}"));
       EnsureChild(root, versionDirectory);
       var payloadNeedsInstallation = PayloadNeedsInstallation(versionDirectory, payloadHash);
+      if (restoreRequested && payloadNeedsInstallation)
+        throw new InvalidOperationException("Repair or reinstall KeyClick before restoring a backup.");
       if (!portable && payloadNeedsInstallation && !IsProcessElevated()) return RelaunchElevated(args);
       var elevatedInstallation = !portable && IsProcessElevated() && (externalInstall || payloadNeedsInstallation);
       if (externalInstall) StopRunningApp(dataRoot, root, dataRoot);
@@ -358,14 +369,12 @@ internal static class Program
     DeleteShortcut(Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.DesktopDirectory), "KeyClick.lnk"));
     DeleteShortcut(Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.StartMenu), "Programs", "KeyClick.lnk"));
 
-    if (choice == Forms.DialogResult.Yes)
-      DeleteDirectoryContents(dataRoot);
+    if (choice == Forms.DialogResult.Yes && !LaunchUserDataPurge(Path.Combine(installRoot, "KeyClick.exe"), dataRoot))
+      throw new InvalidOperationException("KeyClick could not remove the local data while running without administrator privileges. The application was not removed.");
 
     var current = Path.GetFullPath(Environment.ProcessPath!);
     var currentInInstallRoot = IsChild(installRoot, current);
     DeleteDirectoryContents(installRoot, currentInInstallRoot ? current : null);
-    if (choice == Forms.DialogResult.Yes && Directory.Exists(dataRoot))
-      DeleteWithRetry(() => Directory.Delete(dataRoot, false));
     if (currentInInstallRoot)
     {
       MoveFileEx(current, null, 4);
@@ -377,6 +386,41 @@ internal static class Program
     }
     Forms.MessageBox.Show(choice == Forms.DialogResult.Yes ? "KeyClick will finish removing itself after restart." : "KeyClick was removed. Your local data was preserved.", "KeyClick", Forms.MessageBoxButtons.OK, Forms.MessageBoxIcon.Information);
     return 0;
+  }
+
+  private static bool LaunchUserDataPurge(string launcher, string dataRoot)
+  {
+    var signalName = $@"Local\KeyClick.Purge.{Guid.NewGuid():N}";
+    using var completed = new EventWaitHandle(false, EventResetMode.ManualReset, signalName);
+    Process.Start(new ProcessStartInfo("explorer.exe", $"\"{launcher}\" --purge-user-data \"{signalName}\"")
+    {
+      UseShellExecute = true,
+      WorkingDirectory = Path.GetDirectoryName(launcher)!
+    });
+    return completed.WaitOne(TimeSpan.FromSeconds(30)) && !Directory.Exists(dataRoot);
+  }
+
+  private static int PurgeUserData(string dataRoot, string signalName)
+  {
+    if (IsProcessElevated()) throw new InvalidOperationException("User data cleanup must run without administrator privileges.");
+    try
+    {
+      StopRunningApp(dataRoot, InstalledApplicationRoot(), dataRoot);
+      RestorePointerScheme(dataRoot);
+      if (Directory.Exists(dataRoot))
+      {
+        DeleteDirectoryContents(dataRoot);
+        DeleteWithRetry(() => Directory.Delete(dataRoot, false));
+      }
+      return 0;
+    }
+    finally
+    {
+      if (EventWaitHandle.TryOpenExisting(signalName, out var completed))
+      {
+        using (completed) completed.Set();
+      }
+    }
   }
 
   private static void WaitForAppExit(string installRoot, string dataRoot)

@@ -9,7 +9,9 @@ internal sealed class ForegroundProcessCache : IDisposable
   private const uint WineventOutofcontext = 0x0000;
   private readonly WinEventDelegate _callback;
   private readonly nint _hook;
+  private readonly object _resolutionGate = new();
   private string? _currentExecutable;
+  private long _requestedGeneration;
 
   public ForegroundProcessCache()
   {
@@ -27,9 +29,15 @@ internal sealed class ForegroundProcessCache : IDisposable
 
   private void ForegroundChanged(nint hook, uint eventType, nint window, int objectId, int childId, uint threadId, uint eventTime) => QueueResolve(window);
 
-  private void QueueResolve(nint window) => ThreadPool.UnsafeQueueUserWorkItem(static state => state.Owner.Resolve(state.Window), (Owner: this, Window: window), false);
+  private void QueueResolve(nint window)
+  {
+    long generation;
+    lock (_resolutionGate) generation = ++_requestedGeneration;
+    ThreadPool.UnsafeQueueUserWorkItem(static state => state.Owner.Resolve(state.Window, state.Generation),
+      (Owner: this, Window: window, Generation: generation), false);
+  }
 
-  private void Resolve(nint window)
+  private void Resolve(nint window, long generation)
   {
     string? path = null;
     if (window != 0)
@@ -42,7 +50,10 @@ internal sealed class ForegroundProcessCache : IDisposable
       }
       catch { }
     }
-    Volatile.Write(ref _currentExecutable, path);
+    lock (_resolutionGate)
+    {
+      if (generation == _requestedGeneration) Volatile.Write(ref _currentExecutable, path);
+    }
   }
 
   private delegate void WinEventDelegate(nint hook, uint eventType, nint window, int objectId, int childId, uint threadId, uint eventTime);

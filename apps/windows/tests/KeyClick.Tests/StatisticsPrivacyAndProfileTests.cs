@@ -63,6 +63,25 @@ public sealed class StatisticsPrivacyAndProfileTests
   }
 
   [Fact]
+  public async Task Filename_only_statistics_exclusion_matches_a_resolved_full_path()
+  {
+    using var folder = new TemporaryFolder();
+    var paths = new AppPaths(folder.Path);
+    await using var store = new SqliteAppStore(paths);
+    await store.InitializeAsync();
+    await using var service = new StatisticsService(store, new AppSettings
+    {
+      StatisticsDisclosureConfirmed = true,
+      StatisticsDisclosureVersion = AppSettings.CurrentStatisticsDisclosureVersion,
+      StatisticsExcludedExecutables = ["PrivateWriter.exe"]
+    });
+
+    Assert.False(service.TryRecord(new(
+      new(InputKind.KeyboardKey, 0x1E, DeviceFamily: DeviceFamily.Keyboard),
+      0x41, KeyVariant.Base, InputGroup.Letters, InputPhase.Down, Stopwatch.GetTimestamp(), @"C:\Private\PrivateWriter.exe")));
+  }
+
+  [Fact]
   public async Task Hourly_statistics_query_breakdown_delete_and_idempotent_transfer_work()
   {
     using var folder = new TemporaryFolder();

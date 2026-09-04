@@ -217,6 +217,17 @@ public sealed class SqliteAppStore(AppPaths paths) : IAppStore, IStatisticsStore
       """;
     await migration.ExecuteNonQueryAsync(cancellationToken);
 
+    var privacyMigration = _connection.CreateCommand();
+    privacyMigration.CommandText = """
+      UPDATE typing_challenge_results
+      SET prompt_id=NULL
+      WHERE source='Custom' AND prompt_id IS NOT NULL
+        AND NOT EXISTS(SELECT 1 FROM schema_migrations WHERE version=6)
+        AND NOT EXISTS(SELECT 1 FROM typing_challenge_prompts WHERE id=typing_challenge_results.prompt_id);
+      INSERT OR IGNORE INTO schema_migrations(version, applied_utc) VALUES(6, strftime('%Y-%m-%dT%H:%M:%fZ','now'));
+      """;
+    await privacyMigration.ExecuteNonQueryAsync(cancellationToken);
+
     if ((await LoadShortcutsAsync(cancellationToken)).Count == 0)
     {
       foreach (var shortcut in BuiltInCatalog.DefaultShortcuts)

@@ -75,6 +75,16 @@
 
         <StackPanel Grid.Row="3">
           <Button Content="{DynamicResource ToggleAllSounds}" Command="{Binding ToggleSoundsCommand}" />
+          <Border Background="{DynamicResource SurfaceBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1"
+                  CornerRadius="{StaticResource ControlCornerRadius}" Padding="9,7" Margin="0,8,0,0"
+                  ToolTip="{Binding StatusMessage}" AutomationProperties.LiveSetting="Polite">
+            <Grid>
+              <Grid.ColumnDefinitions><ColumnDefinition Width="Auto" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
+              <Ellipse Width="8" Height="8" Fill="{DynamicResource AccentBrush}" VerticalAlignment="Center" Margin="0,0,8,0" />
+              <TextBlock Grid.Column="1" Text="{Binding StatusMessage}" Style="{StaticResource MutedText}"
+                         TextWrapping="NoWrap" TextTrimming="CharacterEllipsis" />
+            </Grid>
+          </Border>
           <TextBlock Text="{Binding VersionText}" Style="{StaticResource MutedText}" Margin="2,10,2,0"
                      HorizontalAlignment="Stretch" TextAlignment="Center" TextTrimming="CharacterEllipsis" />
         </StackPanel>
@@ -747,12 +757,27 @@
                     <StackPanel>
                       <TextBlock Text="{DynamicResource PointerClickIndicators}" Style="{StaticResource SectionTitle}" />
                       <CheckBox Content="{DynamicResource PointerEnableClickIndicators}" IsChecked="{Binding ClickIndicatorsEnabled}" Style="{StaticResource SettingsToggle}" Margin="0,0,0,10" />
-                      <UniformGrid Columns="4" IsEnabled="{Binding ClickIndicatorsEnabled}">
-                        <StackPanel DataContext="{Binding LeftClick}" Margin="0,0,12,0"><TextBlock Text="{DynamicResource PointerLeftClick}" FontWeight="SemiBold" /><CheckBox Content="{DynamicResource Enabled}" IsChecked="{Binding Enabled}" /><ComboBox ItemsSource="{Binding StyleOptions}" SelectedIndex="{Binding StyleIndex}" /><TextBox Text="{Binding Color, UpdateSourceTrigger=LostFocus}" Margin="0,8,0,0" /><Slider Minimum="8" Maximum="120" Value="{Binding Size}" /></StackPanel>
-                        <StackPanel DataContext="{Binding RightClick}" Margin="0,0,12,0"><TextBlock Text="{DynamicResource PointerRightClick}" FontWeight="SemiBold" /><CheckBox Content="{DynamicResource Enabled}" IsChecked="{Binding Enabled}" /><ComboBox ItemsSource="{Binding StyleOptions}" SelectedIndex="{Binding StyleIndex}" /><TextBox Text="{Binding Color, UpdateSourceTrigger=LostFocus}" Margin="0,8,0,0" /><Slider Minimum="8" Maximum="120" Value="{Binding Size}" /></StackPanel>
-                        <StackPanel DataContext="{Binding MiddleClick}" Margin="0,0,12,0"><TextBlock Text="{DynamicResource PointerMiddleClick}" FontWeight="SemiBold" /><CheckBox Content="{DynamicResource Enabled}" IsChecked="{Binding Enabled}" /><ComboBox ItemsSource="{Binding StyleOptions}" SelectedIndex="{Binding StyleIndex}" /><TextBox Text="{Binding Color, UpdateSourceTrigger=LostFocus}" Margin="0,8,0,0" /><Slider Minimum="8" Maximum="120" Value="{Binding Size}" /></StackPanel>
-                        <StackPanel DataContext="{Binding AuxiliaryClick}"><TextBlock Text="{DynamicResource PointerAuxiliaryClick}" FontWeight="SemiBold" /><CheckBox Content="{DynamicResource Enabled}" IsChecked="{Binding Enabled}" /><ComboBox ItemsSource="{Binding StyleOptions}" SelectedIndex="{Binding StyleIndex}" /><TextBox Text="{Binding Color, UpdateSourceTrigger=LostFocus}" Margin="0,8,0,0" /><Slider Minimum="8" Maximum="120" Value="{Binding Size}" /></StackPanel>
-                      </UniformGrid>
+                      <ItemsControl ItemsSource="{Binding ClickChannels}" IsEnabled="{Binding ClickIndicatorsEnabled}">
+                        <ItemsControl.ItemsPanel><ItemsPanelTemplate><local:ResponsiveGridPanel MinItemWidth="210" ItemHeight="236" /></ItemsPanelTemplate></ItemsControl.ItemsPanel>
+                        <ItemsControl.ItemTemplate>
+                          <DataTemplate>
+                            <Border Style="{StaticResource InsetCard}" Margin="5" Padding="12">
+                              <StackPanel>
+                                <TextBlock Text="{Binding Title}" FontWeight="SemiBold" FontSize="15" Margin="0,0,0,4" />
+                                <CheckBox Content="{DynamicResource Enabled}" IsChecked="{Binding Enabled}" Style="{StaticResource SettingsToggle}" />
+                                <StackPanel IsEnabled="{Binding Enabled}">
+                                  <TextBlock Text="{DynamicResource PointerIndicatorStyle}" Style="{StaticResource FieldLabel}" Margin="0,6,0,4" />
+                                  <ComboBox ItemsSource="{Binding StyleOptions}" SelectedIndex="{Binding StyleIndex}" AutomationProperties.Name="{DynamicResource PointerIndicatorStyle}" />
+                                  <TextBlock Text="{DynamicResource PointerIndicatorColor}" Style="{StaticResource FieldLabel}" Margin="0,8,0,4" />
+                                  <TextBox Text="{Binding Color, UpdateSourceTrigger=LostFocus}" AutomationProperties.Name="{DynamicResource PointerIndicatorColor}" />
+                                  <Grid Margin="0,8,0,0"><TextBlock Text="{DynamicResource PointerIndicatorSize}" /><TextBlock Text="{Binding Size, StringFormat={}{0:0}}" HorizontalAlignment="Right" /></Grid>
+                                  <Slider Minimum="8" Maximum="120" Value="{Binding Size}" AutomationProperties.Name="{DynamicResource PointerIndicatorSize}" />
+                                </StackPanel>
+                              </StackPanel>
+                            </Border>
+                          </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                      </ItemsControl>
                     </StackPanel>
                   </Border>
                 </StackPanel>

@@ -20,7 +20,8 @@ public sealed class PointerStudioViewModel : INotifyPropertyChanged, IDisposable
   private readonly PointerActionService _actions;
   private readonly LocalizationService _localization;
   private readonly Action _save;
-  private readonly Action _refreshDevices;
+  private readonly Func<Task> _refreshDevices;
+  private readonly SynchronizationContext? _uiContext;
   private string _status = string.Empty;
   private string? _preparedCursorPath;
   private bool _reducedMotion;
@@ -33,7 +34,7 @@ public sealed class PointerStudioViewModel : INotifyPropertyChanged, IDisposable
     PointerActionService actions,
     LocalizationService localization,
     Action save,
-    Action refreshDevices)
+    Func<Task> refreshDevices)
   {
     _appSettings = appSettings;
     _appSettings.PointerStudio.Normalize();
@@ -44,25 +45,27 @@ public sealed class PointerStudioViewModel : INotifyPropertyChanged, IDisposable
     _localization = localization;
     _save = save;
     _refreshDevices = refreshDevices;
+    _uiContext = SynchronizationContext.Current;
     Catalog = PointerStudioCatalogLoader.Load();
     Themes = new(Catalog.Themes.Select(theme => new PointerThemeOption(theme, localization, id => _appSettings.PointerStudio.FavoriteThemeIds.Contains(id, StringComparer.Ordinal))));
     RolePreviews = new(Catalog.Roles.Select(role => new PointerRoleOption(role, RoleNameKey(role), localization)));
-    LeftClick = new(_appSettings.PointerStudio.LeftClick, localization, () => Changed());
-    RightClick = new(_appSettings.PointerStudio.RightClick, localization, () => Changed());
-    MiddleClick = new(_appSettings.PointerStudio.MiddleClick, localization, () => Changed());
-    AuxiliaryClick = new(_appSettings.PointerStudio.AuxiliaryClick, localization, () => Changed());
+    LeftClick = new(_appSettings.PointerStudio.LeftClick, "PointerLeftClick", localization, () => Changed());
+    RightClick = new(_appSettings.PointerStudio.RightClick, "PointerRightClick", localization, () => Changed());
+    MiddleClick = new(_appSettings.PointerStudio.MiddleClick, "PointerMiddleClick", localization, () => Changed());
+    AuxiliaryClick = new(_appSettings.PointerStudio.AuxiliaryClick, "PointerAuxiliaryClick", localization, () => Changed());
+    ClickChannels = [LeftClick, RightClick, MiddleClick, AuxiliaryClick];
     ApplyCommand = new AsyncDelegateCommand(ApplyAsync);
-    RestorePreviousCommand = new DelegateCommand(RestorePrevious);
-    RestoreDefaultsCommand = new DelegateCommand(RestoreDefaults);
+    RestorePreviousCommand = new AsyncDelegateCommand(RestorePreviousAsync);
+    RestoreDefaultsCommand = new AsyncDelegateCommand(RestoreDefaultsAsync);
     ToggleFavoriteCommand = new DelegateCommand(ToggleFavorite);
     FindPointerCommand = new DelegateCommand(_effects.FindPointer);
-    RefreshDevicesCommand = new DelegateCommand(_refreshDevices);
+    RefreshDevicesCommand = new AsyncDelegateCommand(_refreshDevices);
     OpenMouseSettingsCommand = new DelegateCommand(() => OpenSettings("ms-settings:mousetouchpad"));
     OpenTouchpadSettingsCommand = new DelegateCommand(() => OpenSettings("ms-settings:devices-touchpad"));
     PanicCommand = new DelegateCommand(Panic);
     _suppression.ActionRequested += ExecuteAction;
     _suppression.PanicTriggered += Panic;
-    _effects.HealthChanged += message => Status = message;
+    _effects.HealthChanged += EffectsHealthChanged;
     var recovered = _appearance.RecoverExperimentalIfNeeded(Settings);
     if (recovered || Settings.ExperimentalReplacementEnabled || Settings.ExperimentalSuppressionEnabled)
     {
@@ -84,6 +87,7 @@ public sealed class PointerStudioViewModel : INotifyPropertyChanged, IDisposable
   public ClickIndicatorOption RightClick { get; }
   public ClickIndicatorOption MiddleClick { get; }
   public ClickIndicatorOption AuxiliaryClick { get; }
+  public IReadOnlyList<ClickIndicatorOption> ClickChannels { get; }
   public ICommand ApplyCommand { get; }
   public ICommand RestorePreviousCommand { get; }
   public ICommand RestoreDefaultsCommand { get; }
@@ -156,9 +160,9 @@ public sealed class PointerStudioViewModel : INotifyPropertyChanged, IDisposable
   public void SetReducedMotion(bool value) { if (_reducedMotion == value) return; _reducedMotion = value; Reconfigure(); }
   public void HandleMovement(PointerMovementSignal signal) => _effects.SignalMovement(signal);
 
-  public void OnPageOpened()
+  public async Task OnPageOpenedAsync()
   {
-    _refreshDevices();
+    await _refreshDevices();
     if (!Settings.Enabled || Settings.Scope != PointerThemeScope.SystemWide || _appearance.OwnsSystemTheme(Settings.ThemeId)) return;
     Settings.Enabled = false;
     _appearance.ClearExperimentalMarker();
@@ -202,7 +206,7 @@ public sealed class PointerStudioViewModel : INotifyPropertyChanged, IDisposable
   {
     foreach (var theme in Themes) theme.RefreshLocalization();
     foreach (var role in RolePreviews) role.RefreshLocalization();
-    LeftClick.RefreshLocalization(); RightClick.RefreshLocalization(); MiddleClick.RefreshLocalization(); AuxiliaryClick.RefreshLocalization();
+    foreach (var channel in ClickChannels) channel.RefreshLocalization();
     NotifyMany(nameof(ScopeOptions), nameof(SizeOptions), nameof(VariantOptions), nameof(MotionModeOptions), nameof(MotionPresetOptions), nameof(ActionOptions), nameof(SelectedThemeDescription), nameof(FavoriteButtonText), nameof(ExperimentalStatus), nameof(PerformanceStatus));
   }
 
@@ -213,12 +217,12 @@ public sealed class PointerStudioViewModel : INotifyPropertyChanged, IDisposable
     PointerApplyResult result;
     if (Settings.Scope == PointerThemeScope.SystemWide)
     {
-      result = _appearance.ApplyTheme(SelectedTheme.Definition, Settings);
+      result = await Task.Run(() => _appearance.ApplyTheme(SelectedTheme.Definition, Settings));
       AppCursorChanged?.Invoke(null, Settings.Scope);
     }
     else
     {
-      result = _appearance.PrepareTheme(SelectedTheme.Definition, Settings);
+      result = await Task.Run(() => _appearance.PrepareTheme(SelectedTheme.Definition, Settings));
       _preparedCursorPath = result.CursorPath;
       if (result.Success) AppCursorChanged?.Invoke(result.CursorPath, Settings.Scope);
     }
@@ -228,19 +232,18 @@ public sealed class PointerStudioViewModel : INotifyPropertyChanged, IDisposable
     _save();
     Status = result.Success ? _localization.Get("PointerAppliedStatus") : _localization.Format("PointerApplyFailedFormat", result.Error ?? "Unknown error");
     NotifyMany(nameof(Enabled), nameof(PerformanceStatus));
-    await Task.CompletedTask;
   }
 
-  private void RestorePrevious()
+  private async Task RestorePreviousAsync()
   {
-    var result = _appearance.RestorePrevious(Settings);
+    var result = await Task.Run(() => _appearance.RestorePrevious(Settings));
     AppCursorChanged?.Invoke(null, PointerThemeScope.SystemWide);
     Status = result.Success ? _localization.Get("PointerRestoredStatus") : _localization.Format("PointerApplyFailedFormat", result.Error ?? "Unknown error");
   }
 
-  private void RestoreDefaults()
+  private async Task RestoreDefaultsAsync()
   {
-    var result = _appearance.RestoreWindowsDefaults();
+    var result = await Task.Run(_appearance.RestoreWindowsDefaults);
     AppCursorChanged?.Invoke(null, PointerThemeScope.SystemWide);
     Status = result.Success ? _localization.Get("PointerDefaultsRestoredStatus") : _localization.Format("PointerApplyFailedFormat", result.Error ?? "Unknown error");
   }
@@ -324,6 +327,11 @@ public sealed class PointerStudioViewModel : INotifyPropertyChanged, IDisposable
     _ => "PointerRoleLink"
   };
   private static void OpenSettings(string uri) => Process.Start(new ProcessStartInfo(uri) { UseShellExecute = true });
+  private void EffectsHealthChanged(string message)
+  {
+    if (_uiContext is null || ReferenceEquals(SynchronizationContext.Current, _uiContext)) Status = message;
+    else _uiContext.Post(_ => Status = message, null);
+  }
   private void Notify([CallerMemberName] string? property = null) => PropertyChanged?.Invoke(this, new(property));
   private void NotifyMany(params string[] properties) { foreach (var property in properties) PropertyChanged?.Invoke(this, new(property)); }
 
@@ -331,6 +339,7 @@ public sealed class PointerStudioViewModel : INotifyPropertyChanged, IDisposable
   {
     _suppression.ActionRequested -= ExecuteAction;
     _suppression.PanicTriggered -= Panic;
+    _effects.HealthChanged -= EffectsHealthChanged;
   }
 }
 
@@ -356,10 +365,12 @@ public sealed class PointerRoleOption(string role, string nameKey, LocalizationS
 public sealed class ClickIndicatorOption : INotifyPropertyChanged
 {
   private readonly PointerClickIndicatorSettings _settings;
+  private readonly string _titleKey;
   private readonly LocalizationService _localization;
   private readonly Action _changed;
-  public ClickIndicatorOption(PointerClickIndicatorSettings settings, LocalizationService localization, Action changed) { _settings = settings; _localization = localization; _changed = changed; }
+  public ClickIndicatorOption(PointerClickIndicatorSettings settings, string titleKey, LocalizationService localization, Action changed) { _settings = settings; _titleKey = titleKey; _localization = localization; _changed = changed; }
   public event PropertyChangedEventHandler? PropertyChanged;
+  public string Title => _localization.Get(_titleKey);
   public IReadOnlyList<string> StyleOptions => Enum.GetValues<PointerClickIndicatorStyle>().Select(value => _localization.EnumName(value)).ToArray();
   public bool Enabled { get => _settings.Enabled; set { _settings.Enabled = value; Changed(); } }
   public int StyleIndex { get => (int)_settings.Style; set { if (Enum.IsDefined(typeof(PointerClickIndicatorStyle), value)) { _settings.Style = (PointerClickIndicatorStyle)value; Changed(); } } }
@@ -369,7 +380,11 @@ public sealed class ClickIndicatorOption : INotifyPropertyChanged
   public double Intensity { get => _settings.Intensity; set { _settings.Intensity = Math.Clamp(value, 0.1, 1); Changed(); } }
   public double Duration { get => _settings.DurationMilliseconds; set { _settings.DurationMilliseconds = Math.Clamp((int)Math.Round(value), 80, 1200); Changed(); } }
   private void Changed([CallerMemberName] string? property = null) { _settings.Normalize(); PropertyChanged?.Invoke(this, new(property)); _changed(); }
-  public void RefreshLocalization() => PropertyChanged?.Invoke(this, new(nameof(StyleOptions)));
+  public void RefreshLocalization()
+  {
+    PropertyChanged?.Invoke(this, new(nameof(Title)));
+    PropertyChanged?.Invoke(this, new(nameof(StyleOptions)));
+  }
 }
 
 internal static class PointerStudioCatalogLoader

@@ -73,7 +73,8 @@ public sealed class UiConsistencyTests
     Assert.Contains("<Style TargetType=\"AccessText\"><Setter Property=\"Foreground\" Value=\"Black\" /></Style>", appXaml);
     Assert.Contains("Text=\"{Binding VersionText}\" Style=\"{StaticResource MutedText}\"", mainXaml);
     Assert.Contains("HorizontalAlignment=\"Stretch\" TextAlignment=\"Center\"", mainXaml);
-    Assert.DoesNotContain("Text=\"{Binding StatusMessage}\" Style=\"{StaticResource MutedText}\"", mainXaml);
+    Assert.Contains("Text=\"{Binding StatusMessage}\" Style=\"{StaticResource MutedText}\"", mainXaml);
+    Assert.Contains("AutomationProperties.LiveSetting=\"Polite\"", mainXaml);
     Assert.Contains("ItemsSource=\"{Binding HeatmapPeriodOptions}\"", mainXaml);
     Assert.Contains("TooltipsEnabled=\"{Binding HeatmapTooltipsEnabled}\"", mainXaml);
     Assert.Contains("Snapshot=\"{Binding HeatmapSnapshot}\"", mainXaml);
@@ -254,7 +255,8 @@ public sealed class UiConsistencyTests
     Assert.Contains("var height = tiles.Length <= 6 ? 630 : 1200", share);
     Assert.Contains("var width = 1200", share);
     Assert.DoesNotContain("HttpClient", share, StringComparison.Ordinal);
-    Assert.DoesNotContain("DropShadow", string.Concat(appStyles, main, manage), StringComparison.OrdinalIgnoreCase);
+    Assert.DoesNotContain("<DropShadowEffect", string.Concat(appStyles, main, manage), StringComparison.OrdinalIgnoreCase);
+    Assert.DoesNotContain("Property=\"HasDropShadow\" Value=\"True\"", string.Concat(appStyles, main, manage), StringComparison.OrdinalIgnoreCase);
     Assert.DoesNotContain("translateY", string.Concat(appStyles, main, manage), StringComparison.OrdinalIgnoreCase);
   }
 
@@ -273,6 +275,8 @@ public sealed class UiConsistencyTests
     Assert.Contains("ItemsSource=\"{Binding RolePreviews}\"", main);
     Assert.Contains("AutomationProperties.Name\" Value=\"{Binding Name}\"", main);
     Assert.DoesNotContain("<ComboBox ItemsSource=\"{Binding Themes}\"", main);
+    Assert.Contains("ItemsSource=\"{Binding ClickChannels}\"", main);
+    Assert.Contains("<local:ResponsiveGridPanel MinItemWidth=\"210\" ItemHeight=\"236\"", main);
     Assert.Contains("DrawMotif", preview);
     Assert.Contains("DrawAccent", preview);
   }

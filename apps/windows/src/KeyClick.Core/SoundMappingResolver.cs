@@ -20,8 +20,7 @@ public sealed class SoundMappingResolver
 
     var correctKeyboardPhase = input.Input.Kind != InputKind.KeyboardKey ||
       InputEventRules.ShouldPlayKeyboardSound(settings.KeyboardSoundTiming, input.Phase);
-    var excluded = input.ForegroundExecutable is not null &&
-      settings.ExcludedExecutables.Any(item => string.Equals(item, input.ForegroundExecutable, StringComparison.OrdinalIgnoreCase));
+    var excluded = ExecutableExclusionMatcher.Matches(settings.ExcludedExecutables, input.ForegroundExecutable);
 
     if (!settings.SoundsEnabled || !categoryEnabled || !correctKeyboardPhase || excluded)
     {

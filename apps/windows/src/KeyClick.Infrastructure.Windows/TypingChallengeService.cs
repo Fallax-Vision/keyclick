@@ -1,5 +1,4 @@
 using System.Globalization;
-using System.Security.Cryptography;
 using System.Text;
 using KeyClick.Core;
 
@@ -21,7 +20,7 @@ public sealed class TypingChallengeService(ITypingChallengeStore store, IStatist
     {
       TypingChallengeSource.BuiltIn => session.Definition?.Id,
       TypingChallengeSource.Custom when !string.IsNullOrEmpty(savedPromptId) => savedPromptId,
-      TypingChallengeSource.Custom => session.Definition is null ? null : Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(session.Definition.Text))).ToLowerInvariant(),
+      TypingChallengeSource.Custom => null,
       _ => null
     };
     var referenceCompleted = source != TypingChallengeSource.FreeWriting && session.ReferenceTextCompleted;

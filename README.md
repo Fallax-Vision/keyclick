@@ -8,7 +8,7 @@ KeyClick is a native Windows 11 sound studio and private activity dashboard. Key
 
 Windows v1 is implemented in C#, WPF, .NET 10 LTS, SQLite, Win32 Raw Input, and XAudio2. The repository reserves native application roots for future Linux and macOS versions while sharing input IDs, sound-pack manifests, integration schemas, and fixtures.
 
-The current release is **1.6.1**, available as Setup and fully portable executables for Windows x64 and ARM64. Both editions are offline-first, preserve user data during verified updates, and contain the same sound packs, Pointer Studio, statistics, Fun Stats, typing challenges, themes, and privacy protections.
+The current release is **1.6.2**, available as Setup and fully portable executables for Windows x64 and ARM64. Both editions are offline-first, preserve user data during verified updates, and contain the same sound packs, Pointer Studio, statistics, Fun Stats, typing challenges, themes, and privacy protections.
 
 ## Highlights
 
@@ -34,8 +34,10 @@ The current release is **1.6.1**, available as Setup and fully portable executab
 - A dedicated offline **Pointer Studio** with a responsive, full-width visual grid for ten original cursor families. Each family includes a coordinated set of 15 common pointer roles—arrow, hand, text insertion, working, busy, precision, handwriting, unavailable, move, alternate select, and every standard resize direction—plus four sizes, automatic light/dark/high-contrast variants, favorites, tray quick switching, native Windows speed/precision/trails/shadow controls, and safe restore actions.
 - Event-driven companion effects and click indicators for left, right, middle, and auxiliary buttons, with configurable rings, ripples, tiny explosions, sparkles, radial ticks, and pulses. Effects sleep after settling, adapt to battery/fullscreen/RDP/Reduced Motion, and remain disabled by default.
 - Privacy-safe connected mouse/trackpad discovery, non-destructive per-device button actions, and guarded Experimental full replacement/global suppression with a visible failsafe cursor, recovery marker, tray panic action, and `Ctrl+Alt+Shift+F12` panic shortcut.
-- Larger 40–44 px interaction targets, familiar switch controls for master settings, explicit dependent-control states, labeled Fun Stats columns, and visually distinct destructive actions improve scanability and reduce accidental changes in both Light and Dark themes.
+- Responsive click-indicator cards fill the available Pointer Studio width while keeping each channel's master switch, style, color, and size controls visibly grouped. Larger 40–44 px interaction targets, familiar switch controls, explicit dependent-control states, labeled Fun Stats columns, restrained tooltips, and visually distinct destructive actions improve scanability and reduce accidental changes in both Light and Dark themes.
+- Long-running imports, exports, restores, resets, updates, Pointer Studio operations, and device discovery remain responsive, prevent accidental duplicate activation, and report progress or localized failures. Startup loads independent packs and shortcuts concurrently, while Statistics coalesces event-driven refreshes and performs no idle polling when unchanged.
 - Hardened local boundaries validate imported custom-sound IDs and profile collection sizes, exclude cursor recovery state from backups, neutralize spreadsheet formulas in CSV fields, bound extreme wheel reports, require the suppression panic hotkey before activation, and reverify locked update files immediately before launch.
+- Version 1.6.2 also honors filename-only application exclusions, prevents stale foreground-app resolution from replacing newer state, removes legacy content-derived custom-prompt identifiers through an automatic local migration, keeps prompt deletion from creating a recoverable plaintext copy, confines backup restoration and user-data cleanup to an unelevated process, and hardens release automation with immutable dependencies and least-privilege jobs.
 - A Home and Statistics physical-key heatmap with click-open key details. Key popovers remain open until dismissed, stay within the KeyClick window, follow their selected key while content scrolls, and close when KeyClick loses focus.
 - Privacy-minimized per-application totals displayed as easy-to-scan application cards with friendly names such as Brave, Chrome, and VLC, followed by executable and aggregate activity details.
 - Private offline Typing Challenges with an app-themed first-use disclosure, original English/French passages, custom prompts, free writing, timed/untimed and strict/flow modes, complete whitespace/Unicode input handling, visual results, normal-typing comparisons, personal bests, and two local streak types.
@@ -122,18 +124,18 @@ dotnet test KeyClick.sln -c Release
 Create setup and portable executables for both architectures:
 
 ```powershell
-./scripts/Build-Portable.ps1 -Version 1.6.1
+./scripts/Build-Portable.ps1 -Version 1.6.2
 ```
 
 The script writes these canonical, versioned artifacts plus SHA-256 checksums directly under `artifacts/`:
 
-- `KeyClick-Portable-Windows-x64-1.6.1.exe`
-- `KeyClick-Portable-Windows-arm64-1.6.1.exe`
-- `KeyClick-Setup-Windows-x64-1.6.1.exe`
-- `KeyClick-Setup-Windows-arm64-1.6.1.exe`
-- `checksums-1.6.1.txt`
+- `KeyClick-Portable-Windows-x64-1.6.2.exe`
+- `KeyClick-Portable-Windows-arm64-1.6.2.exe`
+- `KeyClick-Setup-Windows-x64-1.6.2.exe`
+- `KeyClick-Setup-Windows-arm64-1.6.2.exe`
+- `checksums-1.6.2.txt`
 
-`KeyClick-Setup-Windows-<architecture>-<version>.exe` is the installable edition. Setup requests UAC only for installation, places the stable `KeyClick.exe` launcher and versioned application files under `%ProgramFiles%\KeyClick`, creates shortcuts, and registers HKCU uninstall metadata. The app itself stays unelevated and keeps SQLite data/statistics, media, settings, logs, updates, and backups under `%LOCALAPPDATA%\KeyClick`, preserving them during upgrades. `KeyClick-Portable-Windows-<architecture>-<version>.exe` is the portable edition. It creates no shortcuts or registry entries and keeps code, SQLite data/statistics, media, logs, and backups under `KeyClickData` beside the launcher. If that directory is not writable, the user can explicitly use the installed AppData store or exit. No legacy duplicate executables are produced. Packaging follows SemVer and retains only the current and immediately preceding artifact versions.
+`KeyClick-Setup-Windows-<architecture>-<version>.exe` is the installable edition. Setup requests UAC only for installation, places the stable `KeyClick.exe` launcher and versioned application files under `%ProgramFiles%\KeyClick`, creates shortcuts, and registers HKCU uninstall metadata. The app itself stays unelevated and keeps SQLite data/statistics, media, settings, logs, updates, and backups under `%LOCALAPPDATA%\KeyClick`, preserving them during upgrades. Backup restoration and optional uninstall cleanup of that user-writable data also run unelevated. Database schema migrations are transactional, local, and automatic at first launch; 1.6.2 adds migration 6, which clears obsolete identifiers derived from unsaved custom prompt content while retaining IDs for explicitly saved prompts. There is no server or separate production database to migrate. `KeyClick-Portable-Windows-<architecture>-<version>.exe` is the portable edition. It creates no shortcuts or registry entries and keeps code, SQLite data/statistics, media, logs, and backups under `KeyClickData` beside the launcher. If that directory is not writable, the user can explicitly use the installed AppData store or exit. No legacy duplicate executables are produced. Packaging follows SemVer and retains only the current and immediately preceding artifact versions.
 
 Updates are strictly manual: GitHub is contacted only after **Check for updates** is pressed. Production builds do not inspect environment variables or local developer artifact folders at startup. Installed builds select setup assets; portable builds select portable assets and save the verified newer launcher beside the current copy. Applying either kind of update creates a safety backup, verifies the staged bytes again while preventing replacement, and preserves the separate statistics, custom packs, settings, mappings, and configuration data store.
 
@@ -169,7 +171,7 @@ Versioned `.keyclickprofile` files can preview and merge selected transferable s
 
 ## Platform status
 
-- Windows 11 x64/ARM64: current release 1.6.1.
+- Windows 11 x64/ARM64: current release 1.6.2.
 - Linux: contracts reserved; native application deferred.
 - macOS: contracts reserved; native application deferred.
 
