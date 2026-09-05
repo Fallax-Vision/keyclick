@@ -25,18 +25,39 @@ public sealed class BackupService(AppPaths paths)
 {
   public const long MaxRestoreBytes = 1024L * 1024 * 1024;
   public const int MaxRestoreEntries = 10_000;
+  private readonly StorageRetentionService _retention = new(paths);
 
-  public async Task<string> CreateAsync(CancellationToken cancellationToken = default)
+  public async Task<string> CreateAsync(BackupReason reason = BackupReason.General, CancellationToken cancellationToken = default)
   {
     paths.EnsureCreated();
-    var output = Path.Combine(paths.Backups, $"KeyClick-{DateTime.UtcNow:yyyyMMdd-HHmmss}.zip");
-    await Task.Run(() =>
+    var reasonName = reason switch
     {
-      using var archive = ZipFile.Open(output, ZipArchiveMode.Create);
-      AddDirectory(archive, paths.Data, "data");
-      AddDirectory(archive, paths.Media, "media");
-    }, cancellationToken);
-    return output;
+      BackupReason.PreUpdate => "pre-update",
+      BackupReason.PreDestructiveAction => "pre-destructive",
+      _ => "general"
+    };
+    var output = Path.Combine(paths.Backups, $"KeyClick-{reasonName}-{DateTime.UtcNow:yyyyMMdd-HHmmssfff}-{Guid.NewGuid():N}.zip");
+    try
+    {
+      await Task.Run(() =>
+      {
+        using var archive = ZipFile.Open(output, ZipArchiveMode.Create);
+        AddDirectory(archive, paths.Data, "data");
+        AddDirectory(archive, paths.Media, "media");
+      }, cancellationToken);
+      await ValidateAsync(output, cancellationToken);
+      await _retention.PruneBackupsAsync(cancellationToken);
+      return output;
+    }
+    catch
+    {
+      await Task.Run(() =>
+      {
+        try { File.Delete(output); }
+        catch (Exception exception) when (exception is IOException or UnauthorizedAccessException) { }
+      }, CancellationToken.None);
+      throw;
+    }
   }
 
   public Task ValidateAsync(string archivePath, CancellationToken cancellationToken = default) => Task.Run(() =>

@@ -183,7 +183,7 @@ public partial class MainWindow : Window
     if (MessageBox.Show(this, L.Get("ChallengeDeleteSelectedQuestion"), L.Get("ChallengeDeleteSelected"), MessageBoxButton.YesNo, MessageBoxImage.Warning) != MessageBoxResult.Yes) return;
     await RunUiActionAsync(sender, async () =>
     {
-      await _viewModel.CreateBackupNowAsync();
+      await _viewModel.CreateBackupNowAsync(BackupReason.PreDestructiveAction);
       await challenges.DeleteSelectedAsync();
     });
   }
@@ -194,7 +194,7 @@ public partial class MainWindow : Window
     if (MessageBox.Show(this, L.Get("ChallengeDeletePeriodQuestion"), L.Get("ChallengeDeletePeriod"), MessageBoxButton.YesNo, MessageBoxImage.Warning) != MessageBoxResult.Yes) return;
     await RunUiActionAsync(sender, async () =>
     {
-      await _viewModel.CreateBackupNowAsync();
+      await _viewModel.CreateBackupNowAsync(BackupReason.PreDestructiveAction);
       await challenges.DeleteVisiblePeriodAsync();
     });
   }
@@ -386,7 +386,7 @@ public partial class MainWindow : Window
     if (MessageBox.Show(this, L.Get("DeleteStatisticsQuestion"), L.Get("DeleteStatistics"), MessageBoxButton.YesNo, MessageBoxImage.Warning) != MessageBoxResult.Yes) return;
     await RunUiActionAsync(sender, async () =>
     {
-      if (dialog.Request.CreateSafetyBackup) await _viewModel.CreateBackupNowAsync();
+      if (dialog.Request.CreateSafetyBackup) await _viewModel.CreateBackupNowAsync(BackupReason.PreDestructiveAction);
       await _viewModel.Statistics.DeleteAsync(dialog.Request);
       if ((dialog.Request.DeleteTypingChallengeResults || dialog.Request.DeleteTypingChallengeAchievements) && _viewModel.TypingChallenges is { } challenges)
         await challenges.DeleteFromStatisticsDialogAsync(dialog.Request);

@@ -14,9 +14,6 @@ TestResults/
 .vscode/
 .idea/
 
-# Local AI-agent instructions
-/AGENTS.md
-
 # Local packages and signing material
 *.nupkg
 *.snupkg

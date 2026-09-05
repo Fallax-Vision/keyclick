@@ -75,6 +75,37 @@ public sealed class WindowAndInstallationLifecycleTests
     Assert.Contains("Backups can be restored only by the installed, unelevated KeyClick launcher", bootstrap);
     Assert.Contains("LaunchUserDataPurge", bootstrap);
     Assert.Contains("User data cleanup must run without administrator privileges", bootstrap);
+    Assert.Contains("PruneApplicationPayloads(root, versionDirectory);", bootstrap);
+    Assert.Contains("previous = candidates", bootstrap);
+  }
+
+  [Fact]
+  public void Installed_payload_retention_keeps_current_and_one_rollback_version()
+  {
+    using var folder = new TempDirectory();
+    var installRoot = Path.Combine(folder.Path, "ProgramFiles", "KeyClick");
+    var old = Directory.CreateDirectory(Path.Combine(installRoot, "app-v1.6.0"));
+    var previous = Directory.CreateDirectory(Path.Combine(installRoot, "app-v1.6.1"));
+    var current = Directory.CreateDirectory(Path.Combine(installRoot, "app-v1.6.2"));
+    var invalid = Directory.CreateDirectory(Path.Combine(installRoot, "app-vbroken"));
+    Directory.CreateDirectory(Path.Combine(installRoot, "unrelated"));
+    foreach (var directory in new[] { old, previous, current })
+    {
+      File.WriteAllText(Path.Combine(directory.FullName, "KeyClick.App.exe"), "payload");
+      File.WriteAllText(Path.Combine(directory.FullName, ".payload-sha256"), new string('a', 64));
+    }
+    old.LastWriteTimeUtc = DateTime.UtcNow.AddDays(-2);
+    previous.LastWriteTimeUtc = DateTime.UtcNow.AddDays(-1);
+    current.LastWriteTimeUtc = DateTime.UtcNow;
+    invalid.LastWriteTimeUtc = DateTime.UtcNow.AddDays(1);
+
+    Program.PruneApplicationPayloads(installRoot, current.FullName);
+
+    Assert.False(Directory.Exists(old.FullName));
+    Assert.True(Directory.Exists(previous.FullName));
+    Assert.True(Directory.Exists(current.FullName));
+    Assert.False(Directory.Exists(invalid.FullName));
+    Assert.True(Directory.Exists(Path.Combine(installRoot, "unrelated")));
   }
 
   private static string FindRepositoryRoot()

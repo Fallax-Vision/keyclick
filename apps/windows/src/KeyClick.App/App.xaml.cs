@@ -74,6 +74,7 @@ public partial class App : Application
     try
     {
       Paths.EnsureCreated();
+      _ = new StorageRetentionService(Paths).ApplyAsync();
       _store = new SqliteAppStore(Paths);
       await _store.InitializeAsync();
       var initialSettings = await _store.LoadSettingsAsync();
@@ -156,7 +157,7 @@ public partial class App : Application
     }
     catch (Exception exception)
     {
-      WriteStartupDiagnostic(exception);
+      await WriteStartupDiagnosticAsync(exception);
       MessageBox.Show(_localization.Format("StartupFailedFormat", exception.Message), "KeyClick", MessageBoxButton.OK, MessageBoxImage.Error);
       ExitApplication();
     }
@@ -273,12 +274,11 @@ public partial class App : Application
     if (wellness is not null) await wellness.DisposeAsync();
   }
 
-  private void WriteStartupDiagnostic(Exception exception)
+  private async Task WriteStartupDiagnosticAsync(Exception exception)
   {
     try
     {
-      Directory.CreateDirectory(Paths.Logs);
-      File.WriteAllText(Path.Combine(Paths.Logs, "startup-error.log"), exception.ToString());
+      await new StorageRetentionService(Paths).WriteDiagnosticAsync("startup-error.log", exception.ToString());
     }
     catch
     {

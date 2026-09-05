@@ -24,8 +24,8 @@ jobs:
             runtime: win-arm64
     runs-on: ${{ matrix.runner }}
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-dotnet@v6
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6
         with:
           global-json-file: global.json
           cache: true
@@ -39,7 +39,7 @@ jobs:
       - name: Package setup and portable executables
         shell: pwsh
         run: ./scripts/Build-Portable.ps1 -Version 1.0.0-ci -Runtime ${{ matrix.runtime }}
-      - uses: actions/upload-artifact@v7
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
         with:
           name: KeyClick-${{ matrix.architecture }}
           path: |
@@ -47,9 +47,11 @@ jobs:
             artifacts/KeyClick-Portable-Windows-${{ matrix.architecture }}-1.0.0-ci.exe
             artifacts/checksums-1.0.0-ci.txt
           if-no-files-found: error
-      - uses: actions/upload-artifact@v7
+          retention-days: 7
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
         if: always()
         with:
           name: test-results-${{ matrix.architecture }}
           path: '**/TestResults/**'
           if-no-files-found: ignore
+          retention-days: 7

@@ -20,6 +20,9 @@ public sealed class ReleaseWorkflowSecurityTests
     Assert.Contains("\"version\": \"6.2.0\"", toolManifest);
     Assert.Contains("build:\n    runs-on: windows-2025\n    permissions:\n      contents: read", workflow.Replace("\r\n", "\n"));
     Assert.Contains("release:\n    needs: build", workflow.Replace("\r\n", "\n"));
+    Assert.Contains("retention-days: 14", workflow);
+    Assert.Contains("Prune-GitHubReleaseAssets.ps1", workflow);
+    Assert.Contains("-KeepReleaseVersions 3 -Apply -Confirm:$false", workflow);
 
     foreach (Match action in Regex.Matches(workflow, @"uses:\s+[^\s@]+@(?<reference>[^\s#]+)"))
       Assert.Matches("^[0-9a-f]{40}$", action.Groups["reference"].Value);

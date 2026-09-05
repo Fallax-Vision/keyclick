@@ -96,7 +96,11 @@ internal static class Program
       if (elevatedInstallation)
         LaunchInstalledLauncher(launcher);
       else
-        Process.Start(new ProcessStartInfo(application) { UseShellExecute = true, Arguments = JoinArguments(appArguments), WorkingDirectory = versionDirectory });
+      {
+        _ = Process.Start(new ProcessStartInfo(application) { UseShellExecute = true, Arguments = JoinArguments(appArguments), WorkingDirectory = versionDirectory })
+          ?? throw new InvalidOperationException("Windows could not start KeyClick.");
+        PruneApplicationPayloads(root, versionDirectory);
+      }
       return 0;
     }
     catch (Exception exception)
@@ -529,6 +533,46 @@ internal static class Program
   }
 
   private static void DeleteShortcut(string path) { if (File.Exists(path)) DeleteFile(path); }
+
+  internal static void PruneApplicationPayloads(string root, string currentVersionDirectory)
+  {
+    try
+    {
+      var current = Path.GetFullPath(currentVersionDirectory);
+      EnsureChild(root, current);
+      var candidates = Directory.EnumerateDirectories(root, "app-v*", SearchOption.TopDirectoryOnly)
+        .Select(path => new DirectoryInfo(Path.GetFullPath(path)))
+        .Where(directory => (directory.Attributes & FileAttributes.ReparsePoint) == 0)
+        .ToArray();
+      var previous = candidates
+        .Where(directory => !PathsEqual(directory.FullName, current) && IsVerifiedApplicationPayload(directory.FullName))
+        .OrderByDescending(directory => directory.LastWriteTimeUtc)
+        .FirstOrDefault();
+
+      foreach (var directory in candidates)
+      {
+        if (PathsEqual(directory.FullName, current) ||
+            (previous is not null && PathsEqual(directory.FullName, previous.FullName))) continue;
+        try { DeleteValidatedDirectory(root, directory.FullName); }
+        catch (Exception exception) when (exception is IOException or UnauthorizedAccessException) { }
+      }
+    }
+    catch (Exception exception) when (exception is IOException or UnauthorizedAccessException or DirectoryNotFoundException)
+    {
+      // Retention cleanup must not turn a valid install into a failed update.
+    }
+  }
+
+  private static bool IsVerifiedApplicationPayload(string directory)
+  {
+    var executable = Path.Combine(directory, AppExecutable);
+    var marker = Path.Combine(directory, ".payload-sha256");
+    if (!File.Exists(executable) || !File.Exists(marker) ||
+        (File.GetAttributes(executable) & FileAttributes.ReparsePoint) != 0 ||
+        (File.GetAttributes(marker) & FileAttributes.ReparsePoint) != 0) return false;
+    var hash = File.ReadAllText(marker).Trim();
+    return hash.Length == 64 && hash.All(Uri.IsHexDigit);
+  }
 
   private static void DeleteDirectoryContents(string root, string? preservedFile = null)
   {

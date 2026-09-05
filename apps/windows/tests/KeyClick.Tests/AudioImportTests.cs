@@ -39,6 +39,21 @@ public sealed class AudioImportTests
     await Assert.ThrowsAsync<InvalidDataException>(() => importer.ImportAsync(huge, false));
   }
 
+  [Fact]
+  public async Task Import_accepts_exact_decoded_sample_budget()
+  {
+    using var folder = new TemporaryFolder();
+    var source = System.IO.Path.Combine(folder.Path, "boundary.wav");
+    WriteWave(source, TimeSpan.FromSeconds(5));
+    var importer = new AudioImportService(new AppPaths(System.IO.Path.Combine(folder.Path, "state")));
+
+    var imported = await importer.ImportAsync(source, false);
+
+    Assert.Equal(AudioImportService.MaxDecodedSamples, (int)Math.Round(imported.Duration.TotalSeconds * 48_000));
+    Assert.DoesNotContain(Directory.EnumerateFiles(System.IO.Path.Combine(folder.Path, "state", "media", "sounds")),
+      path => System.IO.Path.GetFileName(path).StartsWith("import-", StringComparison.OrdinalIgnoreCase));
+  }
+
   private static void WriteWave(string path, TimeSpan duration)
   {
     using var writer = new WaveFileWriter(path, new WaveFormat(48_000, 16, 1));

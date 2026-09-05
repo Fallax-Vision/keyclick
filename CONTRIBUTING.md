@@ -12,7 +12,7 @@ Thank you for helping make KeyClick better. Keep changes focused, preserve the p
 6. Run `./scripts/Test-PrivacyBoundary.ps1`.
 7. Explain observable behavior, privacy/performance impact, and verification in the pull request.
 
-Do not commit imported user audio, local databases, logs, build artifacts, certificate material, or generated portable payloads.
+Do not commit imported user audio, local databases, logs, build artifacts, certificate material, or generated portable payloads. Keep `AGENTS.md` tracked so clean local, CI, and production checkouts share the same privacy, performance, release, and bounded-retention rules.
 
 ## Non-negotiable properties
 

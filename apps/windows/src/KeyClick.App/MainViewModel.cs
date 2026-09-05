@@ -614,7 +614,7 @@ public sealed class MainViewModel : INotifyPropertyChanged, IDisposable
   public async Task<string> PrepareUpdateAsync(UpdateInfo update)
   {
     StatusMessage = _localization.Format(update.IsLocal ? "PreparingLocalUpdateFormat" : "DownloadingUpdateFormat", update.Version);
-    await CreateBackupNowAsync();
+    await CreateBackupNowAsync(BackupReason.PreUpdate);
     var paths = ((App)Application.Current).Paths;
     var destination = IsPortable
       ? Path.GetDirectoryName(paths.Launcher) ?? throw new InvalidOperationException("The portable launcher folder is unavailable.")
@@ -643,23 +643,23 @@ public sealed class MainViewModel : INotifyPropertyChanged, IDisposable
     }
   }
 
-  public async Task<string> CreateBackupNowAsync()
+  public async Task<string> CreateBackupNowAsync(BackupReason reason = BackupReason.General)
   {
     await SaveSettingsNowAsync();
     await _store.CheckpointAsync();
-    return await _backup.CreateAsync();
+    return await _backup.CreateAsync(reason);
   }
 
   public async Task PrepareRestoreAsync(string archivePath)
   {
     await _backup.ValidateAsync(archivePath);
-    var safetyBackup = await CreateBackupNowAsync();
+    var safetyBackup = await CreateBackupNowAsync(BackupReason.PreDestructiveAction);
     StatusMessage = _localization.Format("BackupValidatedFormat", safetyBackup);
   }
 
   public async Task ResetSettingsAsync()
   {
-    await CreateBackupNowAsync();
+    await CreateBackupNowAsync(BackupReason.PreDestructiveAction);
     _startup.SetEnabled(false);
     var disclosureConfirmed = _settings.StatisticsDisclosureConfirmed;
     var disclosureVersion = _settings.StatisticsDisclosureVersion;

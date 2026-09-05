@@ -8,7 +8,7 @@ KeyClick is a native Windows 11 sound studio and private activity dashboard. Key
 
 Windows v1 is implemented in C#, WPF, .NET 10 LTS, SQLite, Win32 Raw Input, and XAudio2. The repository reserves native application roots for future Linux and macOS versions while sharing input IDs, sound-pack manifests, integration schemas, and fixtures.
 
-The current release is **1.6.2**, available as Setup and fully portable executables for Windows x64 and ARM64. Both editions are offline-first, preserve user data during verified updates, and contain the same sound packs, Pointer Studio, statistics, Fun Stats, typing challenges, themes, and privacy protections.
+The current release is **1.6.3**, available as Setup and fully portable executables for Windows x64 and ARM64. Both editions are offline-first, preserve user data during verified updates, and contain the same sound packs, Pointer Studio, statistics, Fun Stats, typing challenges, themes, and privacy protections.
 
 ## Highlights
 
@@ -38,6 +38,7 @@ The current release is **1.6.2**, available as Setup and fully portable executab
 - Long-running imports, exports, restores, resets, updates, Pointer Studio operations, and device discovery remain responsive, prevent accidental duplicate activation, and report progress or localized failures. Startup loads independent packs and shortcuts concurrently, while Statistics coalesces event-driven refreshes and performs no idle polling when unchanged.
 - Hardened local boundaries validate imported custom-sound IDs and profile collection sizes, exclude cursor recovery state from backups, neutralize spreadsheet formulas in CSV fields, bound extreme wheel reports, require the suppression panic hotkey before activation, and reverify locked update files immediately before launch.
 - Version 1.6.2 also honors filename-only application exclusions, prevents stale foreground-app resolution from replacing newer state, removes legacy content-derived custom-prompt identifiers through an automatic local migration, keeps prompt deletion from creating a recoverable plaintext copy, confines backup restoration and user-data cleanup to an unelevated process, and hardens release automation with immutable dependencies and least-privilege jobs.
+- Version 1.6.3 adds validated bounded storage retention: seven rolling logs within a 25 MiB budget, five role-aware app-managed backups, one pending update package, two local release/payload version sets, short-lived CI artifacts, and at most two prior GitHub binary release sets. User statistics, imported media, profiles, external exports, tags, release notes, and Git history are not silently deleted.
 - A Home and Statistics physical-key heatmap with click-open key details. Key popovers remain open until dismissed, stay within the KeyClick window, follow their selected key while content scrolls, and close when KeyClick loses focus.
 - Privacy-minimized per-application totals displayed as easy-to-scan application cards with friendly names such as Brave, Chrome, and VLC, followed by executable and aggregate activity details.
 - Private offline Typing Challenges with an app-themed first-use disclosure, original English/French passages, custom prompts, free writing, timed/untimed and strict/flow modes, complete whitespace/Unicode input handling, visual results, normal-typing comparisons, personal bests, and two local streak types.
@@ -124,18 +125,20 @@ dotnet test KeyClick.sln -c Release
 Create setup and portable executables for both architectures:
 
 ```powershell
-./scripts/Build-Portable.ps1 -Version 1.6.2
+./scripts/Build-Portable.ps1 -Version 1.6.3
 ```
 
 The script writes these canonical, versioned artifacts plus SHA-256 checksums directly under `artifacts/`:
 
-- `KeyClick-Portable-Windows-x64-1.6.2.exe`
-- `KeyClick-Portable-Windows-arm64-1.6.2.exe`
-- `KeyClick-Setup-Windows-x64-1.6.2.exe`
-- `KeyClick-Setup-Windows-arm64-1.6.2.exe`
-- `checksums-1.6.2.txt`
+- `KeyClick-Portable-Windows-x64-1.6.3.exe`
+- `KeyClick-Portable-Windows-arm64-1.6.3.exe`
+- `KeyClick-Setup-Windows-x64-1.6.3.exe`
+- `KeyClick-Setup-Windows-arm64-1.6.3.exe`
+- `checksums-1.6.3.txt`
 
-`KeyClick-Setup-Windows-<architecture>-<version>.exe` is the installable edition. Setup requests UAC only for installation, places the stable `KeyClick.exe` launcher and versioned application files under `%ProgramFiles%\KeyClick`, creates shortcuts, and registers HKCU uninstall metadata. The app itself stays unelevated and keeps SQLite data/statistics, media, settings, logs, updates, and backups under `%LOCALAPPDATA%\KeyClick`, preserving them during upgrades. Backup restoration and optional uninstall cleanup of that user-writable data also run unelevated. Database schema migrations are transactional, local, and automatic at first launch; 1.6.2 adds migration 6, which clears obsolete identifiers derived from unsaved custom prompt content while retaining IDs for explicitly saved prompts. There is no server or separate production database to migrate. `KeyClick-Portable-Windows-<architecture>-<version>.exe` is the portable edition. It creates no shortcuts or registry entries and keeps code, SQLite data/statistics, media, logs, and backups under `KeyClickData` beside the launcher. If that directory is not writable, the user can explicitly use the installed AppData store or exit. No legacy duplicate executables are produced. Packaging follows SemVer and retains only the current and immediately preceding artifact versions.
+`KeyClick-Setup-Windows-<architecture>-<version>.exe` is the installable edition. Setup requests UAC only for installation, places the stable `KeyClick.exe` launcher and versioned application files under `%ProgramFiles%\KeyClick`, creates shortcuts, and registers HKCU uninstall metadata. The app itself stays unelevated and keeps SQLite data/statistics, media, settings, logs, updates, and backups under `%LOCALAPPDATA%\KeyClick`, preserving them during upgrades. Backup restoration and optional uninstall cleanup of that user-writable data also run unelevated. Database schema migrations are transactional, local, and automatic at first launch; 1.6.2 added migration 6, which clears obsolete identifiers derived from unsaved custom prompt content while retaining IDs for explicitly saved prompts. Version 1.6.3 requires no database migration. There is no server or separate production database to migrate. `KeyClick-Portable-Windows-<architecture>-<version>.exe` is the portable edition. It creates no shortcuts or registry entries and keeps code, SQLite data/statistics, media, logs, and backups under `KeyClickData` beside the launcher. If that directory is not writable, the user can explicitly use the installed AppData store or exit. No legacy duplicate executables are produced. Packaging follows SemVer and retains only the current and immediately preceding artifact versions.
+
+KeyClick rotates only app-managed operational data. Logs keep no more than seven files for fourteen days, with 5 MiB per-file and 25 MiB total limits. Backups are validated before rotation and retain the three newest general backups plus the newest pre-update and pre-destructive-action backups. The update cache keeps one verified pending installer and removes abandoned staging files. Installed payloads and local packaging retain the active/current version plus one rollback version. External exports and user-owned aggregate data are outside automatic retention.
 
 Updates are strictly manual: GitHub is contacted only after **Check for updates** is pressed. Production builds do not inspect environment variables or local developer artifact folders at startup. Installed builds select setup assets; portable builds select portable assets and save the verified newer launcher beside the current copy. Applying either kind of update creates a safety backup, verifies the staged bytes again while preventing replacement, and preserves the separate statistics, custom packs, settings, mappings, and configuration data store.
 
@@ -171,7 +174,7 @@ Versioned `.keyclickprofile` files can preview and merge selected transferable s
 
 ## Platform status
 
-- Windows 11 x64/ARM64: current release 1.6.2.
+- Windows 11 x64/ARM64: current release 1.6.3.
 - Linux: contracts reserved; native application deferred.
 - macOS: contracts reserved; native application deferred.
 
@@ -184,7 +187,7 @@ Contributions are welcome, but KeyClick's input-path performance and local-only 
 - Never transmit keyboard, mouse, per-application, challenge, wellness, profile, or prompt data. Networking must remain isolated to lazy, user-triggered HTTPS GET update operations in `KeyClick.Updater`; automatic checks, telemetry, pings, advertisements, and cloud sync are prohibited.
 - Keep built-in packs immutable and customizations reversible. Validate imported archives, paths, sizes, hashes, and decoded audio before local use.
 - Add every user-facing string in both English and French, and verify Light, Dark, and System themes at the minimum supported window size.
-- Add or update tests, then run `dotnet build KeyClick.sln -c Release`, `dotnet test KeyClick.sln -c Release`, and `./scripts/Test-PrivacyBoundary.ps1` before opening a pull request.
+- Add or update tests, then run `dotnet build KeyClick.sln -c Release`, `dotnet test KeyClick.sln -c Release`, `./scripts/Test-PrivacyBoundary.ps1`, and `./scripts/Test-PolicyCompliance.ps1` before opening a pull request.
 - Follow Semantic Versioning. Release artifacts must include the version, cover x64/ARM64 Setup and Portable editions, and have a matching SHA-256 manifest. Published versions are never rewritten.
 - Privacy-critical changes require `@askasjeremy` CODEOWNERS approval. Pull requests that weaken the Privacy Boundary, expose updater payload APIs, add automatic networking, or allow statistics/challenge transmission must be rejected.
 
