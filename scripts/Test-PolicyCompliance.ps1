@@ -76,3 +76,4 @@ if ($failures.Count -gt 0) {
 }
 
 Write-Host 'Repository policy passed: durable guidance, immutable CI actions, bounded artifacts, UI constraints, and runtime retention are enforced.'
+exit 0
